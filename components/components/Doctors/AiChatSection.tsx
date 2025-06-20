@@ -522,6 +522,7 @@ export function AiChatSection() {
         isError: data.error,
         isFallback: data.fallback,
         response_time_ms: responseTime,
+        tokens_used: data.tokens_used,
       }
 
       setCurrentChat((prev) => [...prev, assistantMessage])
@@ -953,7 +954,7 @@ export function AiChatSection() {
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 to-blue-50">
       <Card className="flex-1 flex flex-col shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+        <CardHeader className="border-b bg-gradient-to-r from-blue-500 to-purple-500 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white/20 rounded-lg">
@@ -1127,20 +1128,52 @@ export function AiChatSection() {
                                 }`}
                               >
                                 {attachment.type === "image" ? (
-                                  <div className="relative">
+                                  <div className="relative group">
                                     <img
                                       src={attachment.url || "/placeholder.svg"}
                                       alt={attachment.name}
-                                      className="max-w-full max-h-64 object-contain"
+                                      className="max-w-full max-h-64 object-contain rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                      onClick={() => {
+                                        // Открыть изображение в полном размере
+                                        const modal = document.createElement("div")
+                                        modal.className =
+                                          "fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+                                        modal.onclick = () => modal.remove()
+
+                                        const img = document.createElement("img")
+                                        img.src = attachment.url || "/placeholder.svg"
+                                        img.className = "max-w-full max-h-full object-contain"
+                                        img.onclick = (e) => e.stopPropagation()
+
+                                        const closeBtn = document.createElement("button")
+                                        closeBtn.innerHTML = "×"
+                                        closeBtn.className =
+                                          "absolute top-4 right-4 text-white text-3xl hover:text-gray-300"
+                                        closeBtn.onclick = () => modal.remove()
+
+                                        modal.appendChild(img)
+                                        modal.appendChild(closeBtn)
+                                        document.body.appendChild(modal)
+                                      }}
                                     />
                                     <div
-                                      className={`absolute bottom-0 left-0 right-0 p-1 text-xs ${
+                                      className={`absolute bottom-0 left-0 right-0 p-2 text-xs rounded-b-lg ${
                                         msg.role === "user"
                                           ? "bg-blue-600/70 text-white"
                                           : "bg-gray-100/70 text-gray-700"
                                       }`}
                                     >
-                                      {attachment.name}
+                                      <div className="flex items-center justify-between">
+                                        <span className="truncate">{attachment.name}</span>
+                                        <span className="ml-2 text-xs opacity-75">
+                                          {attachment.size ? `${Math.round(attachment.size / 1024)} KB` : ""}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <div className="bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                                        Нажмите для увеличения
+                                      </div>
                                     </div>
                                   </div>
                                 ) : (
@@ -1189,6 +1222,7 @@ export function AiChatSection() {
                           {msg.response_time_ms && (
                             <span className="ml-2 text-gray-400">• {msg.response_time_ms}ms</span>
                           )}
+                          {msg.tokens_used && <span className="ml-2 text-gray-400">• {msg.tokens_used} токенов</span>}
                         </span>
                       </div>
                     </div>
