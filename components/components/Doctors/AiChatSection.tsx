@@ -32,6 +32,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useEffect, useRef, useState } from "react"
+import { Textarea } from "@/components/ui/textarea"
 
 interface AiMessage {
   id?: string
@@ -68,6 +69,35 @@ interface ChatStats {
   most_active_day: string
   sessions_this_week: number
   sessions_this_month: number
+}
+
+// Компонент для рендеринга markdown контента
+function MarkdownContent({ content }: { content: string }) {
+  // Простая функция для парсинга markdown
+  const formatContent = (text: string) => {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // **текст** -> <strong>текст</strong>
+      .replace(/\*(.*?)\*/g, "<em>$1</em>") // *текст* -> <em>текст</em>
+      .replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-sm">$1</code>') // `код` -> <code>код</code>
+      .replace(/^### (.*$)/gm, '<h3 class="text-lg font-semibold mt-4 mb-2 text-gray-800">$1</h3>') // ### заголовок
+      .replace(/^## (.*$)/gm, '<h2 class="text-xl font-semibold mt-4 mb-2 text-gray-800">$1</h2>') // ## заголовок
+      .replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mt-4 mb-2 text-gray-800">$1</h1>') // # заголовок
+      .replace(/^\d+\.\s(.*$)/gm, '<li class="ml-4 mb-1">$1</li>') // 1. пункт -> <li>пункт</li>
+      .replace(/^-\s(.*$)/gm, '<li class="ml-4 mb-1 list-disc">$1</li>') // - пункт -> <li>пункт</li>
+      .replace(/\n\n/g, '</p><p class="mb-2">') // двойной перенос -> новый параграф
+      .replace(/\n/g, "<br>") // одинарный перенос -> <br>
+  }
+
+  const formattedContent = formatContent(content)
+
+  return (
+    <div
+      className="prose prose-sm max-w-none"
+      dangerouslySetInnerHTML={{
+        __html: `<p class="mb-2">${formattedContent}</p>`,
+      }}
+    />
+  )
 }
 
 export function AiChatSection() {
@@ -923,7 +953,7 @@ export function AiChatSection() {
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 to-blue-50">
       <Card className="flex-1 flex flex-col shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader className="border-b bg-gradient-to-r from blue-600 to-purple-600 text-white">
+        <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white/20 rounded-lg">
@@ -1138,7 +1168,9 @@ export function AiChatSection() {
                             ))}
                           </div>
                         )}
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                        <div className="text-sm leading-relaxed">
+                          <MarkdownContent content={msg.content} />
+                        </div>
                         <span
                           className={`text-xs mt-2 block ${
                             msg.role === "user"
@@ -1225,7 +1257,7 @@ export function AiChatSection() {
                     ))}
                   </div>
                 )}
-                <div className="flex gap-3 bg-white rounded-2xl border border-gray-200 p-3 shadow-sm">
+                <div className="flex gap-3 bg-white rounded-2xl border border-gray-200 p-3 shadow-sm items-end">
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -1243,17 +1275,23 @@ export function AiChatSection() {
                   >
                     <Paperclip className="w-5 h-5" />
                   </Button>
-                  <Input
+                  <Textarea
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Задайте сложный медицинский вопрос - Avishifo.ai готов к детальному анализу..."
-                    className="flex-1 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-800 placeholder:text-gray-500"
+                    className="flex-1 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-800 placeholder:text-gray-500 resize-none min-h-[20px] max-h-[120px] overflow-y-auto"
                     disabled={isLoading}
+                    rows={1}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault()
                         sendMessage()
                       }
+                    }}
+                    onInput={(e) => {
+                      const target = e.target as HTMLTextAreaElement
+                      target.style.height = "auto"
+                      target.style.height = Math.min(target.scrollHeight, 120) + "px"
                     }}
                   />
                   <Button
