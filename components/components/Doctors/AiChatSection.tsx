@@ -48,6 +48,7 @@ interface AiMessage {
     name: string
     url: string
     size?: number
+    isDocument?: boolean
   }[]
 }
 
@@ -116,7 +117,7 @@ export function AiChatSection() {
     {
       role: "assistant",
       content:
-        "Здравствуйте, уважаемый доктор! Я рад присоединиться к вашей работе в качестве медицинского консультанта AviShifo. Вместе с вами я готов анализировать сложные случаи, помогать в принятии клинических решений и сопровождать пациента на всём пути лечения — до полного выздоровления. Введите или загрузите необходимую информацию — и начнём.",
+        "Привет! Я Авишифо, ваш ИИ помощник с полной интеграцией Avishifo.ai. Готов предоставить профессиональные медицинские консультации. Как я могу помочь вам сегодня?",
       timestamp: new Date().toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
@@ -131,6 +132,7 @@ export function AiChatSection() {
       url: string
       file: File
       size: number
+      isDocument?: boolean
     }[]
   >([])
 
@@ -413,12 +415,23 @@ export function AiChatSection() {
 
     const newAttachments = Array.from(files).map((file) => {
       const isImage = file.type.startsWith("image/")
+      const isDocument =
+        file.type.includes("pdf") ||
+        file.type.includes("document") ||
+        file.type.includes("word") ||
+        file.type.includes("text") ||
+        file.name.toLowerCase().endsWith(".pdf") ||
+        file.name.toLowerCase().endsWith(".doc") ||
+        file.name.toLowerCase().endsWith(".docx") ||
+        file.name.toLowerCase().endsWith(".txt")
+
       return {
         type: isImage ? ("image" as const) : ("file" as const),
         name: file.name,
         url: URL.createObjectURL(file),
         file,
         size: file.size,
+        isDocument,
       }
     })
 
@@ -454,11 +467,12 @@ export function AiChatSection() {
       attachments:
         attachments.length > 0
           ? attachments.map((att) => ({
-            type: att.type,
-            name: att.name,
-            url: att.url,
-            size: att.size,
-          }))
+              type: att.type,
+              name: att.name,
+              url: att.url,
+              size: att.size,
+              isDocument: att.isDocument,
+            }))
           : undefined,
     }
 
@@ -611,7 +625,8 @@ export function AiChatSection() {
           setCurrentChat([
             {
               role: "assistant",
-              content: "Здравствуйте, уважаемый доктор! Я рад присоединиться к вашей работе в качестве медицинского консультанта AviShifo. Вместе с вами я готов анализировать сложные случаи, помогать в принятии клинических решений и сопровождать пациента на всём пути лечения — до полного выздоровления. Введите или загрузите необходимую информацию — и начнём.",
+              content:
+                "Привет! Я Авишифо, ваш ИИ помощник с полной интеграцией Avishifo.ai. Готов предоставить профессиональные медицинские консультации. Как я могу помочь вам сегодня?",
               timestamp: new Date().toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
@@ -634,7 +649,8 @@ export function AiChatSection() {
         setCurrentChat([
           {
             role: "assistant",
-            content: "Здравствуйте, уважаемый доктор! Я рад присоединиться к вашей работе в качестве медицинского консультанта AviShifo. Вместе с вами я готов анализировать сложные случаи, помогать в принятии клинических решений и сопровождать пациента на всём пути лечения — до полного выздоровления. Введите или загрузите необходимую информацию — и начнём.",
+            content:
+              "Привет! Я Авишифо, ваш ИИ помощник с полной интеграцией Avishifo.ai. Готов предоставить профессиональные медицинские консультации. Как я могу помочь вам сегодня?",
             timestamp: new Date().toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
@@ -651,7 +667,8 @@ export function AiChatSection() {
     setCurrentChat([
       {
         role: "assistant",
-        content: "Здравствуйте, уважаемый доктор! Я рад присоединиться к вашей работе в качестве медицинского консультанта AviShifo. Вместе с вами я готов анализировать сложные случаи, помогать в принятии клинических решений и сопровождать пациента на всём пути лечения — до полного выздоровления. Введите или загрузите необходимую информацию — и начнём.",
+        content:
+          "Привет! Я Авишифо, ваш ИИ помощник с полной интеграцией Avishifo.ai. Готов предоставить профессиональные медицинские консультации. Как я могу помочь вам сегодня?",
         timestamp: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -951,7 +968,7 @@ export function AiChatSection() {
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 to-blue-50">
       <Card className="flex-1 flex flex-col shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader className="border-b bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+        <CardHeader className="border-b bg-gradient-to-r from blue-600 to-purple-600 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white/20 rounded-lg">
@@ -1019,31 +1036,11 @@ export function AiChatSection() {
                         <Sparkles className="w-4 h-4 text-white" />
                       </div>
                     </div>
-                    <h2 className="text-3xl font-bold text-gray-800 mb-4">Добро пожаловать, доктор.</h2>
-                    <div class="mx-auto pb-10">
-                      <div class="text-gray-700 mb-6 pl-4">
-                        <p class="text-base leading-relaxed mb-4 text-start">
-                          Теперь вы можете использовать весь потенциал <span class="font-semibold text-teal-600">AviShifo.ai</span> для совместной диагностики и лечения пациентов. Здесь вы можете задать любой медицинский вопрос: от диагностики редких заболеваний до подбора индивидуального плана лечения. Платформа поддерживает вас на каждом этапе принятия клинического решения.
-                        </p>
-                        <p class="text-base font-medium text-gray-800 mb-4 text-start">
-                          🧠 Чтобы получить наиболее точную консультацию от <span class="font-semibold">AviShifo.ai</span>, пожалуйста, введите:
-                        </p>
-                        <ul class="list-disc list-inside text-gray-600 space-y-2 mb-6 text-start">
-                          <li>Субъективные данные (жалобы, анамнез, симптомы)</li>
-                          <li>Объективные данные (данные осмотра, ЧСС, АД, температура и т.д.)</li>
-                          <li>Лабораторные данные (анализы крови, мочи и др.)</li>
-                          <li>Инструментальные данные (рентген, КТ, УЗИ и др.)</li>
-                        </ul>
-                        <p class="text-gray-600 italic text-sm text-start">
-                          📎 Вы можете загрузить эти данные в текстовом виде, а также прикреплять изображения или документы.
-                        </p>
-                      </div>
-                      <div class="bg-teal-50 p-5 rounded-lg border border-teal-200 pl-4 text-start">
-                        <p class="text-gray-800 text-sm leading-relaxed">
-                          🤝 <span class="font-semibold">Avishifo</span> работает как ваш интеллектуальный ассистент – анализирует, сопоставляет и помогает выстроить дифференциальную диагностику, персонализированное лечение и оказывает полную экспертную поддержку вам до полного выздоровления пациента.
-                        </p>
-                      </div>
-                    </div>
+                    <h2 className="text-3xl font-bold text-gray-800 mb-4">Готов к профессиональным консультациям!</h2>
+                    <p className="text-gray-600 mb-8 max-w-md">
+                      Теперь я использую полную мощь Avishifo.ai для предоставления детальных медицинских консультаций,
+                      анализа сложных случаев и актуальных рекомендаций. Вся история автоматически сохраняется.
+                    </p>
 
                     {chatStats && (
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 w-full max-w-2xl">
@@ -1099,12 +1096,13 @@ export function AiChatSection() {
                       {msg.role === "assistant" && (
                         <Avatar className="w-10 h-10 shrink-0">
                           <AvatarFallback
-                            className={`${msg.isError
-                              ? "bg-red-500"
-                              : msg.isFallback
-                                ? "bg-orange-500"
-                                : "bg-gradient-to-r from-blue-500 to-purple-500"
-                              } text-white relative`}
+                            className={`${
+                              msg.isError
+                                ? "bg-red-500"
+                                : msg.isFallback
+                                  ? "bg-orange-500"
+                                  : "bg-gradient-to-r from-blue-500 to-purple-500"
+                            } text-white relative`}
                           >
                             {msg.isError ? (
                               <AlertCircle className="w-5 h-5" />
@@ -1124,22 +1122,24 @@ export function AiChatSection() {
                         </Avatar>
                       )}
                       <div
-                        className={`rounded-2xl p-4 max-w-xs sm:max-w-md lg:max-w-lg ${msg.role === "user"
-                          ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-md shadow-lg"
-                          : msg.isError
-                            ? "bg-red-50 border border-red-200 text-red-800 rounded-bl-md shadow-sm"
-                            : msg.isFallback
-                              ? "bg-orange-50 border border-orange-200 text-orange-800 rounded-bl-md shadow-sm"
-                              : "bg-white border border-gray-200 text-gray-800 rounded-bl-md shadow-sm"
-                          }`}
+                        className={`rounded-2xl p-4 max-w-xs sm:max-w-md lg:max-w-lg ${
+                          msg.role === "user"
+                            ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-md shadow-lg"
+                            : msg.isError
+                              ? "bg-red-50 border border-red-200 text-red-800 rounded-bl-md shadow-sm"
+                              : msg.isFallback
+                                ? "bg-orange-50 border border-orange-200 text-orange-800 rounded-bl-md shadow-sm"
+                                : "bg-white border border-gray-200 text-gray-800 rounded-bl-md shadow-sm"
+                        }`}
                       >
                         {msg.attachments && msg.attachments.length > 0 && (
                           <div className="mb-3 space-y-2">
                             {msg.attachments.map((attachment, attIndex) => (
                               <div
                                 key={attIndex}
-                                className={`rounded-lg overflow-hidden border ${msg.role === "user" ? "border-blue-400" : "border-gray-200"
-                                  }`}
+                                className={`rounded-lg overflow-hidden border ${
+                                  msg.role === "user" ? "border-blue-400" : "border-gray-200"
+                                }`}
                               >
                                 {attachment.type === "image" ? (
                                   <div className="relative group">
@@ -1171,10 +1171,11 @@ export function AiChatSection() {
                                       }}
                                     />
                                     <div
-                                      className={`absolute bottom-0 left-0 right-0 p-2 text-xs rounded-b-lg ${msg.role === "user"
-                                        ? "bg-blue-600/70 text-white"
-                                        : "bg-gray-100/70 text-gray-700"
-                                        }`}
+                                      className={`absolute bottom-0 left-0 right-0 p-2 text-xs rounded-b-lg ${
+                                        msg.role === "user"
+                                          ? "bg-blue-600/70 text-white"
+                                          : "bg-gray-100/70 text-gray-700"
+                                      }`}
                                     >
                                       <div className="flex items-center justify-between">
                                         <span className="truncate">{attachment.name}</span>
@@ -1191,22 +1192,55 @@ export function AiChatSection() {
                                   </div>
                                 ) : (
                                   <div
-                                    className={`flex items-center gap-2 p-2 ${msg.role === "user" ? "bg-blue-700/50" : "bg-gray-100"
-                                      }`}
+                                    className={`flex items-center gap-3 p-3 rounded-lg ${
+                                      msg.role === "user" ? "bg-blue-700/50" : "bg-gray-100"
+                                    }`}
                                   >
-                                    <File
-                                      className={`w-4 h-4 ${msg.role === "user" ? "text-blue-100" : "text-gray-500"}`}
-                                    />
-                                    <span
-                                      className={`text-sm truncate ${msg.role === "user" ? "text-blue-50" : "text-gray-700"}`}
+                                    <div className="flex-shrink-0">
+                                      {attachment.name.toLowerCase().endsWith(".pdf") ? (
+                                        <div className="w-8 h-8 bg-red-500 rounded flex items-center justify-center">
+                                          <File className="w-4 h-4 text-white" />
+                                        </div>
+                                      ) : attachment.name.toLowerCase().includes("doc") ? (
+                                        <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center">
+                                          <File className="w-4 h-4 text-white" />
+                                        </div>
+                                      ) : (
+                                        <File
+                                          className={`w-5 h-5 ${msg.role === "user" ? "text-blue-100" : "text-gray-500"}`}
+                                        />
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div
+                                        className={`text-sm font-medium truncate ${
+                                          msg.role === "user" ? "text-blue-50" : "text-gray-700"
+                                        }`}
+                                      >
+                                        {attachment.name}
+                                      </div>
+                                      <div
+                                        className={`text-xs ${msg.role === "user" ? "text-blue-200" : "text-gray-500"}`}
+                                      >
+                                        {attachment.size ? `${Math.round(attachment.size / 1024)} KB` : ""} •
+                                        {attachment.name.toLowerCase().endsWith(".pdf")
+                                          ? "PDF документ"
+                                          : attachment.name.toLowerCase().includes("doc")
+                                            ? "Word документ"
+                                            : attachment.name.toLowerCase().endsWith(".txt")
+                                              ? "Текстовый файл"
+                                              : "Документ"}
+                                      </div>
+                                    </div>
+                                    <div
+                                      className={`text-xs px-2 py-1 rounded ${
+                                        msg.role === "user"
+                                          ? "bg-blue-600/50 text-blue-100"
+                                          : "bg-green-100 text-green-700"
+                                      }`}
                                     >
-                                      {attachment.name}
-                                    </span>
-                                    <span
-                                      className={`text-xs ml-auto ${msg.role === "user" ? "text-blue-200" : "text-gray-500"}`}
-                                    >
-                                      {attachment.size ? `${Math.round(attachment.size / 1024)} KB` : ""}
-                                    </span>
+                                      Прочитан
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -1217,14 +1251,15 @@ export function AiChatSection() {
                           <MarkdownContent content={msg.content} />
                         </div>
                         <span
-                          className={`text-xs mt-2 block ${msg.role === "user"
-                            ? "text-blue-100"
-                            : msg.isError
-                              ? "text-red-600"
-                              : msg.isFallback
-                                ? "text-orange-600"
-                                : "text-gray-500"
-                            }`}
+                          className={`text-xs mt-2 block ${
+                            msg.role === "user"
+                              ? "text-blue-100"
+                              : msg.isError
+                                ? "text-red-600"
+                                : msg.isFallback
+                                  ? "text-orange-600"
+                                  : "text-gray-500"
+                          }`}
                         >
                           {msg.timestamp}
                           {!msg.isFallback && !msg.isError && msg.role === "assistant" && (
@@ -1309,7 +1344,7 @@ export function AiChatSection() {
                     onChange={handleFileSelect}
                     className="hidden"
                     multiple
-                    accept="image/*,.pdf,.doc,.docx,.txt"
+                    accept="image/*,.pdf,.doc,.docx,.txt,.rtf"
                   />
                   <Button
                     size="icon"
@@ -1323,7 +1358,7 @@ export function AiChatSection() {
                   <Textarea
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Задайте сложный медицинский вопрос - Avishifo.ai готов к детальному анализу..."
+                    placeholder="Загрузите медицинские документы (PDF, Word, текст) или изображения для анализа. Avishifo.ai прочитает и проанализирует содержимое..."
                     className="flex-1 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-800 placeholder:text-gray-500 resize-none min-h-[20px] max-h-[120px] overflow-y-auto"
                     disabled={isLoading}
                     rows={1}
@@ -1362,9 +1397,8 @@ export function AiChatSection() {
                   </Button>
                 </div>
                 <p className="text-xs text-gray-500 mt-3 text-center">
-                  <span className="text-green-600 font-medium">✓ Avishifo.ai активен</span> • Получайте профессиональные
-                  медицинские консультации с учетом последних исследований и рекомендаций • История сохраняется
-                  автоматически
+                  <span className="text-green-600 font-medium">✓ Avishifo.ai активен</span> • Поддерживает чтение PDF,
+                  Word, текстовых файлов и анализ медицинских изображений • История сохраняется автоматически
                 </p>
               </div>
             </TabsContent>
