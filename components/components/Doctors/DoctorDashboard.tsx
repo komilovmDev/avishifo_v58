@@ -2,7 +2,7 @@
 "use client"
 
 import { useState } from "react"
-import { Brain, FileText, History, MessageCircle, CalendarIcon, User } from "lucide-react"
+import { Brain, FileText, History, MessageCircle, CalendarIcon, User,  Stethoscope } from "lucide-react"
 
 import { Sidebar } from "./Sidebar"
 import { TopBar } from "./TopBar"
@@ -13,6 +13,7 @@ import { ChatSection } from "./ChatSection"
 import { PatientHistorySection } from "./PatientHistorySection/PatientHistorySection"
 import { AppointmentsManagementSection } from "./appointments-management"
 import { ProfileSection } from "./ProfileSection" // Import the new ProfileSection
+import DoctorsPage from "@/app/doctors/page"
 
 // Define sidebar items here or import if they are used elsewhere
 const sidebarItems = [
@@ -22,41 +23,46 @@ const sidebarItems = [
     icon: User,
     color: "from-indigo-500 to-purple-500",
   },
+  { 
+    id: "doctors", 
+    label: "Врачи", 
+    icon: Stethoscope, 
+    color: "from-emerald-500 to-teal-500" },
   {
     id: "ai-chat",
-    label: "ИИ Авишифо",
+    label: "AI Авишифо",
     icon: Brain,
     color: "from-blue-500 to-purple-500",
   },
-  {
-    id: "psychological-test",
-    label: "Психологический Тест",
-    icon: Brain,
-    color: "from-purple-500 to-pink-500",
+    {
+    id: "appointments",
+    label: "Записи пациентов",
+    icon: CalendarIcon,
+    color: "from-teal-500 to-cyan-500",
   },
-  {
-    id: "who-standards",
-    label: "Стандарты ВОЗ",
-    icon: FileText,
-    color: "from-blue-500 to-cyan-500",
-  },
-  {
+    {
     id: "patient-history",
     label: "История Пациентов",
     icon: History,
     color: "from-green-500 to-emerald-500",
   },
   {
-    id: "appointments",
-    label: "Записи пациентов",
-    icon: CalendarIcon,
-    color: "from-teal-500 to-cyan-500",
-  },
-  {
     id: "chat",
     label: "Чат",
     icon: MessageCircle,
     color: "from-orange-500 to-red-500",
+  },
+  // {
+  //   id: "psychological-test",
+  //   label: "Психологический Тест",
+  //   icon: Brain,
+  //   color: "from-purple-500 to-pink-500",
+  // },
+  {
+    id: "who-standards",
+    label: "Стандарты ВОЗ",
+    icon: FileText,
+    color: "from-blue-500 to-cyan-500",
   },
 ]
 
@@ -89,6 +95,7 @@ export function DoctorDashboard({ onLogout }: DoctorDashboardProps) {
           {activeSection === "patient-history" && <PatientHistorySection />}
           {activeSection === "appointments" && <AppointmentsManagementSection />}
           {activeSection === "chat" && <ChatSection />}
+          {activeSection === "doctors" && <DoctorsPage />}
         </main>
       </div>
     </div>
