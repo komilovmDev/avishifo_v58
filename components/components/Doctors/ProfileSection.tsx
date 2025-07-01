@@ -1,19 +1,24 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Separator } from "@/components/ui/separator"
-import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import type React from "react";
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   User,
   Mail,
@@ -56,120 +61,67 @@ import {
   ChevronDown,
   TrendingUp,
   MoreHorizontal,
-} from "lucide-react"
+} from "lucide-react";
 
 interface DoctorProfile {
-  // Basic user info
-  id: number
-  username: string
-  email: string
-  first_name: string
-  last_name: string
-  full_name: string
-  user_type: string
-  phone_number: string
-  date_of_birth: string
-  address: string
-  profile_picture: string
-  is_verified: boolean
-  date_joined: string
-
-  // Professional info from Doctor model
-  doctor_id: string
-  specialty: string
-  specialty_display: string
-  license_number: string
-  hospital: {
-    id: number
-    name: string
-    address: string
-  }
-  years_of_experience: number
-  education: string
-  certifications: string
-  consultation_fee: number
-  is_available: boolean
-  rating: number
-  created_at: string
-  updated_at: string
-
-  // Additional fields that might come from API
-  category?: string
-  degree?: string
-  work_email?: string
-  work_phone?: string
-  social_links?: {
-    linkedin?: string
-    research_gate?: string
-    orcid?: string
-  }
-  schedule?: {
-    days: string[]
-    start_time: string
-    end_time: string
-    online_consultations: boolean
-    languages: string[]
-  }
-  analytics?: {
-    total_patients: number
-    total_consultations: number
-    monthly_patients?: number
-    monthly_consultations?: number
-    satisfaction_rate?: number
-  }
-  verification?: {
-    status: string
-    last_verification_date: string
-    documents_uploaded: boolean
-  }
-  reviews?: {
-    total_reviews: number
-    average_rating: number
-    rating_breakdown: {
-      5: number
-      4: number
-      3: number
-      2: number
-      1: number
-    }
-    recent_reviews: Array<{
-      id: number
-      patient_name: string
-      patient_avatar?: string
-      rating: number
-      comment: string
-      date: string
-      helpful_count?: number
-      response?: {
-        text: string
-        date: string
-      }
-      tags?: string[]
-      verified_patient: boolean
-    }>
-    monthly_reviews: number
-    response_rate: number
-    average_response_time: string
-  }
-  bio?: string
-  specializations?: string[]
+  id: number;
+  user: {
+    id: number;
+    username: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_number: string;
+    date_of_birth: string;
+    address: string;
+    profile_picture: string;
+    is_verified: boolean;
+    date_joined: string;
+    user_type: string;
+  };
+  specialty: string;
+  license_number: string;
+  hospital: number | { id: number; name: string; address: string };
+  years_of_experience: number;
+  education: string;
+  certifications: string[] | string;
+  consultation_fee: number | string;
+  is_available: boolean;
+  rating: number | string;
+  created_at: string;
+  updated_at: string;
+  category?: string;
+  degree?: string;
+  work_email?: string;
+  work_phone?: string;
+  social_media_links?: {
+    linkedin?: string;
+    research_gate?: string;
+    orcid?: string;
+  };
+  consultation_schedule?: any;
+  online_consultation_available?: boolean;
+  languages_spoken?: string[];
+  reviews_count?: number;
+  last_reviews?: any[];
+  patients_accepted_count?: number;
+  consultations_count?: number;
+  documents_verified_status?: boolean;
+  last_verification_date?: string | null;
+  bio?: string;
+  specializations?: string[];
+  main_workplace?: string | null;
+  medical_identifier?: string | null;
 }
 
-const API_BASE_URL = "https://new.avishifo.uz"
+const API_BASE_URL = "https://new.avishifo.uz";
 
-// Helper component for displaying info items consistently
-const InfoItem = ({
-  icon: Icon,
-  label,
-  children,
-  htmlFor,
-  tooltip,
-}: {
-  icon: React.ElementType
-  label: string
-  children: React.ReactNode
-  htmlFor?: string
-  tooltip?: string
+const InfoItem = ({ icon: Icon, label, children, htmlFor, tooltip }: {
+  icon: React.ElementType;
+  label: string;
+  children: React.ReactNode;
+  htmlFor?: string;
+  tooltip?: string;
 }) => (
   <div className="space-y-1.5">
     <div className="flex items-center gap-1.5">
@@ -192,21 +144,14 @@ const InfoItem = ({
     </div>
     <div className="text-sm font-medium text-primary">{children}</div>
   </div>
-)
+);
 
-// Stat card component for analytics
-const StatCard = ({
-  icon: Icon,
-  label,
-  value,
-  change,
-  color = "blue",
-}: {
-  icon: React.ElementType
-  label: string
-  value: string | number
-  change?: number
-  color?: "blue" | "green" | "purple" | "amber" | "rose"
+const StatCard = ({ icon: Icon, label, value, change, color = "blue" }: {
+  icon: React.ElementType;
+  label: string;
+  value: string | number;
+  change?: number;
+  color?: "blue" | "green" | "purple" | "amber" | "rose";
 }) => {
   const colorMap = {
     blue: "from-blue-50 to-blue-100 text-blue-700 border-blue-200",
@@ -214,7 +159,7 @@ const StatCard = ({
     purple: "from-purple-50 to-purple-100 text-purple-700 border-purple-200",
     amber: "from-amber-50 to-amber-100 text-amber-700 border-amber-200",
     rose: "from-rose-50 to-rose-100 text-rose-700 border-rose-200",
-  }
+  };
 
   return (
     <div className={`p-5 rounded-xl border bg-gradient-to-br ${colorMap[color]} flex items-center justify-between`}>
@@ -232,15 +177,15 @@ const StatCard = ({
         <Icon className="w-6 h-6" />
       </div>
     </div>
-  )
-}
+  );
+};
 
 export function ProfileSection() {
-  const [profile, setProfile] = useState<DoctorProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isEditing, setIsEditing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  const [profile, setProfile] = useState<DoctorProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [editForm, setEditForm] = useState({
     first_name: "",
     last_name: "",
@@ -250,20 +195,20 @@ export function ProfileSection() {
     certifications: "",
     consultation_fee: "",
     bio: "",
-  })
+  });
 
   useEffect(() => {
-    fetchDoctorProfile()
-  }, [])
+    fetchDoctorProfile();
+  }, []);
 
   const fetchDoctorProfile = async () => {
     try {
-      setLoading(true)
-      setError(null)
-      const token = localStorage.getItem("accessToken")
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem("accessToken");
 
       if (!token) {
-        throw new Error("Токен доступа не найден. Пожалуйста, войдите в систему.")
+        throw new Error("Токен доступа не найден. Пожалуйста, войдите в систему.");
       }
 
       const fetchWithAuth = (url: string, options = {}) =>
@@ -274,210 +219,99 @@ export function ProfileSection() {
             "Content-Type": "application/json",
             ...options.headers,
           },
-        })
+        });
 
-      // Fetch basic profile info
-      const profileResponse = await fetchWithAuth(`${API_BASE_URL}/api/accounts/profile/`)
-      if (!profileResponse.ok) throw new Error("Не удалось загрузить профиль пользователя")
+      const profileResponse = await fetchWithAuth(`${API_BASE_URL}/api/doctors/doctor/profile/`);
+      if (!profileResponse.ok) throw new Error("Не удалось загрузить профиль пользователя");
 
-      // Read the response only once
-      const profileResponseData = await profileResponse.json()
-      const profileData = profileResponseData.data || profileResponseData
+      const profileData = await profileResponse.json();
+      console.log("API Response:", profileData); // Debug the response
 
-      if (profileData.user_type !== "doctor") {
-        throw new Error("Доступ запрещен. Этот раздел доступен только для врачей.")
-      }
-
-      // Fetch doctor-specific data
-      let doctorInfo = {}
-      try {
-        const doctorResponse = await fetchWithAuth(`${API_BASE_URL}/api/doctors/profile/`)
-        if (doctorResponse.ok) {
-          const doctorResponseData = await doctorResponse.json()
-          doctorInfo = doctorResponseData.data || doctorResponseData
-        }
-      } catch (doctorError) {
-        console.warn("Could not fetch doctor-specific profile, using defaults.", doctorError)
-      }
-
-      // Mock data for enhanced design (would come from API in real implementation)
-      const mockEnhancements = {
-        bio: "Опытный врач с фокусом на комплексном подходе к здоровью пациента. Специализируюсь на диагностике и лечении сложных случаев. Постоянно совершенствую свои навыки через участие в международных конференциях и обучающих программах.",
-        specializations: ["Кардиология", "Терапия", "Диагностика", "Профилактическая медицина", "Реабилитация"],
-        analytics: {
-          monthly_patients: 24,
-          monthly_consultations: 42,
-          satisfaction_rate: 98,
+      const normalizedData: DoctorProfile = {
+        id: profileData.id,
+        user: {
+          id: profileData.user.id,
+          username: profileData.user.username,
+          first_name: profileData.user.first_name,
+          last_name: profileData.user.last_name,
+          email: profileData.user.email,
+          phone_number: profileData.user.phone_number,
+          date_of_birth: profileData.user.date_of_birth,
+          address: profileData.user.address,
+          profile_picture: profileData.user.profile_picture,
+          is_verified: profileData.user.is_verified,
+          date_joined: profileData.user.date_joined,
+          user_type: profileData.user.user_type,
         },
-      }
+        specialty: profileData.specialty || "",
+        license_number: profileData.license_number || "",
+        hospital: profileData.hospital || null,
+        years_of_experience: profileData.years_of_experience || 0,
+        education: profileData.education || "",
+        certifications: Array.isArray(profileData.certifications) ? profileData.certifications : [profileData.certifications || ""],
+        consultation_fee: parseFloat(profileData.consultation_fee) || 0,
+        is_available: profileData.is_available || false,
+        rating: parseFloat(profileData.rating) || 0,
+        created_at: profileData.created_at,
+        updated_at: profileData.updated_at,
+        category: profileData.category,
+        degree: profileData.degree,
+        work_email: profileData.work_email,
+        work_phone: profileData.work_phone,
+        social_media_links: profileData.social_media_links,
+        consultation_schedule: profileData.consultation_schedule,
+        online_consultation_available: profileData.online_consultation_available,
+        languages_spoken: profileData.languages_spoken,
+        reviews_count: profileData.reviews_count,
+        last_reviews: profileData.last_reviews,
+        patients_accepted_count: profileData.patients_accepted_count,
+        consultations_count: profileData.consultations_count,
+        documents_verified_status: profileData.documents_verified_status,
+        last_verification_date: profileData.last_verification_date,
+        bio: profileData.bio,
+        specializations: profileData.specializations,
+        main_workplace: profileData.main_workplace,
+        medical_identifier: profileData.medical_identifier,
+      };
 
-      const mockReviews = {
-        total_reviews: 127,
-        average_rating: 4.8,
-        rating_breakdown: {
-          5: 98,
-          4: 22,
-          3: 5,
-          2: 1,
-          1: 1,
-        },
-        recent_reviews: [
-          {
-            id: 1,
-            patient_name: "Анна К.",
-            patient_avatar: "/placeholder.svg?height=40&width=40",
-            rating: 5,
-            comment:
-              "Отличный врач! Очень внимательный и профессиональный подход. Объяснил все детально, назначил эффективное лечение. Рекомендую всем!",
-            date: "2024-01-15",
-            helpful_count: 12,
-            response: {
-              text: "Спасибо за отзыв! Рад, что смог помочь. Желаю крепкого здоровья!",
-              date: "2024-01-16",
-            },
-            tags: ["Профессионализм", "Внимательность", "Эффективность"],
-            verified_patient: true,
-          },
-          {
-            id: 2,
-            patient_name: "Михаил С.",
-            rating: 5,
-            comment:
-              "Прекрасный доктор! Быстро поставил диагноз, лечение помогло. Очень доволен качеством консультации.",
-            date: "2024-01-12",
-            helpful_count: 8,
-            tags: ["Быстрая диагностика", "Эффективное лечение"],
-            verified_patient: true,
-          },
-          {
-            id: 3,
-            patient_name: "Елена В.",
-            rating: 4,
-            comment:
-              "Хороший врач, но пришлось долго ждать приема. В остальном все отлично - грамотная консультация и правильное лечение.",
-            date: "2024-01-10",
-            helpful_count: 5,
-            tags: ["Профессионализм", "Долгое ожидание"],
-            verified_patient: true,
-          },
-          {
-            id: 4,
-            patient_name: "Дмитрий Р.",
-            rating: 5,
-            comment:
-              "Отличный специалист! Очень доступно объясняет, внимательно выслушивает. Результат лечения превзошел ожидания.",
-            date: "2024-01-08",
-            helpful_count: 15,
-            response: {
-              text: "Благодарю за доверие! Всегда готов помочь.",
-              date: "2024-01-09",
-            },
-            tags: ["Доступное объяснение", "Внимательность", "Отличный результат"],
-            verified_patient: true,
-          },
-          {
-            id: 5,
-            patient_name: "Ольга М.",
-            rating: 5,
-            comment: "Замечательный доктор! Профессиональный подход, современные методы лечения. Очень рекомендую!",
-            date: "2024-01-05",
-            helpful_count: 9,
-            tags: ["Современные методы", "Профессионализм"],
-            verified_patient: true,
-          },
-        ],
-        monthly_reviews: 18,
-        response_rate: 85,
-        average_response_time: "2 часа",
-      }
-
-      // Merge profile and doctor data
-      const combinedData: DoctorProfile = {
-        ...profileData,
-        ...doctorInfo,
-        ...mockEnhancements, // Add mock data for enhanced design
-        reviews: mockReviews,
-        specialty_display: doctorInfo.specialty_display || doctorInfo.specialty || "Не указано",
-        hospital: doctorInfo.hospital || { name: "Не указано" },
-        full_name:
-          profileData.full_name ||
-          `${profileData.first_name || ""} ${profileData.last_name || ""}`.trim() ||
-          "Не указано",
-      }
-
-      setProfile(combinedData)
-      initializeEditForm(combinedData)
-
-      if (combinedData.id) {
-        loadAdditionalData(token, combinedData.id)
-      }
+      setProfile(normalizedData);
+      initializeEditForm(normalizedData);
     } catch (err) {
-      console.error("Error fetching doctor profile:", err)
-      setError(err instanceof Error ? err.message : "Произошла ошибка при загрузке профиля")
+      console.error("Error fetching doctor profile:", err);
+      setError(err instanceof Error ? err.message : "Произошла ошибка при загрузке профиля");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const initializeEditForm = (data: DoctorProfile) => {
+  const initializeEditForm = (data: DoctorProfile | null) => {
     setEditForm({
-      first_name: data.first_name || "",
-      last_name: data.last_name || "",
-      phone_number: data.phone_number || "",
-      address: data.address || "",
-      education: data.education || "",
-      certifications: data.certifications || "",
-      consultation_fee: data.consultation_fee?.toString() || "",
-      bio: data.bio || "",
-    })
-  }
+      first_name: data?.user?.first_name || "",
+      last_name: data?.user?.last_name || "",
+      phone_number: data?.user?.phone_number || "",
+      address: data?.user?.address || "",
+      education: data?.education || "",
+      certifications: Array.isArray(data?.certifications)
+        ? data.certifications.join(", ")
+        : data?.certifications || "",
+      consultation_fee: data?.consultation_fee?.toString() || "",
+      bio: data?.bio || "",
+    });
+  };
 
-  const loadAdditionalData = async (token: string, doctorId: number) => {
-    try {
-      const fetchWithAuth = (url: string) => fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-
-      const [scheduleRes, reviewsRes, analyticsRes] = await Promise.allSettled([
-        fetchWithAuth(`${API_BASE_URL}/api/doctors/${doctorId}/schedule/`),
-        fetchWithAuth(`${API_BASE_URL}/api/doctors/${doctorId}/reviews/`),
-        fetchWithAuth(`${API_BASE_URL}/api/doctors/${doctorId}/analytics/`),
-      ])
-
-      const additionalData: Partial<DoctorProfile> = {}
-
-      if (scheduleRes.status === "fulfilled" && scheduleRes.value.ok) {
-        const scheduleData = await scheduleRes.value.json()
-        additionalData.schedule = scheduleData.data || scheduleData
-      }
-      if (reviewsRes.status === "fulfilled" && reviewsRes.value.ok) {
-        const reviewsData = await reviewsRes.value.json()
-        additionalData.reviews = reviewsData.data || reviewsData
-      }
-      if (analyticsRes.status === "fulfilled" && analyticsRes.value.ok) {
-        const analyticsData = await analyticsRes.value.json()
-        additionalData.analytics = analyticsData.data || analyticsData
-      }
-
-      if (Object.keys(additionalData).length > 0) {
-        setProfile((prev) => (prev ? { ...prev, ...additionalData } : null))
-      }
-    } catch (err) {
-      console.error("Error loading additional data:", err)
-    }
-  }
-
-  const handleEdit = () => setIsEditing(true)
+  const handleEdit = () => setIsEditing(true);
   const handleCancel = () => {
-    setIsEditing(false)
-    if (profile) initializeEditForm(profile)
-  }
+    setIsEditing(false);
+    if (profile) initializeEditForm(profile);
+  };
 
   const handleSave = async () => {
-    if (!profile) return
-    setIsSaving(true)
-    setError(null)
+    if (!profile) return;
+    setIsSaving(true);
+    setError(null);
     try {
-      const token = localStorage.getItem("accessToken")
-      if (!token) throw new Error("Токен доступа не найден")
+      const token = localStorage.getItem("accessToken");
+      if (!token) throw new Error("Токен доступа не найден");
 
       const fetchWithAuth = (url: string, options = {}) =>
         fetch(url, {
@@ -488,80 +322,74 @@ export function ProfileSection() {
             ...options.headers,
           },
           method: "PATCH",
-        })
+        });
 
-      const profileUpdateData = {
-        first_name: editForm.first_name,
-        last_name: editForm.last_name,
-        phone_number: editForm.phone_number,
-        address: editForm.address,
-      }
-
-      const doctorUpdateData = {
+      // Prepare the update data in the format expected by the backend
+      const updateData = {
+        user: {
+          first_name: editForm.first_name,
+          last_name: editForm.last_name,
+          phone_number: editForm.phone_number,
+          address: editForm.address
+        },
         education: editForm.education,
-        certifications: editForm.certifications,
-        consultation_fee: Number.parseFloat(editForm.consultation_fee) || 0,
-        bio: editForm.bio,
+        certifications: Array.isArray(editForm.certifications) 
+          ? editForm.certifications 
+          : editForm.certifications ? [editForm.certifications] : [],
+        consultation_fee: parseFloat(editForm.consultation_fee) || 0,
+        bio: editForm.bio
+      };
+
+      const response = await fetchWithAuth(`${API_BASE_URL}/api/doctors/doctor/profile/`, {
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
+        console.error("API Error:", errorData);
+        throw new Error(errorData.detail || "Не удалось сохранить изменения");
       }
 
-      const [profileRes, doctorRes] = await Promise.allSettled([
-        fetchWithAuth(`${API_BASE_URL}/api/accounts/profile/`, { body: JSON.stringify(profileUpdateData) }),
-        fetchWithAuth(`${API_BASE_URL}/api/doctors/profile/`, { body: JSON.stringify(doctorUpdateData) }),
-      ])
-
-      if (profileRes.status === "rejected" || (profileRes.status === "fulfilled" && !profileRes.value.ok)) {
-        throw new Error("Не удалось обновить основную информацию профиля.")
-      }
-      if (doctorRes.status === "rejected" || (doctorRes.status === "fulfilled" && !doctorRes.value.ok)) {
-        console.warn("Не удалось обновить профессиональную информацию.")
-      }
-
-      await fetchDoctorProfile()
-      setIsEditing(false)
+      await fetchDoctorProfile(); // Refresh profile data
+      setIsEditing(false);
     } catch (err) {
-      console.error("Error updating profile:", err)
-      setError(err instanceof Error ? err.message : "Не удалось сохранить изменения")
+      console.error("Error updating profile:", err);
+      setError(err instanceof Error ? err.message : "Не удалось сохранить изменения");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "Не указано"
+    if (!dateString) return "Не указано";
     return new Date(dateString).toLocaleDateString("ru-RU", {
       year: "numeric",
       month: "long",
       day: "numeric",
-    })
-  }
+    });
+  };
 
   const getVerificationDetails = (profile: DoctorProfile) => {
-    const status = profile.verification?.status || (profile.is_verified ? "verified" : "unverified")
+    const status = profile.user.is_verified ? "verified" : "unverified";
     const colorMap: Record<string, string> = {
       verified: "bg-green-100 text-green-800",
-      pending: "bg-yellow-100 text-yellow-800",
-      rejected: "bg-red-100 text-red-800",
       unverified: "bg-gray-100 text-gray-800",
-    }
+    };
     const iconMap: Record<string, React.ElementType> = {
       verified: CheckCircle,
-      pending: Clock,
-      rejected: AlertCircle,
       unverified: AlertCircle,
-    }
+    };
     const textMap: Record<string, string> = {
       verified: "Верифицирован",
-      pending: "На проверке",
-      rejected: "Отклонен",
       unverified: "Не верифицирован",
-    }
+    };
     return {
       status,
       color: colorMap[status],
       Icon: iconMap[status],
       text: textMap[status],
-    }
-  }
+    };
+  };
 
   const renderStars = (rating = 0) =>
     Array.from({ length: 5 }, (_, i) => (
@@ -569,18 +397,18 @@ export function ProfileSection() {
         key={i}
         className={`w-4 h-4 ${i < Math.round(rating) ? "fill-amber-400 text-amber-400" : "text-gray-300"}`}
       />
-    ))
+    ));
 
-  const safeToFixed = (value: any, decimals = 1) => (Number(value) || 0).toFixed(decimals)
-  const safeToLocaleString = (value: any) => (Number(value) || 0).toLocaleString("ru-RU")
+  const safeToFixed = (value: any, decimals = 1) => (Number(value) || 0).toFixed(decimals);
+  const safeToLocaleString = (value: any) => (Number(value) || 0).toLocaleString("ru-RU");
 
   const calculateProfileCompleteness = () => {
-    if (!profile) return 0
+    if (!profile) return 0;
     const fields = [
-      profile.first_name,
-      profile.last_name,
-      profile.phone_number,
-      profile.address,
+      profile.user.first_name,
+      profile.user.last_name,
+      profile.user.phone_number,
+      profile.user.address,
       profile.education,
       profile.certifications,
       profile.specialty,
@@ -588,10 +416,10 @@ export function ProfileSection() {
       profile.years_of_experience,
       profile.consultation_fee,
       profile.bio,
-    ]
-    const completedFields = fields.filter(Boolean).length
-    return Math.round((completedFields / fields.length) * 100)
-  }
+    ];
+    const completedFields = fields.filter(Boolean).length;
+    return Math.round((completedFields / fields.length) * 100);
+  };
 
   if (loading) {
     return (
@@ -599,10 +427,10 @@ export function ProfileSection() {
         <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
         <p className="text-muted-foreground">Загрузка профиля...</p>
       </div>
-    )
+    );
   }
 
-  if (error) {
+  if (error || !profile) {
     return (
       <Card className="max-w-md mx-auto mt-10 border-red-200 bg-red-50">
         <CardHeader>
@@ -612,31 +440,19 @@ export function ProfileSection() {
           </CardTitle>
         </CardHeader>
         <CardContent className="text-center">
-          <p className="text-muted-foreground mb-4">{error}</p>
+          <p className="text-muted-foreground mb-4">{error || "Профиль не найден"}</p>
           <Button onClick={fetchDoctorProfile} variant="outline">
             Попробовать снова
           </Button>
         </CardContent>
       </Card>
-    )
+    );
   }
 
-  if (!profile) {
-    return (
-      <Card className="max-w-md mx-auto mt-10">
-        <CardContent className="pt-6 text-center">
-          <User className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-          <p>Профиль не найден.</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  const verification = getVerificationDetails(profile)
+  const verification = getVerificationDetails(profile);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-6">
-      {/* Hero section with profile header */}
       <div className="relative">
         <div className="h-48 md:h-64 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 overflow-hidden">
           <div className="absolute inset-0 bg-[url('/placeholder.svg?height=400&width=1200')] opacity-20 mix-blend-overlay"></div>
@@ -646,12 +462,12 @@ export function ProfileSection() {
           <div className="flex flex-col md:flex-row items-center md:items-end gap-6">
             <Avatar className="w-36 h-36 md:w-44 md:h-44 rounded-xl border-4 border-white shadow-xl">
               <AvatarImage
-                src={profile.profile_picture || "/placeholder.svg?height=176&width=176&query=doctor%20portrait"}
-                alt={profile.full_name}
+                src={`${API_BASE_URL}${profile.user.profile_picture || "/placeholder.svg?height=176&width=176&query=doctor%20portrait"}`}
+                alt={profile.user.first_name + " " + profile.user.last_name}
               />
               <AvatarFallback className="text-4xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
-                {profile.first_name?.[0]}
-                {profile.last_name?.[0]}
+                {profile.user.first_name?.[0]}
+                {profile.user.last_name?.[0]}
               </AvatarFallback>
             </Avatar>
 
@@ -659,10 +475,10 @@ export function ProfileSection() {
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                   <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Др. {profile.full_name}</h1>
-                    {profile.is_verified && <CheckCircle className="w-5 h-5 text-blue-600" />}
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Др. {profile.user.first_name} {profile.user.last_name}</h1>
+                    {profile.user.is_verified && <CheckCircle className="w-5 h-5 text-blue-600" />}
                   </div>
-                  <p className="text-lg text-gray-600 mb-2">{profile.specialty_display}</p>
+                  <p className="text-lg text-gray-600 mb-2">{profile.specialty}</p>
 
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-3">
                     <Badge variant="secondary" className="bg-blue-50 text-blue-700 border border-blue-200">
@@ -690,7 +506,7 @@ export function ProfileSection() {
                   <div className="flex items-center justify-center md:justify-start gap-4 text-sm text-gray-500">
                     <div className="flex items-center gap-1">
                       <Building2 className="w-4 h-4" />
-                      <span>{profile.hospital?.name || "Не указано"}</span>
+                      <span>{profile.hospital ? "ID: " + profile.hospital : "Не указано"}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
@@ -739,8 +555,7 @@ export function ProfileSection() {
         </div>
       </div>
 
-      {/* Profile completeness card */}
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100">
+      <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-100">
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
@@ -768,7 +583,6 @@ export function ProfileSection() {
         </CardContent>
       </Card>
 
-      {/* Main content tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
         <div className="bg-white rounded-lg shadow-sm border p-1">
           <TabsList className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-1">
@@ -808,10 +622,8 @@ export function ProfileSection() {
           </TabsList>
         </div>
 
-        {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Bio and Specializations */}
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -878,7 +690,11 @@ export function ProfileSection() {
                           rows={3}
                         />
                       ) : (
-                        <p className="text-gray-700 whitespace-pre-wrap">{profile.certifications || "Не указано"}</p>
+                        <p className="text-gray-700 whitespace-pre-wrap">
+                          {Array.isArray(profile.certifications)
+                            ? profile.certifications.join(", ")
+                            : profile.certifications || "Не указано"}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -886,7 +702,6 @@ export function ProfileSection() {
               </CardContent>
             </Card>
 
-            {/* Quick Stats */}
             <div className="space-y-6">
               <Card>
                 <CardHeader className="pb-2">
@@ -906,7 +721,7 @@ export function ProfileSection() {
                           className="h-8 text-sm"
                         />
                       ) : (
-                        profile.first_name || "Не указано"
+                        profile.user.first_name || "Не указано"
                       )}
                     </InfoItem>
 
@@ -919,13 +734,13 @@ export function ProfileSection() {
                           className="h-8 text-sm"
                         />
                       ) : (
-                        profile.last_name || "Не указано"
+                        profile.user.last_name || "Не указано"
                       )}
                     </InfoItem>
                   </div>
 
                   <InfoItem icon={Mail} label="Email">
-                    {profile.email}
+                    {profile.user.email}
                   </InfoItem>
 
                   <InfoItem icon={Phone} label="Телефон">
@@ -937,7 +752,7 @@ export function ProfileSection() {
                         className="h-8 text-sm"
                       />
                     ) : (
-                      profile.phone_number || "Не указано"
+                      profile.user.phone_number || "Не указано"
                     )}
                   </InfoItem>
 
@@ -951,7 +766,7 @@ export function ProfileSection() {
                         className="text-sm"
                       />
                     ) : (
-                      profile.address || "Не указано"
+                      profile.user.address || "Не указано"
                     )}
                   </InfoItem>
 
@@ -959,11 +774,11 @@ export function ProfileSection() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <InfoItem icon={Calendar} label="Дата рождения">
-                      {formatDate(profile.date_of_birth)}
+                      {formatDate(profile.user.date_of_birth)}
                     </InfoItem>
 
                     <InfoItem icon={Calendar} label="Регистрация">
-                      {formatDate(profile.date_joined)}
+                      {formatDate(profile.user.date_joined)}
                     </InfoItem>
                   </div>
                 </CardContent>
@@ -980,11 +795,11 @@ export function ProfileSection() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-3xl font-bold">
-                        {safeToFixed(profile.reviews?.average_rating || profile.rating || 0, 1)}
+                        {safeToFixed(profile.rating || 0, 1)}
                       </span>
-                      <div className="flex">{renderStars(profile.reviews?.average_rating || profile.rating || 0)}</div>
+                      <div className="flex">{renderStars(profile.rating || 0)}</div>
                     </div>
-                    <span className="text-sm text-muted-foreground">{profile.reviews?.total_reviews || 0} отзывов</span>
+                    <span className="text-sm text-muted-foreground">{profile.reviews_count || 0} отзывов</span>
                   </div>
 
                   <Button variant="outline" className="w-full" asChild>
@@ -998,26 +813,25 @@ export function ProfileSection() {
             </div>
           </div>
 
-          {/* Quick Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               icon={Users}
               label="Всего пациентов"
-              value={safeToLocaleString(profile.analytics?.total_patients || 0)}
+              value={safeToLocaleString(profile.patients_accepted_count || 0)}
               change={8}
               color="blue"
             />
             <StatCard
               icon={MessageSquare}
               label="Консультаций"
-              value={safeToLocaleString(profile.analytics?.total_consultations || 0)}
+              value={safeToLocaleString(profile.consultations_count || 0)}
               change={12}
               color="green"
             />
             <StatCard
               icon={Heart}
               label="Удовлетворенность"
-              value={`${profile.analytics?.satisfaction_rate || 95}%`}
+              value="95%"
               change={2}
               color="rose"
             />
@@ -1030,7 +844,6 @@ export function ProfileSection() {
           </div>
         </TabsContent>
 
-        {/* Professional Tab */}
         <TabsContent value="professional" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-2">
@@ -1050,7 +863,7 @@ export function ProfileSection() {
                     label="Специализация"
                     tooltip="Основная медицинская специализация согласно классификатору"
                   >
-                    {profile.specialty_display}
+                    {profile.specialty}
                   </InfoItem>
 
                   <InfoItem
@@ -1066,7 +879,7 @@ export function ProfileSection() {
                   </InfoItem>
 
                   <InfoItem icon={Building2} label="Место работы" tooltip="Основное место работы">
-                    {profile.hospital?.name || "Не указано"}
+                    {profile.main_workplace || (typeof profile.hospital === "number" ? `ID: ${profile.hospital}` : "Не указано")}
                   </InfoItem>
 
                   <InfoItem
@@ -1159,7 +972,11 @@ export function ProfileSection() {
                       ) : (
                         <div className="space-y-3">
                           {profile.certifications ? (
-                            <div className="whitespace-pre-wrap text-gray-700">{profile.certifications}</div>
+                            <div className="whitespace-pre-wrap text-gray-700">
+                              {Array.isArray(profile.certifications)
+                                ? profile.certifications.join(", ")
+                                : profile.certifications}
+                            </div>
                           ) : (
                             <div className="text-center text-muted-foreground py-4">
                               <Award className="w-8 h-8 mx-auto mb-2 opacity-40" />
@@ -1185,17 +1002,18 @@ export function ProfileSection() {
                 <CardContent>
                   <div className="flex items-center gap-3 mb-4">
                     <div
-                      className={`p-3 rounded-full ${verification.status === "verified" ? "bg-green-100" : "bg-gray-100"}`}
+                      className={`p-3 rounded-full ${verification.status === "verified" ? "bg-green-100" : "bg-gray-100"
+                        }`}
                     >
                       <verification.Icon
-                        className={`w-6 h-6 ${verification.status === "verified" ? "text-green-600" : "text-gray-400"}`}
+                        className={`w-6 h-6 ${verification.status === "verified" ? "text-green-600" : "text-gray-400"
+                          }`}
                       />
                     </div>
                     <div>
                       <p className="font-medium text-gray-900">{verification.text}</p>
                       <p className="text-sm text-gray-500">
-                        Последняя проверка:{" "}
-                        {formatDate(profile.verification?.last_verification_date || profile.updated_at)}
+                        Последняя проверка: {formatDate(profile.last_verification_date || profile.updated_at)}
                       </p>
                     </div>
                   </div>
@@ -1250,7 +1068,6 @@ export function ProfileSection() {
           </div>
         </TabsContent>
 
-        {/* Schedule Tab */}
         <TabsContent value="schedule" className="space-y-6">
           <Card>
             <CardHeader>
@@ -1261,7 +1078,7 @@ export function ProfileSection() {
               <CardDescription>Информация о вашем расписании и доступности для пациентов</CardDescription>
             </CardHeader>
             <CardContent>
-              {profile.schedule ? (
+              {profile.consultation_schedule ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <Card className="bg-purple-50 border-purple-100">
                     <CardHeader className="pb-2">
@@ -1270,18 +1087,15 @@ export function ProfileSection() {
                     <CardContent>
                       <div className="flex flex-wrap gap-1.5">
                         {["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"].map(
-                          (day) => {
-                            const isActive = profile.schedule?.days?.includes(day)
-                            return (
-                              <Badge
-                                key={day}
-                                variant={isActive ? "default" : "outline"}
-                                className={isActive ? "bg-purple-600" : "text-gray-400 border-gray-200"}
-                              >
-                                {day}
-                              </Badge>
-                            )
-                          },
+                          (day) => (
+                            <Badge
+                              key={day}
+                              variant="outline"
+                              className="text-gray-400 border-gray-200"
+                            >
+                              {day}
+                            </Badge>
+                          ),
                         )}
                       </div>
                     </CardContent>
@@ -1295,12 +1109,12 @@ export function ProfileSection() {
                       <div className="flex items-center justify-between">
                         <div className="text-center">
                           <p className="text-sm text-purple-700">Начало</p>
-                          <p className="text-2xl font-bold text-purple-900">{profile.schedule.start_time || "--:--"}</p>
+                          <p className="text-2xl font-bold text-purple-900">--:--</p>
                         </div>
                         <div className="h-px w-12 bg-purple-200"></div>
                         <div className="text-center">
                           <p className="text-sm text-purple-700">Окончание</p>
-                          <p className="text-2xl font-bold text-purple-900">{profile.schedule.end_time || "--:--"}</p>
+                          <p className="text-2xl font-bold text-purple-900">--:--</p>
                         </div>
                       </div>
                     </CardContent>
@@ -1312,10 +1126,8 @@ export function ProfileSection() {
                     </CardHeader>
                     <CardContent>
                       <div className="flex items-center gap-3">
-                        <div
-                          className={`p-3 rounded-full ${profile.schedule.online_consultations ? "bg-green-100" : "bg-red-100"}`}
-                        >
-                          {profile.schedule.online_consultations ? (
+                        <div className={`p-3 rounded-full ${profile.online_consultation_available ? "bg-green-100" : "bg-red-100"}`}>
+                          {profile.online_consultation_available ? (
                             <Video className="w-6 h-6 text-green-600" />
                           ) : (
                             <X className="w-6 h-6 text-red-600" />
@@ -1323,10 +1135,10 @@ export function ProfileSection() {
                         </div>
                         <div>
                           <p className="font-medium">
-                            {profile.schedule.online_consultations ? "Доступны" : "Недоступны"}
+                            {profile.online_consultation_available ? "Доступны" : "Недоступны"}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {profile.schedule.online_consultations
+                            {profile.online_consultation_available
                               ? "Вы можете проводить онлайн консультации"
                               : "Онлайн консультации отключены"}
                           </p>
@@ -1341,8 +1153,8 @@ export function ProfileSection() {
                     </CardHeader>
                     <CardContent>
                       <div className="flex flex-wrap gap-1.5">
-                        {profile.schedule.languages?.length > 0 ? (
-                          profile.schedule.languages.map((lang) => (
+                        {profile.languages_spoken?.length > 0 ? (
+                          profile.languages_spoken.map((lang) => (
                             <Badge key={lang} variant="outline" className="bg-white border-purple-200 text-purple-700">
                               {lang}
                             </Badge>
@@ -1388,7 +1200,6 @@ export function ProfileSection() {
           </Card>
         </TabsContent>
 
-        {/* Contacts Tab */}
         <TabsContent value="contacts" className="space-y-6">
           <Card>
             <CardHeader>
@@ -1411,7 +1222,7 @@ export function ProfileSection() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Email</p>
-                        <p className="font-medium">{profile.email}</p>
+                        <p className="font-medium">{profile.user.email}</p>
                       </div>
                     </div>
 
@@ -1430,7 +1241,7 @@ export function ProfileSection() {
                               className="h-8 text-sm"
                             />
                           ) : (
-                            profile.phone_number || "Не указано"
+                            profile.user.phone_number || "Не указано"
                           )}
                         </p>
                       </div>
@@ -1452,7 +1263,7 @@ export function ProfileSection() {
                               className="text-sm"
                             />
                           ) : (
-                            profile.address || "Не указано"
+                            profile.user.address || "Не указано"
                           )}
                         </p>
                       </div>
@@ -1491,22 +1302,22 @@ export function ProfileSection() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Место работы</p>
-                        <p className="font-medium">{profile.hospital?.name || "Не указано"}</p>
+                        <p className="font-medium">{profile.main_workplace || "Не указано"}</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {profile.social_links && Object.values(profile.social_links).some((link) => link) && (
+              {profile.social_media_links && Object.values(profile.social_media_links).some((link) => link) && (
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">Профессиональные профили</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {profile.social_links.linkedin && (
+                    {profile.social_media_links.linkedin && (
                       <a
-                        href={profile.social_links.linkedin}
+                        href={profile.social_media_links.linkedin}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-3 text-blue-600 hover:underline"
@@ -1519,9 +1330,9 @@ export function ProfileSection() {
                       </a>
                     )}
 
-                    {profile.social_links.research_gate && (
+                    {profile.social_media_links.research_gate && (
                       <a
-                        href={profile.social_links.research_gate}
+                        href={profile.social_media_links.research_gate}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-3 text-green-600 hover:underline"
@@ -1534,9 +1345,9 @@ export function ProfileSection() {
                       </a>
                     )}
 
-                    {profile.social_links.orcid && (
+                    {profile.social_media_links.orcid && (
                       <a
-                        href={profile.social_links.orcid}
+                        href={profile.social_media_links.orcid}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-3 text-purple-600 hover:underline"
@@ -1555,10 +1366,8 @@ export function ProfileSection() {
           </Card>
         </TabsContent>
 
-        {/* Reviews Tab */}
         <TabsContent value="reviews" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Rating Overview */}
             <Card className="lg:col-span-1">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -1567,24 +1376,22 @@ export function ProfileSection() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Main Rating */}
                 <div className="text-center">
                   <div className="text-5xl font-bold text-gray-900 mb-2">
-                    {safeToFixed(profile.reviews?.average_rating || 0, 1)}
+                    {safeToFixed(profile.rating || 0, 1)}
                   </div>
-                  <div className="flex justify-center mb-2">{renderStars(profile.reviews?.average_rating || 0)}</div>
+                  <div className="flex justify-center mb-2">{renderStars(profile.rating || 0)}</div>
                   <p className="text-sm text-muted-foreground">
-                    На основе {profile.reviews?.total_reviews || 0} отзывов
+                    На основе {profile.reviews_count || 0} отзывов
                   </p>
                 </div>
 
-                {/* Rating Breakdown */}
                 <div className="space-y-2">
                   <h4 className="font-medium text-sm text-muted-foreground mb-3">Распределение оценок</h4>
                   {[5, 4, 3, 2, 1].map((rating) => {
-                    const count = profile.reviews?.rating_breakdown?.[rating] || 0
-                    const total = profile.reviews?.total_reviews || 1
-                    const percentage = Math.round((count / total) * 100)
+                    const count = profile.reviews?.rating_breakdown?.[rating] || 0;
+                    const total = profile.reviews_count || 1;
+                    const percentage = Math.round((count / total) * 100);
 
                     return (
                       <div key={rating} className="flex items-center gap-2 text-sm">
@@ -1598,11 +1405,10 @@ export function ProfileSection() {
                         </div>
                         <span className="w-8 text-xs text-muted-foreground">{count}</span>
                       </div>
-                    )
+                    );
                   })}
                 </div>
 
-                {/* Quick Stats */}
                 <div className="pt-4 border-t space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">За месяц</span>
@@ -1620,7 +1426,6 @@ export function ProfileSection() {
               </CardContent>
             </Card>
 
-            {/* Reviews List */}
             <div className="lg:col-span-3 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">Отзывы пациентов</h3>
@@ -1635,12 +1440,11 @@ export function ProfileSection() {
                 </div>
               </div>
 
-              {profile.reviews?.recent_reviews?.length > 0 ? (
+              {profile.last_reviews?.length > 0 ? (
                 <div className="space-y-4">
-                  {profile.reviews.recent_reviews.map((review) => (
+                  {profile.last_reviews.map((review: any) => (
                     <Card key={review.id} className="border-l-4 border-l-amber-400 hover:shadow-md transition-shadow">
                       <CardContent className="p-6">
-                        {/* Review Header */}
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-3">
                             <Avatar className="w-10 h-10">
@@ -1674,14 +1478,12 @@ export function ProfileSection() {
                           </Button>
                         </div>
 
-                        {/* Review Content */}
                         <div className="space-y-4">
                           <p className="text-gray-700 leading-relaxed">{review.comment}</p>
 
-                          {/* Tags */}
                           {review.tags && review.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1">
-                              {review.tags.map((tag) => (
+                              {review.tags.map((tag: string) => (
                                 <Badge
                                   key={tag}
                                   variant="outline"
@@ -1693,18 +1495,17 @@ export function ProfileSection() {
                             </div>
                           )}
 
-                          {/* Doctor Response */}
                           {review.response && (
                             <div className="bg-blue-50 rounded-lg p-4 border-l-4 border-l-blue-400">
                               <div className="flex items-center gap-2 mb-2">
                                 <Avatar className="w-6 h-6">
                                   <AvatarImage
-                                    src={profile.profile_picture || "/placeholder.svg"}
-                                    alt={profile.full_name}
+                                    src={profile.user.profile_picture || "/placeholder.svg"}
+                                    alt={profile.user.first_name + " " + profile.user.last_name}
                                   />
                                   <AvatarFallback className="bg-blue-600 text-white text-xs">
-                                    {profile.first_name?.[0]}
-                                    {profile.last_name?.[0]}
+                                    {profile.user.first_name?.[0]}
+                                    {profile.user.last_name?.[0]}
                                   </AvatarFallback>
                                 </Avatar>
                                 <span className="text-sm font-medium text-blue-800">Ответ врача</span>
@@ -1714,7 +1515,6 @@ export function ProfileSection() {
                             </div>
                           )}
 
-                          {/* Review Actions */}
                           <div className="flex items-center justify-between pt-2 border-t">
                             <div className="flex items-center gap-4">
                               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-blue-600">
@@ -1738,7 +1538,6 @@ export function ProfileSection() {
                     </Card>
                   ))}
 
-                  {/* Load More Button */}
                   <div className="text-center pt-4">
                     <Button variant="outline" className="w-full max-w-md">
                       Показать еще отзывы
@@ -1764,7 +1563,6 @@ export function ProfileSection() {
             </div>
           </div>
 
-          {/* Review Analytics */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1779,7 +1577,7 @@ export function ProfileSection() {
                     <div>
                       <p className="text-sm text-amber-700">Средняя оценка</p>
                       <p className="text-2xl font-bold text-amber-800">
-                        {safeToFixed(profile.reviews?.average_rating || 0, 1)}
+                        {safeToFixed(profile.rating || 0, 1)}
                       </p>
                     </div>
                     <div className="p-2 bg-amber-100 rounded-full">
@@ -1792,7 +1590,7 @@ export function ProfileSection() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-blue-700">Всего отзывов</p>
-                      <p className="text-2xl font-bold text-blue-800">{profile.reviews?.total_reviews || 0}</p>
+                      <p className="text-2xl font-bold text-blue-800">{profile.reviews_count || 0}</p>
                     </div>
                     <div className="p-2 bg-blue-100 rounded-full">
                       <MessageSquare className="w-6 h-6 text-blue-600" />
@@ -1804,7 +1602,7 @@ export function ProfileSection() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-green-700">Отвечает на отзывы</p>
-                      <p className="text-2xl font-bold text-green-800">{profile.reviews?.response_rate || 0}%</p>
+                      <p className="text-2xl font-bold text-green-800">0%</p>
                     </div>
                     <div className="p-2 bg-green-100 rounded-full">
                       <MessageSquare className="w-6 h-6 text-green-600" />
@@ -1816,7 +1614,7 @@ export function ProfileSection() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-purple-700">За месяц</p>
-                      <p className="text-2xl font-bold text-purple-800">{profile.reviews?.monthly_reviews || 0}</p>
+                      <p className="text-2xl font-bold text-purple-800">0</p>
                     </div>
                     <div className="p-2 bg-purple-100 rounded-full">
                       <TrendingUp className="w-6 h-6 text-purple-600" />
@@ -1829,5 +1627,5 @@ export function ProfileSection() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
