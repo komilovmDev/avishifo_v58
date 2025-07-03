@@ -34,6 +34,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useEffect, useRef, useState } from "react"
 import { Textarea } from "@/components/ui/textarea"
 
+// API Base URL
+const API_BASE_URL = "https://new.avishifo.uz"
+
 interface AiMessage {
   id?: string
   role: "user" | "assistant"
@@ -48,7 +51,6 @@ interface AiMessage {
     name: string
     url: string
     size?: number
-    isDocument?: boolean
   }[]
 }
 
@@ -132,7 +134,6 @@ export function AiChatSection() {
       url: string
       file: File
       size: number
-      isDocument?: boolean
     }[]
   >([])
 
@@ -148,6 +149,8 @@ export function AiChatSection() {
   useEffect(() => {
     loadChatHistory()
     loadChatStats()
+    // Создаем новую сессию при загрузке компонента
+    createNewChatSession()
   }, [])
 
   const suggestedPrompts = [
@@ -176,43 +179,96 @@ export function AiChatSection() {
     },
   ]
 
+  // Функция для получения токена авторизации
+  const getAuthToken = () => {
+    return localStorage.getItem("accessToken") || localStorage.getItem("token")
+  }
+
+  // Создание новой сессии чата через API
+  const createNewChatSession = async () => {
+    try {
+      const token = getAuthToken()
+      if (!token) {
+        console.log("No auth token found, using fallback mode")
+        setConnectionStatus("demo")
+        return null
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({}),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setCurrentSessionId(data.id)
+        setConnectionStatus("connected")
+        console.log("New chat session created:", data.id)
+        return data.id
+      } else {
+        console.error("Failed to create chat session:", response.status)
+        setConnectionStatus("demo")
+        return null
+      }
+    } catch (error) {
+      console.error("Error creating chat session:", error)
+      setConnectionStatus("demo")
+      return null
+    }
+  }
+
   const loadChatHistory = async () => {
     setIsLoadingHistory(true)
     try {
-      // Try to fetch from API
-      const response = await fetch("/api/chat-history/sessions/", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        },
-      })
-
-      // Check if response is JSON
-      const contentType = response.headers.get("content-type")
-      if (contentType && contentType.includes("application/json")) {
-        const data = await response.json()
-        setChatSessions(data.results || data)
-      } else {
-        // Fallback to local storage if API is not available
-        console.log("API not available, using local storage fallback")
+      const token = getAuthToken()
+      if (!token) {
+        // Fallback to local storage if no token
         const storedSessions = localStorage.getItem("avishifo_chat_sessions")
         if (storedSessions) {
           setChatSessions(JSON.parse(storedSessions))
-        } else {
-          // Use empty array if nothing in local storage
-          setChatSessions([])
+        }
+        setIsLoadingHistory(false)
+        return
+      }
+
+      // Try to fetch from backend API
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        // Transform backend data to our format
+        const transformedSessions =
+          data.results?.map((session: any) => ({
+            id: session.id,
+            title: session.title || `Чат ${session.id}`,
+            date: session.created_at?.split("T")[0] || new Date().toISOString().split("T")[0],
+            last_message: session.last_message || "",
+            messages_count: session.messages_count || 0,
+            total_tokens_used: session.total_tokens_used || 0,
+          })) || []
+
+        setChatSessions(transformedSessions)
+      } else {
+        // Fallback to local storage
+        const storedSessions = localStorage.getItem("avishifo_chat_sessions")
+        if (storedSessions) {
+          setChatSessions(JSON.parse(storedSessions))
         }
       }
     } catch (error) {
       console.error("Error loading chat history:", error)
       // Fallback to local storage
-      try {
-        const storedSessions = localStorage.getItem("avishifo_chat_sessions")
-        if (storedSessions) {
-          setChatSessions(JSON.parse(storedSessions))
-        }
-      } catch (e) {
-        console.error("Error loading from local storage:", e)
-        setChatSessions([])
+      const storedSessions = localStorage.getItem("avishifo_chat_sessions")
+      if (storedSessions) {
+        setChatSessions(JSON.parse(storedSessions))
       }
     } finally {
       setIsLoadingHistory(false)
@@ -221,31 +277,18 @@ export function AiChatSection() {
 
   const loadChatStats = async () => {
     try {
-      // Try to fetch from API
-      const response = await fetch("/api/chat-history/statistics/", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        },
-      })
-
-      // Check if response is JSON
-      const contentType = response.headers.get("content-type")
-      if (contentType && contentType.includes("application/json")) {
-        const result = await response.json()
-        if (result.success) {
-          setChatStats(result.data)
-        }
-      } else {
-        // Generate mock stats based on local storage
+      const token = getAuthToken()
+      if (!token) {
+        // Generate mock stats from local storage
         const storedSessions = localStorage.getItem("avishifo_chat_sessions")
         if (storedSessions) {
           const sessions = JSON.parse(storedSessions)
           const mockStats = {
             total_sessions: sessions.length,
-            total_messages: sessions.reduce((acc, session) => acc + (session.messages_count || 0), 0),
+            total_messages: sessions.reduce((acc: number, session: any) => acc + (session.messages_count || 0), 0),
             total_tokens: 0,
             avg_messages_per_session: sessions.length
-              ? sessions.reduce((acc, session) => acc + (session.messages_count || 0), 0) / sessions.length
+              ? sessions.reduce((acc: number, session: any) => acc + (session.messages_count || 0), 0) / sessions.length
               : 0,
             most_active_day: new Date().toISOString().split("T")[0],
             sessions_this_week: sessions.length,
@@ -253,6 +296,30 @@ export function AiChatSection() {
           }
           setChatStats(mockStats)
         }
+        return
+      }
+
+      // Try to fetch stats from backend
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/stats/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setChatStats(data)
+      } else {
+        // Generate basic mock stats
+        setChatStats({
+          total_sessions: chatSessions.length,
+          total_messages: 0,
+          total_tokens: 0,
+          avg_messages_per_session: 0,
+          most_active_day: "Сегодня",
+          sessions_this_week: chatSessions.length,
+          sessions_this_month: chatSessions.length,
+        })
       }
     } catch (error) {
       console.error("Error loading chat stats:", error)
@@ -269,169 +336,18 @@ export function AiChatSection() {
     }
   }
 
-  const createNewSession = async (firstMessage: string) => {
-    try {
-      // Try to create via API
-      const response = await fetch("/api/chat-history/sessions/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        },
-        body: JSON.stringify({
-          title: firstMessage.slice(0, 50) + (firstMessage.length > 50 ? "..." : ""),
-        }),
-      })
-
-      // Check if response is JSON
-      const contentType = response.headers.get("content-type")
-      if (contentType && contentType.includes("application/json")) {
-        const session = await response.json()
-        return session.id
-      } else {
-        // Fallback to local storage
-        const sessionId = `local-${Date.now()}`
-        const newSession = {
-          id: sessionId,
-          title: firstMessage.slice(0, 50) + (firstMessage.length > 50 ? "..." : ""),
-          date: new Date().toISOString().split("T")[0],
-          last_message: "",
-          messages_count: 1,
-          total_tokens_used: 0,
-        }
-
-        const storedSessions = localStorage.getItem("avishifo_chat_sessions")
-        const sessions = storedSessions ? JSON.parse(storedSessions) : []
-        localStorage.setItem("avishifo_chat_sessions", JSON.stringify([newSession, ...sessions]))
-
-        // Update state
-        setChatSessions((prev) => [newSession, ...prev])
-
-        return sessionId
-      }
-    } catch (error) {
-      console.error("Error creating session:", error)
-      // Fallback to local storage
-      const sessionId = `local-${Date.now()}`
-      const newSession = {
-        id: sessionId,
-        title: firstMessage.slice(0, 50) + (firstMessage.length > 50 ? "..." : ""),
-        date: new Date().toISOString().split("T")[0],
-        last_message: "",
-        messages_count: 1,
-        total_tokens_used: 0,
-      }
-
-      const storedSessions = localStorage.getItem("avishifo_chat_sessions")
-      const sessions = storedSessions ? JSON.parse(storedSessions) : []
-      localStorage.setItem("avishifo_chat_sessions", JSON.stringify([newSession, ...sessions]))
-
-      // Update state
-      setChatSessions((prev) => [newSession, ...prev])
-
-      return sessionId
-    }
-  }
-
-  const saveMessageToSession = async (sessionId: string, message: AiMessage) => {
-    try {
-      // Try to save via API
-      if (!sessionId.startsWith("local-")) {
-        await fetch(`/api/chat-history/sessions/${sessionId}/messages/`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-          },
-          body: JSON.stringify({
-            role: message.role,
-            content: message.content,
-            tokens_used: message.tokens_used || 0,
-            is_error: message.isError || false,
-            is_fallback: message.isFallback || false,
-            response_time_ms: message.response_time_ms || null,
-          }),
-        })
-      }
-
-      // Always update local storage as backup
-      const storedSessions = localStorage.getItem("avishifo_chat_sessions")
-      if (storedSessions) {
-        const sessions = JSON.parse(storedSessions)
-        const sessionIndex = sessions.findIndex((s: any) => s.id === sessionId)
-
-        if (sessionIndex !== -1) {
-          // Update session
-          sessions[sessionIndex].last_message =
-            message.content.slice(0, 100) + (message.content.length > 100 ? "..." : "")
-          sessions[sessionIndex].messages_count = (sessions[sessionIndex].messages_count || 0) + 1
-
-          // Store messages in local storage too
-          const sessionKey = `avishifo_chat_messages_${sessionId}`
-          const storedMessages = localStorage.getItem(sessionKey)
-          const messages = storedMessages ? JSON.parse(storedMessages) : []
-          messages.push({ ...message, id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}` })
-          localStorage.setItem(sessionKey, JSON.stringify(messages))
-
-          // Update sessions list
-          localStorage.setItem("avishifo_chat_sessions", JSON.stringify(sessions))
-        }
-      }
-    } catch (error) {
-      console.error("Error saving message:", error)
-      // Ensure local storage is updated even if API fails
-      try {
-        const storedSessions = localStorage.getItem("avishifo_chat_sessions")
-        if (storedSessions) {
-          const sessions = JSON.parse(storedSessions)
-          const sessionIndex = sessions.findIndex((s: any) => s.id === sessionId)
-
-          if (sessionIndex !== -1) {
-            // Update session
-            sessions[sessionIndex].last_message =
-              message.content.slice(0, 100) + (message.content.length > 100 ? "..." : "")
-            sessions[sessionIndex].messages_count = (sessions[sessionIndex].messages_count || 0) + 1
-
-            // Store messages in local storage too
-            const sessionKey = `avishifo_chat_messages_${sessionId}`
-            const storedMessages = localStorage.getItem(sessionKey)
-            const messages = storedMessages ? JSON.parse(storedMessages) : []
-            messages.push({ ...message, id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}` })
-            localStorage.setItem(sessionKey, JSON.stringify(messages))
-
-            // Update sessions list
-            localStorage.setItem("avishifo_chat_sessions", JSON.stringify(sessions))
-          }
-        }
-      } catch (e) {
-        console.error("Error updating local storage:", e)
-      }
-    }
-  }
-
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
 
     const newAttachments = Array.from(files).map((file) => {
       const isImage = file.type.startsWith("image/")
-      const isDocument =
-        file.type.includes("pdf") ||
-        file.type.includes("document") ||
-        file.type.includes("word") ||
-        file.type.includes("text") ||
-        file.name.toLowerCase().endsWith(".pdf") ||
-        file.name.toLowerCase().endsWith(".doc") ||
-        file.name.toLowerCase().endsWith(".docx") ||
-        file.name.toLowerCase().endsWith(".txt")
-
       return {
         type: isImage ? ("image" as const) : ("file" as const),
         name: file.name,
         url: URL.createObjectURL(file),
         file,
         size: file.size,
-        isDocument,
       }
     })
 
@@ -471,92 +387,80 @@ export function AiChatSection() {
               name: att.name,
               url: att.url,
               size: att.size,
-              isDocument: att.isDocument,
             }))
           : undefined,
     }
 
     setCurrentChat((prev) => [...prev, userMessage])
+    const currentMessage = message
     setMessage("")
     setAttachments([])
     setIsLoading(true)
 
-    // Создаем новую сессию если это первое сообщение
-    let sessionId = currentSessionId
-    if (!sessionId && currentChat.length === 1) {
-      sessionId = await createNewSession(userMessage.content || "Новый чат с вложениями")
-      setCurrentSessionId(sessionId)
-    }
-
     try {
-      // Prepare files for upload if any
-      const formData = new FormData()
+      const token = getAuthToken()
 
-      // Add message content
-      formData.append("message", message)
+      if (!token || !currentSessionId) {
+        // Fallback mode
+        const fallbackResponse = generateFallbackResponse(currentMessage)
+        const assistantMessage: AiMessage = {
+          role: "assistant",
+          content: fallbackResponse,
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          isFallback: true,
+        }
+        setCurrentChat((prev) => [...prev, assistantMessage])
+        setConnectionStatus("demo")
+        setIsLoading(false)
+        return
+      }
 
-      // Add chat history
-      formData.append("history", JSON.stringify(currentChat))
+      // Handle image uploads first if any
+      if (attachments.length > 0) {
+        for (const attachment of attachments) {
+          if (attachment.type === "image") {
+            await sendImageToBackend(attachment.file)
+          }
+        }
+      }
 
-      // Add files if any
-      attachments.forEach((att, index) => {
-        formData.append(`file${index}`, att.file)
+      // Send text message to backend
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_message/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          content: currentMessage,
+        }),
       })
 
-      // If we have attachments, use FormData API
-      let response
-      if (attachments.length > 0) {
-        response = await fetch("/api/chat-with-files", {
-          method: "POST",
-          body: formData,
-        })
-      } else {
-        // Otherwise use the regular JSON API
-        response = await fetch("/api/chat", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            messages: [...currentChat, userMessage],
+      if (response.ok) {
+        const data = await response.json()
+        const responseTime = Date.now() - startTime
+
+        const assistantMessage: AiMessage = {
+          role: "assistant",
+          content: data.reply || data.content || "Получен ответ от AI",
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
           }),
-        })
-      }
+          response_time_ms: responseTime,
+        }
 
-      const data = await response.json()
-      const responseTime = Date.now() - startTime
-
-      const assistantMessage: AiMessage = {
-        role: "assistant",
-        content: data.content,
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        isError: data.error,
-        isFallback: data.fallback,
-        response_time_ms: responseTime,
-        tokens_used: data.tokens_used,
-      }
-
-      setCurrentChat((prev) => [...prev, assistantMessage])
-
-      if (data.error) {
-        setConnectionStatus("disconnected")
-      } else if (data.fallback) {
-        setConnectionStatus("demo")
-      } else {
+        setCurrentChat((prev) => [...prev, assistantMessage])
         setConnectionStatus("connected")
-      }
 
-      // Сохраняем сообщения в базу данных или локальное хранилище
-      if (sessionId) {
-        await saveMessageToSession(sessionId, userMessage)
-        await saveMessageToSession(sessionId, assistantMessage)
-
-        // Обновляем историю
+        // Update chat history
         loadChatHistory()
         loadChatStats()
+      } else {
+        throw new Error(`HTTP ${response.status}`)
       }
     } catch (error) {
       console.error("Error sending message:", error)
@@ -565,7 +469,7 @@ export function AiChatSection() {
       const errorMessage: AiMessage = {
         role: "assistant",
         content:
-          "Извините, произошла ошибка при подключению к ИИ сервису. Проверьте подключение к интернету и попробуйте снова.",
+          "Извините, произошла ошибка при подключении к ИИ сервису. Проверьте подключение к интернету и попробуйте снова.",
         timestamp: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -579,13 +483,81 @@ export function AiChatSection() {
     }
   }
 
+  const sendImageToBackend = async (imageFile: File) => {
+    try {
+      const token = getAuthToken()
+      if (!token || !currentSessionId) return
+
+      const formData = new FormData()
+      formData.append("image", imageFile)
+
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_image/`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+
+        const assistantMessage: AiMessage = {
+          role: "assistant",
+          content: data.reply || "Изображение обработано AI",
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        }
+
+        setCurrentChat((prev) => [...prev, assistantMessage])
+      }
+    } catch (error) {
+      console.error("Error sending image:", error)
+    }
+  }
+
+  const generateFallbackResponse = (userMessage: string): string => {
+    return `**AviShifo в демо-режиме**
+
+Доктор, я понимаю ваш запрос: "${userMessage}"
+
+В демо-режиме я могу предоставить только базовую структуру ответа:
+
+**1. Предварительный диагноз:**
+- Требуется анализ представленных симптомов
+- Дифференциальная диагностика будет доступна при полной активации
+
+**2. План обследования:**
+- Стандартные лабораторные исследования
+- Инструментальная диагностика по показаниям
+- Консультации специалистов при необходимости
+
+**3. Тактика лечения:**
+- Консервативная терапия как первая линия
+- Хирургические методы при неэффективности консервативного лечения
+- Реабилитационные мероприятия
+
+**6. Группы препаратов:**
+- Симптоматическая терапия
+- Этиотропное лечение
+- Профилактические препараты
+
+**7. Заключение:**
+Для получения полного анализа в стиле AviShifo необходима активация полной версии системы с подключением к backend API https://new.avishifo.uz/
+
+*Демо-режим ограничивает возможности детального медицинского анализа.*`
+  }
+
   const handlePromptClick = (promptText: string) => {
     setMessage(promptText)
   }
 
   const loadChatSession = async (session: ChatSession) => {
     try {
-      if (session.id.startsWith("local-")) {
+      const token = getAuthToken()
+      if (!token) {
         // Load from local storage
         const sessionKey = `avishifo_chat_messages_${session.id}`
         const storedMessages = localStorage.getItem(sessionKey)
@@ -594,24 +566,32 @@ export function AiChatSection() {
           setCurrentSessionId(session.id)
           setActiveTab("chat")
         } else {
-          // If no messages found, start a new chat
           startNewChat()
         }
         return
       }
 
-      // Try to load from API
-      const response = await fetch(`/api/chat-history/sessions/${session.id}/`, {
+      // Try to load from backend API
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${session.id}/`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+          Authorization: `Bearer ${token}`,
         },
       })
 
-      // Check if response is JSON
-      const contentType = response.headers.get("content-type")
-      if (contentType && contentType.includes("application/json")) {
+      if (response.ok) {
         const sessionData = await response.json()
-        setCurrentChat(sessionData.messages || [])
+        // Transform backend messages to our format
+        const transformedMessages =
+          sessionData.messages?.map((msg: any) => ({
+            role: msg.role === "user" ? "user" : "assistant",
+            content: msg.content,
+            timestamp: new Date(msg.created_at).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          })) || []
+
+        setCurrentChat(transformedMessages)
         setCurrentSessionId(session.id)
         setActiveTab("chat")
       } else {
@@ -621,49 +601,18 @@ export function AiChatSection() {
         if (storedMessages) {
           setCurrentChat(JSON.parse(storedMessages))
         } else {
-          // If no messages found, use welcome message
-          setCurrentChat([
-            {
-              role: "assistant",
-              content:
-                "Привет! Я Авишифо, ваш ИИ помощник с полной интеграцией Avishifo.ai. Готов предоставить профессиональные медицинские консультации. Как я могу помочь вам сегодня?",
-              timestamp: new Date().toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            },
-          ])
+          startNewChat()
         }
         setCurrentSessionId(session.id)
         setActiveTab("chat")
       }
     } catch (error) {
       console.error("Error loading session:", error)
-      // Fallback to local storage
-      const sessionKey = `avishifo_chat_messages_${session.id}`
-      const storedMessages = localStorage.getItem(sessionKey)
-      if (storedMessages) {
-        setCurrentChat(JSON.parse(storedMessages))
-      } else {
-        // If no messages found, use welcome message
-        setCurrentChat([
-          {
-            role: "assistant",
-            content:
-              "Привет! Я Авишифо, ваш ИИ помощник с полной интеграцией Avishifo.ai. Готов предоставить профессиональные медицинские консультации. Как я могу помочь вам сегодня?",
-            timestamp: new Date().toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          },
-        ])
-      }
-      setCurrentSessionId(session.id)
-      setActiveTab("chat")
+      startNewChat()
     }
   }
 
-  const startNewChat = () => {
+  const startNewChat = async () => {
     setCurrentChat([
       {
         role: "assistant",
@@ -675,31 +624,33 @@ export function AiChatSection() {
         }),
       },
     ])
-    setCurrentSessionId(null)
+
+    // Create new session
+    const newSessionId = await createNewChatSession()
+    setCurrentSessionId(newSessionId)
     setActiveTab("chat")
     setConnectionStatus("connected")
   }
 
   const deleteChatSession = async (sessionId: string) => {
     try {
-      if (!sessionId.startsWith("local-")) {
-        // Try to delete via API
-        await fetch(`/api/chat-history/sessions/${sessionId}/`, {
+      const token = getAuthToken()
+      if (token && !sessionId.startsWith("local-")) {
+        // Try to delete via backend API
+        await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${sessionId}/`, {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+            Authorization: `Bearer ${token}`,
           },
         })
       }
 
-      // Always update local storage
+      // Update local storage
       const storedSessions = localStorage.getItem("avishifo_chat_sessions")
       if (storedSessions) {
         const sessions = JSON.parse(storedSessions)
         const updatedSessions = sessions.filter((s: any) => s.id !== sessionId)
         localStorage.setItem("avishifo_chat_sessions", JSON.stringify(updatedSessions))
-
-        // Remove messages
         localStorage.removeItem(`avishifo_chat_messages_${sessionId}`)
       }
 
@@ -713,22 +664,6 @@ export function AiChatSection() {
       loadChatStats()
     } catch (error) {
       console.error("Error deleting session:", error)
-      // Ensure local storage is updated even if API fails
-      const storedSessions = localStorage.getItem("avishifo_chat_sessions")
-      if (storedSessions) {
-        const sessions = JSON.parse(storedSessions)
-        const updatedSessions = sessions.filter((s: any) => s.id !== sessionId)
-        localStorage.setItem("avishifo_chat_sessions", JSON.stringify(updatedSessions))
-
-        // Remove messages
-        localStorage.removeItem(`avishifo_chat_messages_${sessionId}`)
-      }
-
-      // Update state
-      setChatSessions((prev) => prev.filter((session) => session.id !== sessionId))
-      if (currentSessionId === sessionId) {
-        startNewChat()
-      }
     }
   }
 
@@ -739,35 +674,32 @@ export function AiChatSection() {
     }
 
     try {
-      // Try to search via API
-      const response = await fetch(`/api/chat-history/search/?q=${encodeURIComponent(query)}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-        },
-      })
+      const token = getAuthToken()
+      if (token) {
+        // Try to search via backend API
+        const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/?search=${encodeURIComponent(query)}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
 
-      // Check if response is JSON
-      const contentType = response.headers.get("content-type")
-      if (contentType && contentType.includes("application/json")) {
-        const result = await response.json()
-        if (result.success) {
-          setChatSessions(result.data)
-        }
-      } else {
-        // Search in local storage
-        const storedSessions = localStorage.getItem("avishifo_chat_sessions")
-        if (storedSessions) {
-          const sessions = JSON.parse(storedSessions)
-          const filteredSessions = sessions.filter(
-            (session: any) =>
-              session.title.toLowerCase().includes(query.toLowerCase()) ||
-              session.last_message.toLowerCase().includes(query.toLowerCase()),
-          )
-          setChatSessions(filteredSessions)
+        if (response.ok) {
+          const data = await response.json()
+          const transformedSessions =
+            data.results?.map((session: any) => ({
+              id: session.id,
+              title: session.title || `Чат ${session.id}`,
+              date: session.created_at?.split("T")[0] || new Date().toISOString().split("T")[0],
+              last_message: session.last_message || "",
+              messages_count: session.messages_count || 0,
+              total_tokens_used: session.total_tokens_used || 0,
+            })) || []
+
+          setChatSessions(transformedSessions)
+          return
         }
       }
-    } catch (error) {
-      console.error("Error searching sessions:", error)
+
       // Search in local storage
       const storedSessions = localStorage.getItem("avishifo_chat_sessions")
       if (storedSessions) {
@@ -779,6 +711,8 @@ export function AiChatSection() {
         )
         setChatSessions(filteredSessions)
       }
+    } catch (error) {
+      console.error("Error searching sessions:", error)
     }
   }
 
@@ -787,66 +721,33 @@ export function AiChatSection() {
       let exportData = ""
       const fileName = `chat-${sessionId}.${format}`
 
-      if (sessionId.startsWith("local-")) {
-        // Export from local storage
-        const sessionKey = `avishifo_chat_messages_${sessionId}`
-        const storedMessages = localStorage.getItem(sessionKey)
-        const storedSessions = localStorage.getItem("avishifo_chat_sessions")
+      // Try to get session data
+      const session = chatSessions.find((s) => s.id === sessionId)
+      if (!session) return
 
-        if (storedMessages && storedSessions) {
-          const messages = JSON.parse(storedMessages)
-          const sessions = JSON.parse(storedSessions)
-          const session = sessions.find((s: any) => s.id === sessionId)
-
-          if (session) {
-            if (format === "json") {
-              exportData = JSON.stringify(
-                {
-                  id: session.id,
-                  title: session.title,
-                  date: session.date,
-                  messages: messages,
-                },
-                null,
-                2,
-              )
-            } else if (format === "txt") {
-              exportData = `Чат: ${session.title}\nДата: ${new Date(session.date).toLocaleString()}\n\n`
-              messages.forEach((msg: AiMessage) => {
-                const roleName = msg.role === "user" ? "Врач" : "Avishifo.ai"
-                exportData += `[${msg.timestamp}] ${roleName}:\n${msg.content}\n\n`
-              })
-            } else if (format === "md") {
-              exportData = `# ${session.title}\n\n**Дата:** ${new Date(session.date).toLocaleString()}\n\n`
-              messages.forEach((msg: AiMessage) => {
-                const roleName = msg.role === "user" ? "**Врач**" : "**Avishifo.ai**"
-                exportData += `### ${roleName} (${msg.timestamp})\n\n${msg.content}\n\n---\n\n`
-              })
-            }
-          }
-        }
-      } else {
-        // Try to export via API
-        const response = await fetch(`/api/chat-history/sessions/${sessionId}/export/`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+      if (format === "json") {
+        exportData = JSON.stringify(
+          {
+            id: session.id,
+            title: session.title,
+            date: session.date,
+            messages: currentChat,
           },
-          body: JSON.stringify({ format }),
+          null,
+          2,
+        )
+      } else if (format === "txt") {
+        exportData = `Чат: ${session.title}\nДата: ${new Date(session.date).toLocaleString()}\n\n`
+        currentChat.forEach((msg: AiMessage) => {
+          const roleName = msg.role === "user" ? "Врач" : "Avishifo.ai"
+          exportData += `[${msg.timestamp}] ${roleName}:\n${msg.content}\n\n`
         })
-
-        // Check if response is JSON
-        const contentType = response.headers.get("content-type")
-        if (contentType && contentType.includes("application/json")) {
-          const result = await response.json()
-          if (result.success) {
-            exportData = result.data
-          }
-        } else {
-          // Fallback to local storage
-          throw new Error("API not available")
-        }
+      } else if (format === "md") {
+        exportData = `# ${session.title}\n\n**Дата:** ${new Date(session.date).toLocaleString()}\n\n`
+        currentChat.forEach((msg: AiMessage) => {
+          const roleName = msg.role === "user" ? "**Врач**" : "**Avishifo.ai**"
+          exportData += `### ${roleName} (${msg.timestamp})\n\n${msg.content}\n\n---\n\n`
+        })
       }
 
       if (exportData) {
@@ -865,62 +766,7 @@ export function AiChatSection() {
       }
     } catch (error) {
       console.error("Error exporting session:", error)
-      // Try to export from local storage as fallback
-      try {
-        const sessionKey = `avishifo_chat_messages_${sessionId}`
-        const storedMessages = localStorage.getItem(sessionKey)
-        const storedSessions = localStorage.getItem("avishifo_chat_sessions")
-
-        if (storedMessages && storedSessions) {
-          const messages = JSON.parse(storedMessages)
-          const sessions = JSON.parse(storedSessions)
-          const session = sessions.find((s: any) => s.id === sessionId)
-
-          if (session) {
-            let exportData = ""
-            if (format === "json") {
-              exportData = JSON.stringify(
-                {
-                  id: session.id,
-                  title: session.title,
-                  date: session.date,
-                  messages: messages,
-                },
-                null,
-                2,
-              )
-            } else if (format === "txt") {
-              exportData = `Чат: ${session.title}\nДата: ${new Date(session.date).toLocaleString()}\n\n`
-              messages.forEach((msg: AiMessage) => {
-                const roleName = msg.role === "user" ? "Врач" : "Avishifo.ai"
-                exportData += `[${msg.timestamp}] ${roleName}:\n${msg.content}\n\n`
-              })
-            } else if (format === "md") {
-              exportData = `# ${session.title}\n\n**Дата:** ${new Date(session.date).toLocaleString()}\n\n`
-              messages.forEach((msg: AiMessage) => {
-                const roleName = msg.role === "user" ? "**Врач**" : "**Avishifo.ai**"
-                exportData += `### ${roleName} (${msg.timestamp})\n\n${msg.content}\n\n---\n\n`
-              })
-            }
-
-            // Create and download file
-            const blob = new Blob([exportData], {
-              type: format === "json" ? "application/json" : "text/plain",
-            })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement("a")
-            a.href = url
-            a.download = `chat-${sessionId}.${format}`
-            document.body.appendChild(a)
-            a.click()
-            document.body.removeChild(a)
-            URL.revokeObjectURL(url)
-          }
-        }
-      } catch (e) {
-        console.error("Error exporting from local storage:", e)
-        alert("Не удалось экспортировать чат. Пожалуйста, попробуйте позже.")
-      }
+      alert("Не удалось экспортировать чат. Пожалуйста, попробуйте позже.")
     }
   }
 
@@ -955,7 +801,7 @@ export function AiChatSection() {
   const getConnectionText = () => {
     switch (connectionStatus) {
       case "connected":
-        return "Avishifo.ai активен"
+        return "Подключен к new.avishifo.uz"
       case "disconnected":
         return "Нет подключения"
       case "demo":
@@ -977,7 +823,7 @@ export function AiChatSection() {
               <div>
                 <CardTitle className="text-xl font-bold">ИИ Авишифо</CardTitle>
                 <div className="flex items-center gap-2">
-                  <p className="text-blue-100 text-sm">Powered by Avishifo.ai</p>
+                  <p className="text-blue-100 text-sm">Powered by new.avishifo.uz</p>
                   {getConnectionIcon()}
                   <span className="text-xs text-blue-200">{getConnectionText()}</span>
                 </div>
@@ -1003,8 +849,8 @@ export function AiChatSection() {
             <Alert className="m-4 mb-0 border-green-200 bg-green-50">
               <Sparkles className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">
-                ИИ Авишифо полностью активен! Теперь вы получаете персонализированные ответы от Avishifo.ai, специально
-                настроенного для медицинских консультаций. История сохраняется автоматически.
+                ИИ Авишифо подключен к backend API! Теперь вы получаете ответы напрямую от сервера new.avishifo.uz.
+                История чатов синхронизируется автоматически.
               </AlertDescription>
             </Alert>
           )}
@@ -1036,10 +882,11 @@ export function AiChatSection() {
                         <Sparkles className="w-4 h-4 text-white" />
                       </div>
                     </div>
-                    <h2 className="text-3xl font-bold text-gray-800 mb-4">Готов к профессиональным консультациям!</h2>
+                    <h2 className="text-3xl font-bold text-gray-800 mb-4">Подключен к Backend API!</h2>
                     <p className="text-gray-600 mb-8 max-w-md">
-                      Теперь я использую полную мощь Avishifo.ai для предоставления детальных медицинских консультаций,
-                      анализа сложных случаев и актуальных рекомендаций. Вся история автоматически сохраняется.
+                      Теперь я использую полную мощь backend API new.avishifo.uz для предоставления детальных
+                      медицинских консультаций, анализа изображений и актуальных рекомендаций. Вся история
+                      синхронизируется с сервером.
                     </p>
 
                     {chatStats && (
@@ -1066,7 +913,7 @@ export function AiChatSection() {
                     )}
 
                     <div className="w-full max-w-4xl">
-                      <h3 className="text-lg font-semibold text-gray-700 mb-4 text-left">Расширенные возможности</h3>
+                      <h3 className="text-lg font-semibold text-gray-700 mb-4 text-left">Backend API возможности</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {suggestedPrompts.map((item, index) => (
                           <Card
@@ -1192,55 +1039,23 @@ export function AiChatSection() {
                                   </div>
                                 ) : (
                                   <div
-                                    className={`flex items-center gap-3 p-3 rounded-lg ${
+                                    className={`flex items-center gap-2 p-2 ${
                                       msg.role === "user" ? "bg-blue-700/50" : "bg-gray-100"
                                     }`}
                                   >
-                                    <div className="flex-shrink-0">
-                                      {attachment.name.toLowerCase().endsWith(".pdf") ? (
-                                        <div className="w-8 h-8 bg-red-500 rounded flex items-center justify-center">
-                                          <File className="w-4 h-4 text-white" />
-                                        </div>
-                                      ) : attachment.name.toLowerCase().includes("doc") ? (
-                                        <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center">
-                                          <File className="w-4 h-4 text-white" />
-                                        </div>
-                                      ) : (
-                                        <File
-                                          className={`w-5 h-5 ${msg.role === "user" ? "text-blue-100" : "text-gray-500"}`}
-                                        />
-                                      )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div
-                                        className={`text-sm font-medium truncate ${
-                                          msg.role === "user" ? "text-blue-50" : "text-gray-700"
-                                        }`}
-                                      >
-                                        {attachment.name}
-                                      </div>
-                                      <div
-                                        className={`text-xs ${msg.role === "user" ? "text-blue-200" : "text-gray-500"}`}
-                                      >
-                                        {attachment.size ? `${Math.round(attachment.size / 1024)} KB` : ""} •
-                                        {attachment.name.toLowerCase().endsWith(".pdf")
-                                          ? "PDF документ"
-                                          : attachment.name.toLowerCase().includes("doc")
-                                            ? "Word документ"
-                                            : attachment.name.toLowerCase().endsWith(".txt")
-                                              ? "Текстовый файл"
-                                              : "Документ"}
-                                      </div>
-                                    </div>
-                                    <div
-                                      className={`text-xs px-2 py-1 rounded ${
-                                        msg.role === "user"
-                                          ? "bg-blue-600/50 text-blue-100"
-                                          : "bg-green-100 text-green-700"
-                                      }`}
+                                    <File
+                                      className={`w-4 h-4 ${msg.role === "user" ? "text-blue-100" : "text-gray-500"}`}
+                                    />
+                                    <span
+                                      className={`text-sm truncate ${msg.role === "user" ? "text-blue-50" : "text-gray-700"}`}
                                     >
-                                      Прочитан
-                                    </div>
+                                      {attachment.name}
+                                    </span>
+                                    <span
+                                      className={`text-xs ml-auto ${msg.role === "user" ? "text-blue-200" : "text-gray-500"}`}
+                                    >
+                                      {attachment.size ? `${Math.round(attachment.size / 1024)} KB` : ""}
+                                    </span>
                                   </div>
                                 )}
                               </div>
@@ -1263,7 +1078,7 @@ export function AiChatSection() {
                         >
                           {msg.timestamp}
                           {!msg.isFallback && !msg.isError && msg.role === "assistant" && (
-                            <span className="ml-2 text-green-600">• Avishifo.ai</span>
+                            <span className="ml-2 text-green-600">• Backend API</span>
                           )}
                           {msg.response_time_ms && (
                             <span className="ml-2 text-gray-400">• {msg.response_time_ms}ms</span>
@@ -1298,7 +1113,7 @@ export function AiChatSection() {
                             style={{ animationDelay: "0.2s" }}
                           ></div>
                         </div>
-                        <span className="text-sm text-gray-600">Avishifo.ai анализирует ваш запрос...</span>
+                        <span className="text-sm text-gray-600">Backend API обрабатывает запрос...</span>
                       </div>
                     </div>
                   </div>
@@ -1344,7 +1159,7 @@ export function AiChatSection() {
                     onChange={handleFileSelect}
                     className="hidden"
                     multiple
-                    accept="image/*,.pdf,.doc,.docx,.txt,.rtf"
+                    accept="image/*,.pdf,.doc,.docx,.txt"
                   />
                   <Button
                     size="icon"
@@ -1358,7 +1173,7 @@ export function AiChatSection() {
                   <Textarea
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Загрузите медицинские документы (PDF, Word, текст) или изображения для анализа. Avishifo.ai прочитает и проанализирует содержимое..."
+                    placeholder="Задайте медицинский вопрос - Backend API готов к анализу..."
                     className="flex-1 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-800 placeholder:text-gray-500 resize-none min-h-[20px] max-h-[120px] overflow-y-auto"
                     disabled={isLoading}
                     rows={1}
@@ -1397,8 +1212,8 @@ export function AiChatSection() {
                   </Button>
                 </div>
                 <p className="text-xs text-gray-500 mt-3 text-center">
-                  <span className="text-green-600 font-medium">✓ Avishifo.ai активен</span> • Поддерживает чтение PDF,
-                  Word, текстовых файлов и анализ медицинских изображений • История сохраняется автоматически
+                  <span className="text-green-600 font-medium">✓ Подключен к new.avishifo.uz</span> • Получайте ответы
+                  напрямую от backend API • Поддержка изображений и файлов • История синхронизируется автоматически
                 </p>
               </div>
             </TabsContent>
@@ -1408,7 +1223,7 @@ export function AiChatSection() {
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800">История запросов</h3>
-                    <p className="text-sm text-gray-600">Ваши профессиональные консультации с Avishifo.ai</p>
+                    <p className="text-sm text-gray-600">Ваши консультации с Backend API new.avishifo.uz</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="relative">
@@ -1445,7 +1260,7 @@ export function AiChatSection() {
                         <p className="text-gray-500">
                           {searchQuery
                             ? "Попробуйте изменить поисковый запрос"
-                            : "Начните новую консультацию с Avishifo.ai"}
+                            : "Начните новую консультацию с Backend API"}
                         </p>
                       </div>
                     ) : (
@@ -1472,7 +1287,7 @@ export function AiChatSection() {
                                   <span>•</span>
                                   <span>{session.messages_count} сообщений</span>
                                   <span>•</span>
-                                  <span className="text-green-600">Avishifo.ai</span>
+                                  <span className="text-green-600">Backend API</span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-1">
