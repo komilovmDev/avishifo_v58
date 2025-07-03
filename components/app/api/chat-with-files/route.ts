@@ -285,9 +285,8 @@ function generateFileAnalysisFallback(message: string, files: any[], imageFiles:
 
   let fileDescription = ""
   if (files.length > 0) {
-    fileDescription = `\n\nЯ вижу, что вы прикрепили ${files.length} ${
-      files.length === 1 ? "файл" : files.length < 5 ? "файла" : "файлов"
-    } (${fileTypes.join(", ")}). `
+    fileDescription = `\n\nЯ вижу, что вы прикрепили ${files.length} ${files.length === 1 ? "файл" : files.length < 5 ? "файла" : "файлов"
+      } (${fileTypes.join(", ")}). `
 
     if (imageFiles.length > 0) {
       fileDescription += `Среди них ${imageFiles.length} медицинских изображений. `
