@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   Search,
@@ -21,19 +21,23 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Textarea } from "@/components/ui/textarea"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { log } from "console"
 
 // --- Type Definitions ---
+interface PatientResponse {
+  id: number | string;
+  full_name: string;
+  passport_series: string;
+  passport_number: string;
+  phone: string | null;
+  secondary_phone?: string | null;
+  email?: string | null;
+  birth_date: string | null;
+  gender: string | null;
+  blood_group: string | null;
+  address: string | null;
+  created_at?: string | null;
+}
+
 interface Medication {
   name: string
   dosage: string
@@ -63,7 +67,7 @@ interface HistoryEntry {
 interface Patient {
   id: string
   name: string
-  age: number
+  age: number | string
   gender: string
   lastVisit: string
   status: string
@@ -120,7 +124,7 @@ interface NewPatientForm {
   passportNumber: string
   phone: string
   email: string
-  birthDate: string // Added to match API's birth_date
+  birthDate: string
   gender: string
   bloodType: string
   address: string
@@ -161,194 +165,24 @@ interface MedicalHistoryForm {
   doctorRecommendations: string
 }
 
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Textarea } from "@/components/ui/textarea"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+
 export function PatientHistorySection() {
   const router = useRouter()
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("overview")
-  const [isLoading, setIsLoading] = useState(false) // Added for loading state
-
-  // Dialog states
-  const [showAddHistoryDialog, setShowAddHistoryDialog] = useState(false)
-  const [showAddMedicationDialog, setShowAddMedicationDialog] = useState(false)
-  const [showAddVitalsDialog, setShowAddVitalsDialog] = useState(false)
-  const [showAddDocumentDialog, setShowAddDocumentDialog] = useState(false)
-  const [showCreatePatientDialog, setShowCreatePatientDialog] = useState(false)
-
-  // Dialog handlers
-  const openAddHistoryDialog = () => {
-    console.log("Opening history dialog")
-    setShowAddHistoryDialog(true)
-  }
-
-  const closeAddHistoryDialog = () => {
-    console.log("Closing history dialog")
-    setShowAddHistoryDialog(false)
-    setMedicalHistory({
-      fish: "",
-      birthDate: "",
-      nationality: "",
-      education: "",
-      profession: "",
-      workplace: "",
-      workPosition: "",
-      homeAddress: "",
-      visitDate: "",
-      mainComplaints: "",
-      systemicDiseases: "",
-      respiratoryComplaints: "",
-      cough: "",
-      sputum: "",
-      hemoptysis: "",
-      chestPain: "",
-      dyspnea: "",
-      cardiovascularComplaints: "",
-      heartPain: "",
-      heartRhythm: "",
-      palpitations: "",
-      digestiveComplaints: "",
-      vomiting: "",
-      abdominalPain: "",
-      epigastricPain: "",
-      bowelMovements: "",
-      analSymptoms: "",
-      urinaryComplaints: "",
-      endocrineComplaints: "",
-      musculoskeletalComplaints: "",
-      nervousSystemComplaints: "",
-      doctorRecommendations: "",
-    })
-  }
-
-  const openAddMedicationDialog = () => {
-    console.log("Opening medication dialog")
-    setShowAddMedicationDialog(true)
-  }
-
-  const closeAddMedicationDialog = () => {
-    console.log("Closing medication dialog")
-    setShowAddMedicationDialog(false)
-  }
-
-  const openAddVitalsDialog = () => {
-    console.log("Opening vitals dialog")
-    setShowAddVitalsDialog(true)
-  }
-
-  const closeAddVitalsDialog = () => {
-    console.log("Closing vitals dialog")
-    setShowAddVitalsDialog(false)
-  }
-
-  const openAddDocumentDialog = () => {
-    console.log("Opening document dialog")
-    setShowAddDocumentDialog(true)
-  }
-
-  const closeAddDocumentDialog = () => {
-    console.log("Closing document dialog")
-    setShowAddDocumentDialog(false)
-  }
-
-  const closePatientView = () => {
-    console.log("Closing patient view")
-    setSelectedPatientId(null)
-    setShowAddHistoryDialog(false)
-    setShowAddMedicationDialog(false)
-    setShowAddVitalsDialog(false)
-    setShowAddDocumentDialog(false)
-  }
-
-  // Expanded sections state
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    basic: true,
-    respiratory: false,
-    cardiovascular: false,
-    digestive: false,
-    urinary: false,
-    endocrine: false,
-    musculoskeletal: false,
-    nervous: false,
-  })
-
-  const [newPatient, setNewPatient] = useState<NewPatientForm>({
-    fish: "",
-    passportSeries: "",
-    passportNumber: "",
-    phone: "",
-    email: "",
-    birthDate: "", // Changed from age to birthDate
-    gender: "Мужской",
-    bloodType: "A(II) Rh+",
-    address: "",
-  })
-
-  const [newHistoryEntry, setNewHistoryEntry] = useState<NewHistoryEntryForm>({
-    date: "",
-    type: "",
-    doctor: "",
-    diagnosis: "",
-    notes: "",
-    documents: [],
-  })
-
-  const [medicalHistory, setMedicalHistory] = useState<MedicalHistoryForm>({
-    fish: "",
-    birthDate: "",
-    nationality: "",
-    education: "",
-    profession: "",
-    workplace: "",
-    workPosition: "",
-    homeAddress: "",
-    visitDate: "",
-    mainComplaints: "",
-    systemicDiseases: "",
-    respiratoryComplaints: "",
-    cough: "",
-    sputum: "",
-    hemoptysis: "",
-    chestPain: "",
-    dyspnea: "",
-    cardiovascularComplaints: "",
-    heartPain: "",
-    heartRhythm: "",
-    palpitations: "",
-    digestiveComplaints: "",
-    vomiting: "",
-    abdominalPain: "",
-    epigastricPain: "",
-    bowelMovements: "",
-    analSymptoms: "",
-    urinaryComplaints: "",
-    endocrineComplaints: "",
-    musculoskeletalComplaints: "",
-    nervousSystemComplaints: "",
-    doctorRecommendations: "",
-  })
-
-  const [newMedication, setNewMedication] = useState<NewMedicationForm>({
-    name: "",
-    dosage: "",
-    frequency: "",
-    time: "",
-    refill: "",
-  })
-
-  const [newVitals, setNewVitals] = useState<NewVitalsForm>({
-    date: "",
-    bp: "",
-    pulse: "",
-    temp: "",
-    weight: "",
-  })
-
-  const [newDocument, setNewDocument] = useState<NewDocumentForm>({
-    name: "",
-    type: "",
-    file: null,
-  })
+  const [isLoading, setIsLoading] = useState(false)
 
   const [patients, setPatients] = useState<Patient[]>([
     {
@@ -494,6 +328,289 @@ export function PatientHistorySection() {
       ],
     },
   ])
+
+  const fetchPatients = async () => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        throw new Error("No access token found. Please log in.");
+      }
+
+      const response = await fetch("https://new.avishifo.uz/api/patients/patientlar/", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        mode: "cors",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData?.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("API response:", data);
+
+      // Handle single object or array response
+      const patientsArray = Array.isArray(data) ? data : data.data || data.results || [data];
+
+      // Filter out invalid entries and ensure id exists
+      const validPatients = patientsArray.filter(
+        (patient): patient is PatientResponse =>
+          patient != null &&
+          typeof patient === "object" &&
+          "id" in patient &&
+          patient.id != null
+      );
+
+      if (validPatients.length === 0) {
+        console.warn("No valid patients found in API response");
+        setPatients([]); // Set empty array or fallback to mock data
+        return;
+      }
+
+      const transformedPatients = validPatients.map((patient: PatientResponse) => ({
+        id: String(patient.id), // Convert id to string safely
+        name: patient.full_name || "Не указано",
+        phone: patient.phone || "Не указан",
+        email: patient.email || "Не указан",
+        address: patient.address || "Не указан",
+        age: patient.birth_date
+          ? Math.floor(
+              (new Date().getTime() - new Date(patient.birth_date).getTime()) /
+                (1000 * 60 * 60 * 24 * 365.25)
+            )
+          : "Не указан",
+        gender: patient.gender || "Не указан",
+        lastVisit: patient.created_at
+          ? new Date(patient.created_at).toLocaleDateString("ru-RU")
+          : new Date().toLocaleDateString("ru-RU"),
+        status: "Новый пациент",
+        statusColor: "blue",
+        insurance: patient.passport_series && patient.passport_number
+          ? `ОМС №${patient.passport_series}${patient.passport_number}`
+          : "Не указан",
+        bloodType: patient.blood_group || "Не указан",
+        allergies: [],
+        chronicConditions: [],
+        lastDiagnosis: "Первичный осмотр",
+        nextAppointment: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString("ru-RU"),
+        medications: [],
+        vitals: [],
+        history: [
+          {
+            id: `h1${patient.id}`,
+            date: patient.created_at
+              ? new Date(patient.created_at).toLocaleDateString("ru-RU")
+              : new Date().toLocaleDateString("ru-RU"),
+            type: "Регистрация",
+            doctor: "Текущий врач",
+            diagnosis: "Регистрация нового пациента",
+            notes: `Паспорт: ${patient.passport_series || "Не указан"} ${patient.passport_number || "Не указан"}`,
+            documents: [],
+          },
+        ],
+      }));
+
+      setPatients(transformedPatients);
+    } catch (error) {
+      console.error("Error fetching patients:", error);
+      alert(`Error fetching patients: ${error instanceof Error ? error.message : "Unknown error"}`);
+      // Fallback to mock data on error
+      setPatients(patients); // Use existing mock data
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPatients();
+  }, []);
+
+  // Dialog states
+  const [showAddHistoryDialog, setShowAddHistoryDialog] = useState(false)
+  const [showAddMedicationDialog, setShowAddMedicationDialog] = useState(false)
+  const [showAddVitalsDialog, setShowAddVitalsDialog] = useState(false)
+  const [showAddDocumentDialog, setShowAddDocumentDialog] = useState(false)
+  const [showCreatePatientDialog, setShowCreatePatientDialog] = useState(false)
+
+  // Dialog handlers
+  const openAddHistoryDialog = () => {
+    console.log("Opening history dialog")
+    setShowAddHistoryDialog(true)
+  }
+
+  const closeAddHistoryDialog = () => {
+    console.log("Closing history dialog")
+    setShowAddHistoryDialog(false)
+    setMedicalHistory({
+      fish: "",
+      birthDate: "",
+      nationality: "",
+      education: "",
+      profession: "",
+      workplace: "",
+      workPosition: "",
+      homeAddress: "",
+      visitDate: "",
+      mainComplaints: "",
+      systemicDiseases: "",
+      respiratoryComplaints: "",
+      cough: "",
+      sputum: "",
+      hemoptysis: "",
+      chestPain: "",
+      dyspnea: "",
+      cardiovascularComplaints: "",
+      heartPain: "",
+      heartRhythm: "",
+      palpitations: "",
+      digestiveComplaints: "",
+      vomiting: "",
+      abdominalPain: "",
+      epigastricPain: "",
+      bowelMovements: "",
+      analSymptoms: "",
+      urinaryComplaints: "",
+      endocrineComplaints: "",
+      musculoskeletalComplaints: "",
+      nervousSystemComplaints: "",
+      doctorRecommendations: "",
+    })
+  }
+
+  const openAddMedicationDialog = () => {
+    console.log("Opening medication dialog")
+    setShowAddMedicationDialog(true)
+  }
+
+  const closeAddMedicationDialog = () => {
+    console.log("Closing medication dialog")
+    setShowAddMedicationDialog(false)
+  }
+
+  const openAddVitalsDialog = () => {
+    console.log("Opening vitals dialog")
+    setShowAddVitalsDialog(true)
+  }
+
+  const closeAddVitalsDialog = () => {
+    console.log("Closing vitals dialog")
+    setShowAddVitalsDialog(false)
+  }
+
+  const openAddDocumentDialog = () => {
+    console.log("Opening document dialog")
+    setShowAddDocumentDialog(true)
+  }
+
+  const closeAddDocumentDialog = () => {
+    console.log("Closing document dialog")
+    setShowAddDocumentDialog(false)
+  }
+
+  const closePatientView = () => {
+    console.log("Closing patient view")
+    setSelectedPatientId(null)
+    setShowAddHistoryDialog(false)
+    setShowAddMedicationDialog(false)
+    setShowAddVitalsDialog(false)
+    setShowAddDocumentDialog(false)
+  }
+
+  // Expanded sections state
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    basic: true,
+    respiratory: false,
+    cardiovascular: false,
+    digestive: false,
+    urinary: false,
+    endocrine: false,
+    musculoskeletal: false,
+    nervous: false,
+  })
+
+  const [newPatient, setNewPatient] = useState<NewPatientForm>({
+    fish: "",
+    passportSeries: "",
+    passportNumber: "",
+    phone: "",
+    email: "",
+    birthDate: "",
+    gender: "Мужской",
+    bloodType: "A(II) Rh+",
+    address: "",
+  })
+
+  const [newHistoryEntry, setNewHistoryEntry] = useState<NewHistoryEntryForm>({
+    date: "",
+    type: "",
+    doctor: "",
+    diagnosis: "",
+    notes: "",
+    documents: [],
+  })
+
+  const [medicalHistory, setMedicalHistory] = useState<MedicalHistoryForm>({
+    fish: "",
+    birthDate: "",
+    nationality: "",
+    education: "",
+    profession: "",
+    workplace: "",
+    workPosition: "",
+    homeAddress: "",
+    visitDate: "",
+    mainComplaints: "",
+    systemicDiseases: "",
+    respiratoryComplaints: "",
+    cough: "",
+    sputum: "",
+    hemoptysis: "",
+    chestPain: "",
+    dyspnea: "",
+    cardiovascularComplaints: "",
+    heartPain: "",
+    heartRhythm: "",
+    palpitations: "",
+    digestiveComplaints: "",
+    vomiting: "",
+    abdominalPain: "",
+    epigastricPain: "",
+    bowelMovements: "",
+    analSymptoms: "",
+    urinaryComplaints: "",
+    endocrineComplaints: "",
+    musculoskeletalComplaints: "",
+    nervousSystemComplaints: "",
+    doctorRecommendations: "",
+  })
+
+  const [newMedication, setNewMedication] = useState<NewMedicationForm>({
+    name: "",
+    dosage: "",
+    frequency: "",
+    time: "",
+    refill: "",
+  })
+
+  const [newVitals, setNewVitals] = useState<NewVitalsForm>({
+    date: "",
+    bp: "",
+    pulse: "",
+    temp: "",
+    weight: "",
+  })
+
+  const [newDocument, setNewDocument] = useState<NewDocumentForm>({
+    name: "",
+    type: "",
+    file: null,
+  })
 
   const filteredPatients = patients.filter((patient) => {
     const searchLower = searchQuery.toLowerCase()
@@ -703,7 +820,6 @@ ${medicalHistory.doctorRecommendations}
   }
 
   const createPatientHandler = async () => {
-
     const token = localStorage.getItem("accessToken")
 
     if (!newPatient.fish || !newPatient.passportSeries || !newPatient.passportNumber) {
@@ -718,20 +834,16 @@ ${medicalHistory.doctorRecommendations}
       passport_series: newPatient.passportSeries,
       passport_number: newPatient.passportNumber,
       birth_date: newPatient.birthDate || null,
-      // gender: newPatient.gender || null,
       phone: newPatient.phone || null,
       secondary_phone: null,
-      // blood_group: newPatient.bloodType || null,
       address: newPatient.address || null,
     }
 
     try {
-      console.log(payload)
       const response = await fetch("https://new.avishifo.uz/api/patients/create/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // Add authorization header if required
           "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
@@ -741,11 +853,11 @@ ${medicalHistory.doctorRecommendations}
 
       if (response.ok) {
         const newPatientData: Patient = {
-          id: result.data.id.toString(),
+          id: String(result.data.id), // Convert id to string safely
           name: result.data.full_name,
-          age: newPatient.birthDate
-            ? Math.floor((new Date().getTime() - new Date(newPatient.birthDate).getTime()) / (1000 * 60 * 60 * 24 * 365.25))
-            : 0,
+          age: result.data.birth_date
+            ? Math.floor((new Date().getTime() - new Date(result.data.birth_date).getTime()) / (1000 * 60 * 60 * 24 * 365.25))
+            : "Не указан",
           gender: result.data.gender || "Не указан",
           lastVisit: new Date().toLocaleDateString("ru-RU"),
           status: "Новый пациент",
@@ -753,7 +865,9 @@ ${medicalHistory.doctorRecommendations}
           phone: result.data.phone || "Не указан",
           email: newPatient.email || "Не указан",
           address: result.data.address || "Не указан",
-          insurance: `ОМС №${result.data.passport_series}${result.data.passport_number}`,
+          insurance: result.data.passport_series && result.data.passport_number
+            ? `ОМС №${result.data.passport_series}${result.data.passport_number}`
+            : "Не указан",
           bloodType: result.data.blood_group || "Не указан",
           allergies: [],
           chronicConditions: [],
@@ -768,7 +882,7 @@ ${medicalHistory.doctorRecommendations}
               type: "Регистрация",
               doctor: "Текущий врач",
               diagnosis: "Регистрация нового пациента",
-              notes: `Паспорт: ${result.data.passport_series} ${result.data.passport_number}`,
+              notes: `Паспорт: ${result.data.passport_series || "Не указан"} ${result.data.passport_number || "Не указан"}`,
               documents: [],
             },
           ],
@@ -1519,15 +1633,14 @@ ${medicalHistory.doctorRecommendations}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-10 text-center">
           <Search className="h-12 w-12 text-gray-300 mx-auto mb-3" />
           <h3 className="text-xl font-medium text-gray-800 mb-1">Пациенты не найдены</h3>
-          <p className="text-sm text-gray-500 mb-4">Попробуйте изменить параметры поиска или сбросить фильтры.</p>
+          <p className="text-sm text-gray-500 mb-4">
+            Данные пациентов отсутствуют или не удалось загрузить. Попробуйте позже.
+          </p>
           <Button
-            onClick={() => {
-              setSearchQuery("")
-              setFilterStatus(null)
-            }}
+            onClick={() => fetchPatients()}
             className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2"
           >
-            Сбросить фильтры
+            Повторить
           </Button>
         </div>
       )}
@@ -1565,7 +1678,7 @@ ${medicalHistory.doctorRecommendations}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="birth-date">Bemorni tug'ilgan sanasi</Label>
+                      <Label htmlFor="birth-date">Bemorni tug'ilgansanasi</Label>
                       <Input
                         id="birth-date"
                         type="date"
