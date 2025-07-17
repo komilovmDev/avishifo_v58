@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Heart, User, UserCheck, Shield, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import Link from "next/link"
 
 // Define the API base URL
 const API_BASE_URL = "https://new.avishifo.uz"
@@ -264,9 +265,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <div className="text-center w-full">
-              <Button variant="link" onClick={fillDemoCredentials} className="text-sm text-gray-500">
-                Использовать демо данные
-              </Button>
+              <Link href={'https://www.avishifo.uz/contact'}>
+                <Button variant="link" onClick={fillDemoCredentials} className="text-sm text-gray-500">
+                  Зарегистрироваться
+                </Button>
+              </Link>
             </div>
             <div className="text-center text-xs text-gray-500">
               <p>
