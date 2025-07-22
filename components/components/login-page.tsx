@@ -281,7 +281,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             </div>
           </CardFooter>
         </Card>
-
         <p className="text-center text-xs text-gray-500 mt-8">© 2024 AviShifo. Все права защищены.</p>
       </div>
     </div>
