@@ -1,16 +1,6 @@
-// /app/patients/components/dialogs/AddHistoryDialog.tsx
 "use client";
 
 import { useState, useRef } from "react";
-// ПРИМЕЧАНИЕ: Убедитесь, что ваш тип MedicalHistoryForm обновлен и включает поля для файлов.
-// Например:
-// respiratoryFiles?: File[];
-// cardiovascularFiles?: File[];
-// digestiveFiles?: File[];
-// urinaryFiles?: File[];
-// endocrineFiles?: File[];
-// musculoskeletalFiles?: File[];
-// nervousSystemFiles?: File[];
 import { MedicalHistoryForm } from "../../types";
 import {
   Dialog,
@@ -45,10 +35,10 @@ interface AddHistoryDialogProps {
   onOpenChange: (open: boolean) => void;
   medicalHistory: MedicalHistoryForm;
   setMedicalHistory: (form: MedicalHistoryForm) => void;
-  onSubmit: () => void;
+  patientId: number | undefined; // Allow undefined with a default or check
+  onSubmitSuccess?: () => void; // Optional callback for success
 }
 
-// Переиспользуемый компонент для прикрепления файлов
 interface FileAttachmentProps {
   id: string;
   field: keyof MedicalHistoryForm;
@@ -121,20 +111,11 @@ export function AddHistoryDialog({
   onOpenChange,
   medicalHistory,
   setMedicalHistory,
-  onSubmit,
+  patientId,
+  onSubmitSuccess,
 }: AddHistoryDialogProps) {
-  const [expandedSections, setExpandedSections] = useState<
-    Record<string, boolean>
-  >({
-    basic: true,
-    respiratory: false,
-    cardiovascular: false,
-    digestive: false,
-    urinary: false,
-    endocrine: false,
-    musculoskeletal: false,
-    nervous: false,
-  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -175,6 +156,187 @@ export function AddHistoryDialog({
   const isSubmitDisabled =
     !medicalHistory.visitDate || !medicalHistory.mainComplaints;
 
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    setError(null);
+
+    if (!patientId) {
+      setError("Patient ID is required to save medical history.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const formData = new FormData();
+
+    // Add patient ID
+    formData.append("patient", patientId.toString());
+
+    // Map text fields
+    formData.append("fish", medicalHistory.fish || "");
+    formData.append("tugilgan_sana", medicalHistory.birthDate || "");
+    formData.append("millati", medicalHistory.nationality || "");
+    formData.append("malumoti", medicalHistory.education || "");
+    formData.append("kasbi", medicalHistory.profession || "");
+    formData.append("ish_joyi", medicalHistory.workplace || "");
+    formData.append("ish_vazifasi", medicalHistory.workPosition || "");
+    formData.append("uy_manzili", medicalHistory.homeAddress || "");
+    formData.append("kelgan_vaqti", medicalHistory.visitDate || "");
+    formData.append("shikoyatlar", medicalHistory.mainComplaints || "");
+    formData.append("asosiy_kasalliklar", medicalHistory.systemicDiseases || "");
+
+    // Respiratory system
+    formData.append("nafas_tizimi", medicalHistory.respiratoryComplaints || "");
+    (medicalHistory.respiratoryFiles || []).forEach((file, index) =>
+      formData.append("nafas_tizimi_hujjat", file)
+    );
+    formData.append("yotal", medicalHistory.cough || "");
+    (medicalHistory.respiratoryFiles || []).forEach((file, index) =>
+      formData.append("yotal_hujjat", file)
+    );
+    formData.append("balgam", medicalHistory.sputum || "");
+    (medicalHistory.respiratoryFiles || []).forEach((file, index) =>
+      formData.append("balgam_hujjat", file)
+    );
+    formData.append("qon_tuflash", medicalHistory.hemoptysis || "");
+    (medicalHistory.respiratoryFiles || []).forEach((file, index) =>
+      formData.append("qon_tuflash_hujjat", file)
+    );
+    formData.append("kokrak_ogriq", medicalHistory.chestPain || "");
+    (medicalHistory.respiratoryFiles || []).forEach((file, index) =>
+      formData.append("kokrak_ogriq_hujjat", file)
+    );
+    formData.append("nafas_qisishi", medicalHistory.dyspnea || "");
+    (medicalHistory.respiratoryFiles || []).forEach((file, index) =>
+      formData.append("nafas_qisishi_hujjat", file)
+    );
+
+    // Cardiovascular system
+    formData.append(
+      "yurak_qon_shikoyatlari",
+      medicalHistory.cardiovascularComplaints || ""
+    );
+    (medicalHistory.cardiovascularFiles || []).forEach((file, index) =>
+      formData.append("yurak_qon_shikoyatlari_hujjat", file)
+    );
+    formData.append("yurak_ogriq", medicalHistory.heartPain || "");
+    (medicalHistory.cardiovascularFiles || []).forEach((file, index) =>
+      formData.append("yurak_ogriq_hujjat", file)
+    );
+    formData.append("yurak_urishi_ozgarishi", medicalHistory.heartRhythm || "");
+    (medicalHistory.cardiovascularFiles || []).forEach((file, index) =>
+      formData.append("yurak_urishi_ozgarishi_hujjat", file)
+    );
+    formData.append("yurak_urishi_sezish", medicalHistory.palpitations || "");
+    (medicalHistory.cardiovascularFiles || []).forEach((file, index) =>
+      formData.append("yurak_urishi_sezish_hujjat", file)
+    );
+
+    // Digestive system
+    formData.append("hazm_tizimi", medicalHistory.digestiveComplaints || "");
+    (medicalHistory.digestiveFiles || []).forEach((file, index) =>
+      formData.append("hazm_tizimi_hujjat", file)
+    );
+    formData.append("qusish", medicalHistory.vomiting || "");
+    (medicalHistory.digestiveFiles || []).forEach((file, index) =>
+      formData.append("qusish_hujjat", file)
+    );
+    formData.append("qorin_ogriq", medicalHistory.abdominalPain || "");
+    (medicalHistory.digestiveFiles || []).forEach((file, index) =>
+      formData.append("qorin_ogriq_hujjat", file)
+    );
+    formData.append("qorin_shish", medicalHistory.epigastricPain || "");
+    (medicalHistory.digestiveFiles || []).forEach((file, index) =>
+      formData.append("qorin_shish_hujjat", file)
+    );
+    formData.append("ich_ozgarishi", medicalHistory.bowelMovements || "");
+    (medicalHistory.digestiveFiles || []).forEach((file, index) =>
+      formData.append("ich_ozgarishi_hujjat", file)
+    );
+    formData.append("anus_shikoyatlar", medicalHistory.analSymptoms || "");
+    (medicalHistory.digestiveFiles || []).forEach((file, index) =>
+      formData.append("anus_shikoyatlar_hujjat", file)
+    );
+
+    // Urinary system
+    formData.append("siydik_tizimi", medicalHistory.urinaryComplaints || "");
+    (medicalHistory.urinaryFiles || []).forEach((file, index) =>
+      formData.append("siydik_tizimi_hujjat", file)
+    );
+
+    // Endocrine system
+    formData.append("endokrin_tizimi", medicalHistory.endocrineComplaints || "");
+    (medicalHistory.endocrineFiles || []).forEach((file, index) =>
+      formData.append("endokrin_tizimi_hujjat", file)
+    );
+
+    // Musculoskeletal system
+    formData.append(
+      "tayanch_harakat",
+      medicalHistory.musculoskeletalComplaints || ""
+    );
+    (medicalHistory.musculoskeletalFiles || []).forEach((file, index) =>
+      formData.append("tayanch_harat_hujjat", file)
+    );
+
+    // Nervous system
+    formData.append(
+      "asab_tizimi",
+      medicalHistory.nervousSystemComplaints || ""
+    );
+    (medicalHistory.nervousSystemFiles || []).forEach((file, index) =>
+      formData.append("asab_tizimi_hujjat", file)
+    );
+
+    // Doctor recommendations
+    formData.append(
+      "doctor_recommendations",
+      medicalHistory.doctorRecommendations || ""
+    );
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        throw new Error("No access token found. Please log in.");
+      }
+
+      const response = await fetch(
+        "https://new.avishifo.uz/api/patients/kasallik-tarixi/",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`, // Add authentication token
+          },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to submit medical history");
+      }
+
+      onOpenChange(false); // Close dialog on success
+      if (onSubmitSuccess) onSubmitSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const [expandedSections, setExpandedSections] = useState<
+    Record<string, boolean>
+  >({
+    basic: true,
+    respiratory: false,
+    cardiovascular: false,
+    digestive: false,
+    urinary: false,
+    endocrine: false,
+    musculoskeletal: false,
+    nervous: false,
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden">
@@ -196,8 +358,7 @@ export function AddHistoryDialog({
                   className="w-full justify-between p-0 h-auto"
                 >
                   <h3 className="text-lg font-medium text-gray-700 flex items-center gap-2">
-                    <User className="h-5 w-5 text-blue-500" /> Asosiy
-                    ma'lumotlar
+                    <User className="h-5 w-5 text-blue-500" /> Asosiy ma'lumotlar
                   </h3>
                   {expandedSections.basic ? (
                     <ChevronUp className="h-4 w-4" />
@@ -880,6 +1041,7 @@ export function AddHistoryDialog({
                 />
               </div>
             </div>
+            {error && <p className="text-red-500 text-sm">{error}</p>}
           </div>
         </ScrollArea>
         <DialogFooter className="flex gap-2">
@@ -887,11 +1049,17 @@ export function AddHistoryDialog({
             Bekor qilish
           </Button>
           <Button
-            onClick={onSubmit}
-            disabled={isSubmitDisabled}
+            onClick={handleSubmit}
+            disabled={isSubmitDisabled || isSubmitting}
             className="bg-gradient-to-r from-green-500 to-emerald-600 text-white"
           >
-            <Plus className="w-4 h-4 mr-2" /> Kasallik tarixini saqlash
+            {isSubmitting ? (
+              "Saqlanmoqda..."
+            ) : (
+              <>
+                <Plus className="w-4 h-4 mr-2" /> Kasallik tarixini saqlash
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

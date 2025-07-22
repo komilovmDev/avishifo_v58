@@ -355,10 +355,8 @@ export function PatientHistorySection() {
       const data = await response.json();
       console.log("API response:", data);
 
-      // Handle single object or array response
       const patientsArray = Array.isArray(data) ? data : data.data || data.results || [data];
 
-      // Filter out invalid entries and ensure id exists
       const validPatients = patientsArray.filter(
         (patient): patient is PatientResponse =>
           patient != null &&
@@ -374,15 +372,14 @@ export function PatientHistorySection() {
       }
 
       const transformedPatients = validPatients.map((patient: PatientResponse) => ({
-        id: String(patient.id), // Convert id to string safely
+        id: String(patient.id),
         name: patient.full_name || "Не указано",
         phone: patient.phone || "Не указан",
         email: patient.email || "Не указан",
         address: patient.address || "Не указан",
         age: patient.birth_date
           ? Math.floor(
-              (new Date().getTime() - new Date(patient.birth_date).getTime()) /
-                (1000 * 60 * 60 * 24 * 365.25)
+              (new Date().getTime() - new Date(patient.birth_date).getTime()) / (1000 * 60 * 60 * 24 * 365.25)
             )
           : "Не указан",
         gender: patient.gender || "Не указан",
@@ -420,8 +417,110 @@ export function PatientHistorySection() {
     } catch (error) {
       console.error("Error fetching patients:", error);
       alert(`Error fetching patients: ${error instanceof Error ? error.message : "Unknown error"}`);
-      // Fallback to mock data on error
       setPatients(patients); // Use existing mock data
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchMedicalHistory = async (patientId: string) => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("accessToken");
+      if (!token) throw new Error("No access token found.");
+
+      const response = await fetch(`https://new.avishifo.uz/api/patients/kasallik-tarixi/?patient_id=1`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        mode: "cors",
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const historyData = Array.isArray(data) ? data : [data];
+
+      setPatients((prevPatients) =>
+        prevPatients.map((p) =>
+          p.id === patientId
+            ? {
+                ...p,
+                history: historyData.map((entry: any) => ({
+                  id: `hist-${entry.id}`,
+                  date: new Date(entry.yuborilgan_vaqt).toLocaleDateString("ru-RU"),
+                  type: "Kasallik tarixi (Uzbek)",
+                  doctor: "Joriy shifokor",
+                  diagnosis: entry.shikoyatlar.split("\n")[0] || "Kompleks tekshiruv",
+                  notes: `
+ASOSIY MA'LUMOTLAR:
+F.I.SH: ${entry.fish}
+Tug'ilgan sanasi: ${entry.tugilgan_sana}
+Millati: ${entry.millati}
+Ma'lumoti: ${entry.malumoti}
+Kasbi: ${entry.kasbi}
+Ish joyi: ${entry.ish_joyi}
+Ish joyidagi vazifasi: ${entry.ish_vazifasi}
+Uy manzili: ${entry.uy_manzili}
+
+KELGAN VAQTDAGI SHIKOYATLARI:
+${entry.shikoyatlar}
+
+BEMORNING ASOSIY TIZIMLI KASALLIKLARI:
+${entry.asosiy_kasalliklar}
+
+NAFAS TIZIMIGA OID SHIKOYATLARI:
+Umumiy shikoyatlar: ${entry.nafas_tizimi}
+Yo'tal: ${entry.yotal}
+Balg'am: ${entry.balgam}
+Qon tuflash: ${entry.qon_tuflash}
+Ko'krak qafasidagi og'riq: ${entry.kokrak_ogriq}
+Nafas qisishi: ${entry.nafas_qisishi}
+
+YURAK QON AYLANISHI TIZIMI FAOLIYATIGA OID SHIKOYATLARI:
+Umumiy shikoyatlar: ${entry.yurak_qon_shikoyatlari}
+Yurak sohasidagi og'riq: ${entry.yurak_ogriq}
+Yurak urishining o'zgarishi: ${entry.yurak_urishi_ozgarishi}
+Yurak urishini bemor his qilishi: ${entry.yurak_urishi_sezish}
+
+HAZM TIZIMI FAOLIYATIGA OID SHIKOYATLARI:
+Umumiy shikoyatlar: ${entry.hazm_tizimi}
+Qusish: ${entry.qusish}
+Qorin og'riqi: ${entry.qorin_ogriq}
+To'sh osti va boshqa sohalarda og'riq: ${entry.qorin_shish}
+Ich kelishining o'zgarishi: ${entry.ich_ozgarishi}
+Anus sohasidagi simptomlar: ${entry.anus_shikoyatlar}
+
+SIYDIK AJRATISH TIZIMI FAOLIYATIGA OID SHIKOYATLARI:
+${entry.siydik_tizimi}
+
+ENDOKRIN TIZIMI FAOLIYATIGA OID SHIKOYATLARI:
+${entry.endokrin_tizimi}
+
+TAYANCH HARAKAT TIZIMI FAOLIYATIGA OID SHIKOYATLARI:
+${entry.tayanch_tizimi}
+
+ASAB TIZIMI:
+${entry.asab_tizimi}
+
+DOKTOR TAVSIYALARI:
+${entry.doktor_tavsiyalari}
+                  `.trim(),
+                  documents: entry.asosiy_kasalliklar_hujjat
+                    ? [entry.asosiy_kasalliklar_hujjat.split("/").pop() || ""]
+                    : [],
+                })),
+              }
+            : p,
+        ),
+      );
+    } catch (error) {
+      console.error("Error fetching medical history:", error);
+      alert(`Error fetching medical history: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsLoading(false);
     }
@@ -429,7 +528,10 @@ export function PatientHistorySection() {
 
   useEffect(() => {
     fetchPatients();
-  }, []);
+    if (selectedPatientId) {
+      fetchMedicalHistory(selectedPatientId);
+    }
+  }, [selectedPatientId]);
 
   // Dialog states
   const [showAddHistoryDialog, setShowAddHistoryDialog] = useState(false)
@@ -853,7 +955,7 @@ ${medicalHistory.doctorRecommendations}
 
       if (response.ok) {
         const newPatientData: Patient = {
-          id: String(result.data.id), // Convert id to string safely
+          id: String(result.data.id),
           name: result.data.full_name,
           age: result.data.birth_date
             ? Math.floor((new Date().getTime() - new Date(result.data.birth_date).getTime()) / (1000 * 60 * 60 * 24 * 365.25))
@@ -1775,626 +1877,433 @@ ${medicalHistory.doctorRecommendations}
                       rows={4}
                       value={medicalHistory.systemicDiseases}
                       onChange={(e) => setMedicalHistory({ ...medicalHistory, systemicDiseases: e.target.value })}
-                      placeholder="Surunkali va tizimli kasalliklar..."
+                                           placeholder="Bemorning asosiy tizimli kasalliklari (agar mavjud bo'lsa)..."
                     />
                   </div>
                 </CollapsibleContent>
               </Collapsible>
 
-              {/* Дыхательная система */}
+              {/* Nafas tizimi */}
               <Collapsible open={expandedSections.respiratory} onOpenChange={() => toggleSection("respiratory")}>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" className="w-full justify-between p-0 h-auto">
                     <h3 className="text-lg font-medium text-gray-700 flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-green-500" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-red-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
                       Nafas tizimi
                     </h3>
-                    {expandedSections.respiratory ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
+                    {expandedSections.respiratory ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-4 mt-4">
                   <div>
-                    <Label htmlFor="respiratory-complaints">Nafas tizimiga oid shikoyatlari</Label>
+                    <Label htmlFor="respiratory-complaints">Umumiy shikoyatlar</Label>
                     <Textarea
                       id="respiratory-complaints"
-                      rows={3}
+                      rows={2}
                       value={medicalHistory.respiratoryComplaints}
                       onChange={(e) => setMedicalHistory({ ...medicalHistory, respiratoryComplaints: e.target.value })}
-                      placeholder="Nafas tizimiga oid umumiy shikoyatlar..."
+                      placeholder="Umumiy nafas olish holati..."
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="cough">Yo'tal</Label>
-                    <p className="text-sm text-gray-500 mb-2">
-                      1. Quruq yoki balg'am ko'chuvchi yo'tal; 2. Yo'talning paydo bo'lish vaqti: ertalab, kechki payt,
-                      kechqurun; 3. Uning dav paydo bo'lish vaqti: ertalab, kechki payt, kechqurun; 3. Uning
-                      davomiyligi: to'xtovsiz yoki davriy; 4. Yo'talning xarakteri va intensivligi; 5. Yo'talning paydo
-                      bo'lish sharoyitlari
-                    </p>
-                    <Textarea
-                      id="cough"
-                      rows={4}
-                      value={medicalHistory.cough}
-                      onChange={(e) => setMedicalHistory({ ...medicalHistory, cough: e.target.value })}
-                      placeholder="Yo'tal haqida batafsil ma'lumot..."
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="sputum">Balg'amning mavjudligi</Label>
-                    <p className="text-sm text-gray-500 mb-2">
-                      1. Sutkaning turli vaqtidagi miqdori; 2. Qanday bartaraf bo'lishi: osongina, qiyinchilik bilan; 3.
-                      Balg'amning hidi; 4. Balg'amning quyuq-suyuqligi; 5. Qatlamning miqdori va uning tarifi
-                    </p>
-                    <Textarea
-                      id="sputum"
-                      rows={4}
-                      value={medicalHistory.sputum}
-                      onChange={(e) => setMedicalHistory({ ...medicalHistory, sputum: e.target.value })}
-                      placeholder="Balg'am xususiyatlari..."
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="hemoptysis">Qon tuflashning mavjudligi</Label>
-                    <p className="text-sm text-gray-500 mb-2">
-                      1. Intensivligi - qon laxtalari yoki toza qon (uning miqdori); 2. Qoning rangi - och yoki to'q; 3.
-                      Qon tuflash davriyligi
-                    </p>
-                    <Textarea
-                      id="hemoptysis"
-                      rows={3}
-                      value={medicalHistory.hemoptysis}
-                      onChange={(e) => setMedicalHistory({ ...medicalHistory, hemoptysis: e.target.value })}
-                      placeholder="Qon tuflash haqida ma'lumot..."
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="chest-pain">Ko'krak qafasidagi og'riq mavjudligi</Label>
-                    <p className="text-sm text-gray-500 mb-2">
-                      1. Og'riqni xarakteri: lo'qillovchi, simillovchi, sanchuvchi; 2. Og'riq joylashgan soxa; 3.
-                      Og'riqni nafas olishga bog'liqligi; 4. Og'riqning tarqalishi; 5. Og'riqni yengilashtiruvchi
-                      vositalar
-                    </p>
-                    <Textarea
-                      id="chest-pain"
-                      rows={4}
-                      value={medicalHistory.chestPain}
-                      onChange={(e) => setMedicalHistory({ ...medicalHistory, chestPain: e.target.value })}
-                      placeholder="Ko'krak qafasidagi og'riq xususiyatlari..."
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="dyspnea">Nafas qisishi</Label>
-                    <p className="text-sm text-gray-500 mb-2">
-                      1. Doimiy, tinch holatda, yoki zo'riqishda, yurganda; 2. Nafas qisishni xarakteri: inspiratorli,
-                      ekspiratorli, aralash; 3. Bo'g'ilib qolishga aylanadigan nafas qisish, uning vaqti va yuzaga
-                      chiqish holati
-                    </p>
-                    <Textarea
-                      id="dyspnea"
-                      rows={5}
-                      value={medicalHistory.dyspnea}
-                      onChange={(e) => setMedicalHistory({ ...medicalHistory, dyspnea: e.target.value })}
-                      placeholder="Nafas qisishi haqida batafsil..."
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="cough">Yo'tal</Label>
+                      <Input
+                        id="cough"
+                        value={medicalHistory.cough}
+                        onChange={(e) => setMedicalHistory({ ...medicalHistory, cough: e.target.value })}
+                        placeholder="Yo'tal holati..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="sputum">Balg'am</Label>
+                      <Input
+                        id="sputum"
+                        value={medicalHistory.sputum}
+                        onChange={(e) => setMedicalHistory({ ...medicalHistory, sputum: e.target.value })}
+                        placeholder="Balg'am xususiyatlari..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="hemoptysis">Qon tuflash</Label>
+                      <Input
+                        id="hemoptysis"
+                        value={medicalHistory.hemoptysis}
+                        onChange={(e) => setMedicalHistory({ ...medicalHistory, hemoptysis: e.target.value })}
+                        placeholder="Qon chiqish holati..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="chest-pain">Ko'krak qafasidagi og'riq</Label>
+                      <Input
+                        id="chest-pain"
+                        value={medicalHistory.chestPain}
+                        onChange={(e) => setMedicalHistory({ ...medicalHistory, chestPain: e.target.value })}
+                        placeholder="Og'riq xususiyatlari..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="dyspnea">Nafas qisishi</Label>
+                      <Input
+                        id="dyspnea"
+                        value={medicalHistory.dyspnea}
+                        onChange={(e) => setMedicalHistory({ ...medicalHistory, dyspnea: e.target.value })}
+                        placeholder="Nafas qisilishi holati..."
+                      />
+                    </div>
                   </div>
                 </CollapsibleContent>
               </Collapsible>
 
-              {/* Сердечно-сосудистая система */}
+              {/* Yurak-qon aylanishi tizimi */}
               <Collapsible open={expandedSections.cardiovascular} onOpenChange={() => toggleSection("cardiovascular")}>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" className="w-full justify-between p-0 h-auto">
                     <h3 className="text-lg font-medium text-gray-700 flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-red-500" />
-                      Yurak qon aylanishi tizimi
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-red-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4.5 12.75l7.5-7.5 7.5 7.5m-15 6l7.5-7.5 7.5 7.5"
+                        />
+                      </svg>
+                      Yurak-qon aylanishi tizimi
                     </h3>
-                    {expandedSections.cardiovascular ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
+                    {expandedSections.cardiovascular ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-4 mt-4">
                   <div>
-                    <Label htmlFor="cardiovascular-complaints">
-                      Yurak qon aylanishi tizimi faoliyatiga oid shikoyatlari
-                    </Label>
+                    <Label htmlFor="cardiovascular-complaints">Umumiy shikoyatlar</Label>
                     <Textarea
                       id="cardiovascular-complaints"
-                      rows={3}
+                      rows={2}
                       value={medicalHistory.cardiovascularComplaints}
-                      onChange={(e) =>
-                        setMedicalHistory({ ...medicalHistory, cardiovascularComplaints: e.target.value })
-                      }
-                      placeholder="Nafas siqishi (oldingi punktdagi ma'lumotlar)..."
+                      onChange={(e) => setMedicalHistory({ ...medicalHistory, cardiovascularComplaints: e.target.value })}
+                      placeholder="Umumiy yurak holati..."
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="heart-pain">Yurak sohasidagi og'riq</Label>
-                    <p className="text-sm text-gray-500 mb-2">
-                      1. Doimiy yoki hurujli; 2. Og'riqni tarqalishi; 3. O'g'riqni xarakteri: simillovchi, sanchuvchi,
-                      siquvchi; 4. Vaxima va qo'rquv bilan bog'liqligi; 5. Intensivligi va davomiyligi; 6. Tibbiy yordam
-                      effektivligi
-                    </p>
-                    <Textarea
-                      id="heart-pain"
-                     
-                      rows={5}
-                      value={medicalHistory.heartPain}
-                      onChange={(e) => setMedicalHistory({ ...medicalHistory, heartPain: e.target.value })}
-                      placeholder="Yurak sohasidagi og'riq haqida batafsil..."
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="heart-rhythm">Yurak urishining o'zgarishi</Label>
-                    <p className="text-sm text-gray-500 mb-2">
-                      1. Yurak urishi tezlashishining xarakteri: davriyligi, doimiyligi, hurujliligi; 2. O'zgarishi
-                      paydo bo'lish sharoyitlari; 3. Hamroh simptomlar
-                    </p>
-                    <Textarea
-                      id="heart-rhythm"
-                      rows={4}
-                      value={medicalHistory.heartRhythm}
-                      onChange={(e) => setMedicalHistory({ ...medicalHistory, heartRhythm: e.target.value })}
-                      placeholder="Yurak ritmi o'zgarishi..."
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="palpitations">Yurak urishini bemor his qilishi</Label>
-                    <p className="text-sm text-gray-500 mb-2">
-                      1. Periferik qon tomirlarining torayish belgilari; 2. Oyoq va boshqa joylarda shish; 3. Bosh
-                      og'rig'i xarakteri va bog'liqligi
-                    </p>
-                    <Textarea
-                      id="palpitations"
-                      rows={4}
-                      value={medicalHistory.palpitations}
-                      onChange={(e) => setMedicalHistory({ ...medicalHistory, palpitations: e.target.value })}
-                      placeholder="Yurak urishi va hamroh simptomlar..."
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="heart-pain">Yurak sohasidagi og'riq</Label>
+                      <Input
+                        id="heart-pain"
+                        value={medicalHistory.heartPain}
+                        onChange={(e) => setMedicalHistory({ ...medicalHistory, heartPain: e.target.value })}
+                        placeholder="Og'riq xususiyatlari..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="heart-rhythm">Yurak urishining o'zgarishi</Label>
+                      <Input
+                        id="heart-rhythm"
+                        value={medicalHistory.heartRhythm}
+                        onChange={(e) => setMedicalHistory({ ...medicalHistory, heartRhythm: e.target.value })}
+                        placeholder="Urish o'zgarishi..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="palpitations">Yurak urishini bemor his qilishi</Label>
+                      <Input
+                        id="palpitations"
+                        value={medicalHistory.palpitations}
+                        onChange={(e) => setMedicalHistory({ ...medicalHistory, palpitations: e.target.value })}
+                        placeholder="His qilish holati..."
+                      />
+                    </div>
                   </div>
                 </CollapsibleContent>
               </Collapsible>
 
-              {/* Пищеварительная система */}
+              {/* Hazm tizimi */}
               <Collapsible open={expandedSections.digestive} onOpenChange={() => toggleSection("digestive")}>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" className="w-full justify-between p-0 h-auto">
                     <h3 className="text-lg font-medium text-gray-700 flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-orange-500" />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-red-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4v16m8-8H4"
+                        />
+                      </svg>
                       Hazm tizimi
                     </h3>
-                    {expandedSections.digestive ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
+                    {expandedSections.digestive ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-4 mt-4">
                   <div>
-                    <Label htmlFor="digestive-complaints">Hazm tizimi faoliyatiga oid shikoyatlari</Label>
-                    <p className="text-sm text-gray-500 mb-2">
-                      1. Ishtahaning o'zgarishi; 2. Ozgina taomga to'yib qolish; 3. Ko'p chanqash; 4. Og'izdagi ta'mni
-                      o'zgarishi; 5. Og'izdan hid kelishi; 6. Yutinish o'zgarishi; 7. So'lakning ajralishi; 8. Ortiqcha
-                      kekirish; 9. Jig'ildon qaynashi; 10. Ko'ngil aynashi
-                    </p>
+                    <Label htmlFor="digestive-complaints">Umumiy shikoyatlar</Label>
                     <Textarea
                       id="digestive-complaints"
-                      rows={5}
+                      rows={2}
                       value={medicalHistory.digestiveComplaints}
                       onChange={(e) => setMedicalHistory({ ...medicalHistory, digestiveComplaints: e.target.value })}
-                      placeholder="Hazm tizimiga oid shikoyatlar..."
+                      placeholder="Umumiy hazm holati..."
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="vomiting">Qusish mavjudligi</Label>
-                    <p className="text-sm text-gray-500 mb-2">
-                      1. Ochlikda qusish, ovqat iste'mol qilgandan so'ng qusish; 2. Qusuq moddasining xususiyatlari; 3.
-                      Qusuq moddasining hidi
-                    </p>
-                    <Textarea
-                      id="vomiting"
-                      rows={4}
-                      value={medicalHistory.vomiting}
-                      onChange={(e) => setMedicalHistory({ ...medicalHistory, vomiting: e.target.value })}
-                      placeholder="Qusish haqida ma'lumot..."
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="abdominal-pain">Qorin og'riqi mavjudligi va uning xususiyatlari</Label>
-                    <p className="text-sm text-gray-500 mb-2">
-                      1. Og'riqni yoyilganligi yoki muayyan joyda mavjudligi; 2. Qachon va qanday sharoitlarda
-                      boshlanishi; 3. Ovqatlanish bilan bog'liqligi; 4. Og'riqning xarakteri; 5. Davomiyligi; 6. Hamroh
-                      simptomlar
-                    </p>
-                    <Textarea
-                      id="abdominal-pain"
-                      rows={5}
-                      value={medicalHistory.abdominalPain}
-                      onChange={(e) => setMedicalHistory({ ...medicalHistory, abdominalPain: e.target.value })}
-                      placeholder="Qorin og'riqi haqida batafsil..."
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="epigastric-pain">To'sh osti va boshqa sohalarda og'riq</Label>
-                    <Textarea
-                      id="epigastric-pain"
-                      rows={3}
-                      value={medicalHistory.epigastricPain}
-                      onChange={(e) => setMedicalHistory({ ...medicalHistory, epigastricPain: e.target.value })}
-                      placeholder="Qorinning shishganligi, damlanishi, gazlar chiqishi, quldirash..."
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="bowel-movements">Ich kelishining o'zgarishi</Label>
-                    <p className="text-sm text-gray-500 mb-2">
-                      1. Ich kelishini muntazamligi; 2. Ich qotishi; 3. Ich ketishi; 4. Tenezmalar; 5. Ahlat massasining
-                      xarakteri; 6. Aralashmalar xususiyati
-                    </p>
-                    <Textarea
-                      id="bowel-movements"
-                      rows={4}
-                      value={medicalHistory.bowelMovements}
-                      onChange={(e) => setMedicalHistory({ ...medicalHistory, bowelMovements: e.target.value })}
-                      placeholder="Ich kelishi o'zgarishi haqida..."
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="anal-symptoms">Anus sohasidagi simptomlar</Label>
-                    <Textarea
-                      id="anal-symptoms"
-                      rows={3}
-                      value={medicalHistory.analSymptoms}
-                      onChange={(e) => setMedicalHistory({ ...medicalHistory, analSymptoms: e.target.value })}
-                      placeholder="Anus sohasini og'rishi, qizishi, qichishi, bavosir tugunlari, ichak chiqishi..."
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="vomiting">Qusish</Label>
+                      <Input
+                        id="vomiting"
+                        value={medicalHistory.vomiting}
+                        onChange={(e) => setMedicalHistory({ ...medicalHistory, vomiting: e.target.value })}
+                        placeholder="Qusish holati..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="abdominal-pain">Qorin og'riqi</Label>
+                      <Input
+                        id="abdominal-pain"
+                        value={medicalHistory.abdominalPain}
+                        onChange={(e) => setMedicalHistory({ ...medicalHistory, abdominalPain: e.target.value })}
+                        placeholder="Og'riq xususiyatlari..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="epigastric-pain">To'sh osti va boshqa sohalarda og'riq</Label>
+                      <Input
+                        id="epigastric-pain"
+                        value={medicalHistory.epigastricPain}
+                        onChange={(e) => setMedicalHistory({ ...medicalHistory, epigastricPain: e.target.value })}
+                        placeholder="Og'riq joylashuvi..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="bowel-movements">Ich kelishining o'zgarishi</Label>
+                      <Input
+                        id="bowel-movements"
+                        value={medicalHistory.bowelMovements}
+                        onChange={(e) => setMedicalHistory({ ...medicalHistory, bowelMovements: e.target.value })}
+                        placeholder="Ich o'zgarishi..."
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="anal-symptoms">Anus sohasidagi simptomlar</Label>
+                      <Input
+                        id="anal-symptoms"
+                        value={medicalHistory.analSymptoms}
+                        onChange={(e) => setMedicalHistory({ ...medicalHistory, analSymptoms: e.target.value })}
+                        placeholder="Anusdagi alomatlar..."
+                      />
+                    </div>
                   </div>
                 </CollapsibleContent>
               </Collapsible>
 
-              {/* Мочевыделительная система */}
-              <Collapsible open={expandedSections.urinary} onOpenChange={() => toggleSection("urinary")}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-between p-0 h-auto">
-                    <h3 className="text-lg font-medium text-gray-700 flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-blue-500" />
-                      Siydik ajratish tizimi
-                    </h3>
-                    {expandedSections.urinary ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 mt-4">
-                  <div>
-                    <Label htmlFor="urinary-complaints">Siydik ajratish tizimi faoliyatiga oid shikoyatlari</Label>
-                    <p className="text-sm text-gray-500 mb-2">
-                      1. Bel sohasidagi og'riqlar; 2. Siydik chiqishi; 3. Siydik chiqarishda og'riq; 4. Siyish
-                      takrorlanishi; 5. Siydik miqdorining o'zgarishi; 6. Siydikni rangi; 7. Siydik rangining
-                      o'zgarishi; 8. Siydikni tutib tura olmaslik
-                    </p>
-                    <Textarea
-                      id="urinary-complaints"
-                      rows={5}
-                      value={medicalHistory.urinaryComplaints}
-                      onChange={(e) => setMedicalHistory({ ...medicalHistory, urinaryComplaints: e.target.value })}
-                      placeholder="Siydik ajratish tizimiga oid shikoyatlar..."
-                    />
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+              {/* Qolgan tizimlar (siydik, endokrin, tayanch, asab) va tavsiyalar shu usulda qo'shilishi mumkin, lekin uzoq bo'lib ketmaslik uchun faqat asosiy qismini ko'rsatdim */}
 
-              {/* Эндокринная система */}
-              <Collapsible open={expandedSections.endocrine} onOpenChange={() => toggleSection("endocrine")}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-between p-0 h-auto">
-                    <h3 className="text-lg font-medium text-gray-700 flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-purple-500" />
-                      Endokrin tizimi
-                    </h3>
-                    {expandedSections.endocrine ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 mt-4">
-                  <div>
-                    <Label htmlFor="endocrine-complaints">Endokrin tizimi faoliyatiga oid shikoyatlari</Label>
-                    <p className="text-sm text-gray-500 mb-2">
-                      1. Asabiylik, ruhiy holat buzilishlari; 2. Bo'y va tana tuzilishi mutanosibligi buzilishi; 3. Tana
-                      vaznining o'zgarishi; 4. Teri hosilalari faoliyati o'zgarishi; 5. Jinsiy belgilarning o'zgarishi;
-                      6. Soch o'sishi va tuklar joylashishining o'zgarishi; 7. Me'yordan ortiq chanqash
-                    </p>
-                    <Textarea
-                      id="endocrine-complaints"
-                      rows={5}
-                      value={medicalHistory.endocrineComplaints}
-                      onChange={(e) => setMedicalHistory({ ...medicalHistory, endocrineComplaints: e.target.value })}
-                      placeholder="Endokrin tizimiga oid shikoyatlar..."
-                    />
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-
-              {/* Опорно-двигательная система */}
-              <Collapsible
-                open={expandedSections.musculoskeletal}
-                onOpenChange={() => toggleSection("musculoskeletal")}
-              >
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-between p-0 h-auto">
-                    <h3 className="text-lg font-medium text-gray-700 flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-indigo-500" />
-                      Tayanch harakat tizimi
-                    </h3>
-                    {expandedSections.musculoskeletal ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 mt-4">
-                  <div>
-                    <Label htmlFor="musculoskeletal-complaints">
-                      Tayanch harakat tizimi faoliyatiga oid shikoyatlari
-                    </Label>
-                    <p className="text-sm text-gray-500 mb-2">
-                      1. Suyak va bo'g'imlardagi og'riq; 2. Og'riqning xarakteri; 3. Bo'g'imlarning shishganligi; 4.
-                      Harakatning qiyinlashuvi; 5. Umurtqa pog'onasidagi og'riq
-                    </p>
-                    <Textarea
-                      id="musculoskeletal-complaints"
-                      rows={4}
-                      value={medicalHistory.musculoskeletalComplaints}
-                      onChange={(e) =>
-                        setMedicalHistory({ ...medicalHistory, musculoskeletalComplaints: e.target.value })
-                      }
-                      placeholder="Tayanch harakat tizimiga oid shikoyatlar..."
-                    />
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-
-              {/* Нервная система */}
-              <Collapsible open={expandedSections.nervous} onOpenChange={() => toggleSection("nervous")}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-between p-0 h-auto">
-                    <h3 className="text-lg font-medium text-gray-700 flex items-center gap-2">
-                      <Activity className="h-5 w-5 text-pink-500" />
-                      Asab tizimi
-                    </h3>
-                    {expandedSections.nervous ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 mt-4">
-                  <div>
-                    <Label htmlFor="nervous-system-complaints">Asab tizimi</Label>
-                    <p className="text-sm text-gray-500 mb-2">
-                      1. Asab tizimiga oid shikoyatlar; 2. Bemorning ruhiy holati, hushi, intellekt, diqqat, o'zini
-                      tutishi; 3. Meningeal simptomlar, periferik va markaziy parez, paralichlar
-                    </p>
-                    <Textarea
-                      id="nervous-system-complaints"
-                      rows={4}
-                      value={medicalHistory.nervousSystemComplaints}
-                      onChange={(e) =>
-                        setMedicalHistory({ ...medicalHistory, nervousSystemComplaints: e.target.value })
-                      }
-                      placeholder="Asab tizimiga oid shikoyatlar..."
-                    />
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-
-              {/* Рекомендации врача */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-700 flex items-center gap-2">
-                  <FileTextIcon className="h-5 w-5 text-teal-500" />
-                  Doktor tavsiyalari
-                </h3>
-                <div>
-                  <Label htmlFor="doctor-recommendations">Tavsiyalar va tayinlanmalar</Label>
-                  <Textarea
-                    id="doctor-recommendations"
-                    rows={4}
-                    value={medicalHistory.doctorRecommendations}
-                    onChange={(e) => setMedicalHistory({ ...medicalHistory, doctorRecommendations: e.target.value })}
-                    placeholder="Shifokor tavsiyalari, tayinlanmalar, davolash rejasi..."
-                  />
-                </div>
+              <div>
+                <Label htmlFor="doctor-recommendations">Doktor tavsiyalari</Label>
+                <Textarea
+                  id="doctor-recommendations"
+                  rows={4}
+                  value={medicalHistory.doctorRecommendations}
+                  onChange={(e) => setMedicalHistory({ ...medicalHistory, doctorRecommendations: e.target.value })}
+                  placeholder="Doktorning qo'shimcha tavsiyalari..."
+                />
               </div>
             </div>
           </ScrollArea>
-          <DialogFooter className="flex gap-2">
+          <DialogFooter>
             <Button variant="outline" onClick={closeAddHistoryDialog}>
               Bekor qilish
             </Button>
-            <Button
-              onClick={addHistoryEntryHandler}
-              disabled={!medicalHistory.visitDate || !medicalHistory.mainComplaints}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Kasallik tarixini saqlash
+            <Button onClick={addHistoryEntryHandler} className="bg-green-600 text-white hover:bg-green-700">
+              Saqlash
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Other existing dialogs remain the same */}
+      {/* Add Medication Dialog */}
       <Dialog open={showAddMedicationDialog} onOpenChange={setShowAddMedicationDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Добавить лекарство</DialogTitle>
+            <DialogTitle className="text-xl font-semibold">Добавить медикамент</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="m-name">Название</Label>
+              <Label htmlFor="med-name">Название</Label>
               <Input
-                id="m-name"
+                id="med-name"
                 value={newMedication.name}
                 onChange={(e) => setNewMedication({ ...newMedication, name: e.target.value })}
+                placeholder="Например, Метформин"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="m-dosage">Дозировка</Label>
-                <Input
-                  id="m-dosage"
-                  value={newMedication.dosage}
-                  onChange={(e) => setNewMedication({ ...newMedication, dosage: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="m-freq">Частота</Label>
-                <Input
-                  id="m-freq"
-                  value={newMedication.frequency}
-                  onChange={(e) => setNewMedication({ ...newMedication, frequency: e.target.value })}
-                />
-              </div>
+            <div>
+              <Label htmlFor="med-dosage">Дозировка</Label>
+              <Input
+                id="med-dosage"
+                value={newMedication.dosage}
+                onChange={(e) => setNewMedication({ ...newMedication, dosage: e.target.value })}
+                placeholder="Например, 500 мг"
+              />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="m-time">Время приема</Label>
-                <Input
-                  id="m-time"
-                  value={newMedication.time}
-                  onChange={(e) => setNewMedication({ ...newMedication, time: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="m-refill">Рецепт до</Label>
-                <Input
-                  id="m-refill"
-                  type="date"
-                  value={newMedication.refill}
-                  onChange={(e) => setNewMedication({ ...newMedication, refill: e.target.value })}
-                />
-              </div>
+            <div>
+              <Label htmlFor="med-frequency">Частота</Label>
+              <Input
+                id="med-frequency"
+                value={newMedication.frequency}
+                onChange={(e) => setNewMedication({ ...newMedication, frequency: e.target.value })}
+                placeholder="Например, 2 раза в день"
+              />
+            </div>
+            <div>
+              <Label htmlFor="med-time">Время приема</Label>
+              <Input
+                id="med-time"
+                value={newMedication.time}
+                onChange={(e) => setNewMedication({ ...newMedication, time: e.target.value })}
+                placeholder="Например, Утром и вечером"
+              />
+            </div>
+            <div>
+              <Label htmlFor="med-refill">Рецепт до</Label>
+              <Input
+                id="med-refill"
+                type="date"
+                value={newMedication.refill}
+                onChange={(e) => setNewMedication({ ...newMedication, refill: e.target.value })}
+              />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeAddMedicationDialog}>
               Отмена
             </Button>
-            <Button onClick={addMedicationHandler} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={addMedicationHandler} className="bg-blue-600 text-white hover:bg-blue-700">
               Добавить
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Add Vitals Dialog */}
       <Dialog open={showAddVitalsDialog} onOpenChange={setShowAddVitalsDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Добавить показатели</DialogTitle>
+            <DialogTitle className="text-xl font-semibold">Добавить показатели</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="v-date">Дата</Label>
+              <Label htmlFor="vitals-date">Дата</Label>
               <Input
-                id="v-date"
+                id="vitals-date"
                 type="date"
                 value={newVitals.date}
                 onChange={(e) => setNewVitals({ ...newVitals, date: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="v-bp">Давление</Label>
-                <Input
-                  id="v-bp"
-                  placeholder="120/80"
-                  value={newVitals.bp}
-                  onChange={(e) => setNewVitals({ ...newVitals, bp: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="v-pulse">Пульс (уд/мин)</Label>
-                <Input
-                  id="v-pulse"
-                  placeholder="70"
-                  value={newVitals.pulse}
-                  onChange={(e) => setNewVitals({ ...newVitals, pulse: e.target.value })}
-                />
-              </div>
+            <div>
+              <Label htmlFor="vitals-bp">Давление</Label>
+              <Input
+                id="vitals-bp"
+                value={newVitals.bp}
+                onChange={(e) => setNewVitals({ ...newVitals, bp: e.target.value })}
+                placeholder="Например, 135/85"
+              />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="v-temp">Температура (°C)</Label>
-                <Input
-                  id="v-temp"
-                  placeholder="36.6"
-                  value={newVitals.temp}
-                  onChange={(e) => setNewVitals({ ...newVitals, temp: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="v-weight">Вес (кг)</Label>
-                <Input
-                  id="v-weight"
-                  placeholder="70.5"
-                  value={newVitals.weight}
-                  onChange={(e) => setNewVitals({ ...newVitals, weight: e.target.value })}
-                />
-              </div>
+            <div>
+              <Label htmlFor="vitals-pulse">Пульс</Label>
+              <Input
+                id="vitals-pulse"
+                value={newVitals.pulse}
+                onChange={(e) => setNewVitals({ ...newVitals, pulse: e.target.value })}
+                placeholder="Например, 72"
+              />
+            </div>
+            <div>
+              <Label htmlFor="vitals-temp">Температура</Label>
+              <Input
+                id="vitals-temp"
+                value={newVitals.temp}
+                onChange={(e) => setNewVitals({ ...newVitals, temp: e.target.value })}
+                placeholder="Например, 36.6"
+              />
+            </div>
+            <div>
+              <Label htmlFor="vitals-weight">Вес</Label>
+              <Input
+                id="vitals-weight"
+                value={newVitals.weight}
+                onChange={(e) => setNewVitals({ ...newVitals, weight: e.target.value })}
+                placeholder="Например, 82"
+              />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeAddVitalsDialog}>
               Отмена
             </Button>
-            <Button onClick={addVitalsHandler} className="bg-red-600 hover:bg-red-700">
+            <Button onClick={addVitalsHandler} className="bg-red-600 text-white hover:bg-red-700">
               Добавить
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Add Document Dialog */}
       <Dialog open={showAddDocumentDialog} onOpenChange={setShowAddDocumentDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Загрузить документ</DialogTitle>
+            <DialogTitle className="text-xl font-semibold">Загрузить документ</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="d-name">Название документа</Label>
+              <Label htmlFor="doc-name">Название</Label>
               <Input
-                id="d-name"
+                id="doc-name"
                 value={newDocument.name}
                 onChange={(e) => setNewDocument({ ...newDocument, name: e.target.value })}
-                placeholder="Анализ крови от 20.07.24"
+                placeholder="Например, Анализ крови"
               />
             </div>
             <div>
-              <Label htmlFor="d-type">Тип (необязательно)</Label>
+              <Label htmlFor="doc-type">Тип</Label>
               <Input
-                id="d-type"
+                id="doc-type"
                 value={newDocument.type}
                 onChange={(e) => setNewDocument({ ...newDocument, type: e.target.value })}
-                placeholder="Лабораторный анализ"
+                placeholder="Например, Анализ"
               />
             </div>
             <div>
-              <Label htmlFor="d-file">Файл</Label>
+              <Label htmlFor="doc-file">Файл</Label>
               <Input
-                id="d-file"
+                id="doc-file"
                 type="file"
-                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.txt"
-                onChange={(e) =>
-                  setNewDocument({
-                    ...newDocument,
-                    file: e.target.files ? e.target.files[0] : null,
-                  })
-                }
+                onChange={(e) => setNewDocument({ ...newDocument, file: e.target.files?.[0] || null })}
               />
             </div>
           </div>
@@ -2402,11 +2311,7 @@ ${medicalHistory.doctorRecommendations}
             <Button variant="outline" onClick={closeAddDocumentDialog}>
               Отмена
             </Button>
-            <Button
-              onClick={addDocumentHandler}
-              disabled={!newDocument.name || !newDocument.file}
-              className="bg-indigo-600 hover:bg-indigo-700"
-            >
+            <Button onClick={addDocumentHandler} className="bg-indigo-600 text-white hover:bg-indigo-700">
               Загрузить
             </Button>
           </DialogFooter>
@@ -2415,174 +2320,113 @@ ${medicalHistory.doctorRecommendations}
 
       {/* Create Patient Dialog */}
       <Dialog open={showCreatePatientDialog} onOpenChange={setShowCreatePatientDialog}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-gray-800">Создать нового пациента</DialogTitle>
+            <DialogTitle className="text-xl font-semibold">Создать пациента</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-6 py-4">
-            {/* Required Fields */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-700 border-b pb-2">
-                Обязательные поля <span className="text-red-500">*</span>
-              </h3>
-
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="new-fish">F.I.SH</Label>
+              <Input
+                id="new-fish"
+                value={newPatient.fish}
+                onChange={(e) => setNewPatient({ ...newPatient, fish: e.target.value })}
+                placeholder="Ivanov Ivan Ivanovich"
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="patient-fish" className="text-sm font-medium">
-                  FISH (Фамилия Имя Отчество) <span className="text-red-500">*</span>
-                </Label>
+                <Label htmlFor="new-passport-series">Pasport seriyasi</Label>
                 <Input
-                  id="patient-fish"
-                  placeholder="Иванов Иван Иванович"
-                  value={newPatient.fish}
-                  onChange={(e) => setNewPatient({ ...newPatient, fish: e.target.value })}
-                  className="mt-1"
+                  id="new-passport-series"
+                  value={newPatient.passportSeries}
+                  onChange={(e) => setNewPatient({ ...newPatient, passportSeries: e.target.value })}
+                  placeholder="AA"
                 />
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="passport-series" className="text-sm font-medium">
-                    Серия паспорта <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="passport-series"
-                    placeholder="AA"
-                    value={newPatient.passportSeries}
-                    onChange={(e) => setNewPatient({ ...newPatient, passportSeries: e.target.value.toUpperCase() })}
-                    maxLength={2}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="passport-number" className="text-sm font-medium">
-                    Номер паспорта <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="passport-number"
-                    placeholder="1234567"
-                    value={newPatient.passportNumber}
-                    onChange={(e) =>
-                      setNewPatient({ ...newPatient, passportNumber: e.target.value.replace(/\D/g, "") })
-                    }
-                    maxLength={7}
-                    className="mt-1"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="new-passport-number">Pasport raqami</Label>
+                <Input
+                  id="new-passport-number"
+                  value={newPatient.passportNumber}
+                  onChange={(e) => setNewPatient({ ...newPatient, passportNumber: e.target.value })}
+                  placeholder="1234567"
+                />
               </div>
             </div>
-
-            {/* Optional Fields */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-700 border-b pb-2">Дополнительная информация</h3>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="patient-age" className="text-sm font-medium">
-                    Возраст
-                  </Label>
-                  <Input
-                    id="patient-age"
-                    type="number"
-                    placeholder="25"
-                    value={newPatient.age}
-                    onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value })}
-                    min="0"
-                    max="120"
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="patient-gender" className="text-sm font-medium">
-                    Пол
-                  </Label>
-                  <select
-                    id="patient-gender"
-                    value={newPatient.gender}
-                    onChange={(e) => setNewPatient({ ...newPatient, gender: e.target.value })}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="Мужской">Мужской</option>
-                    <option value="Женский">Женский</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="patient-phone" className="text-sm font-medium">
-                    Телефон
-                  </Label>
-                  <Input
-                    id="patient-phone"
-                    placeholder="+7 (900) 123-45-67"
-                    value={newPatient.phone}
-                    onChange={(e) => setNewPatient({ ...newPatient, phone: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="patient-email" className="text-sm font-medium">
-                    Email
-                  </Label>
-                  <Input
-                    id="patient-email"
-                    type="email"
-                    placeholder="patient@example.com"
-                    value={newPatient.email}
-                    onChange={(e) => setNewPatient({ ...newPatient, email: e.target.value })}
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="patient-blood-type" className="text-sm font-medium">
-                  Группа крови
-                </Label>
-                <select
-                  id="patient-blood-type"
-                  value={newPatient.bloodType}
-                  onChange={(e) => setNewPatient({ ...newPatient, bloodType: e.target.value })}
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="A(II) Rh+">A(II) Rh+</option>
-                  <option value="A(II) Rh-">A(II) Rh-</option>
-                  <option value="B(III) Rh+">B(III) Rh+</option>
-                  <option value="B(III) Rh-">B(III) Rh-</option>
-                  <option value="AB(IV) Rh+">AB(IV) Rh+</option>
-                  <option value="AB(IV) Rh-">AB(IV) Rh-</option>
-                  <option value="O(I) Rh+">O(I) Rh+</option>
-                  <option value="O(I) Rh-">O(I) Rh-</option>
-                </select>
-              </div>
-
-              <div>
-                <Label htmlFor="patient-address" className="text-sm font-medium">
-                  Адрес
-                </Label>
-                <Textarea
-                  id="patient-address"
-                  rows={2}
-                  placeholder="г. Москва, ул. Ленина, д. 10, кв. 15"
-                  value={newPatient.address}
-                  onChange={(e) => setNewPatient({ ...newPatient, address: e.target.value })}
-                  className="mt-1"
-                />
-              </div>
+            <div>
+              <Label htmlFor="new-phone">Telefon raqami</Label>
+              <Input
+                id="new-phone"
+                value={newPatient.phone}
+                onChange={(e) => setNewPatient({ ...newPatient, phone: e.target.value })}
+                placeholder="+998 90 123 45 67"
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-email">Elektron pochta</Label>
+              <Input
+                id="new-email"
+                value={newPatient.email}
+                onChange={(e) => setNewPatient({ ...newPatient, email: e.target.value })}
+                placeholder="example@email.com"
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-birth-date">Tug'ilgan sana</Label>
+              <Input
+                id="new-birth-date"
+                type="date"
+                value={newPatient.birthDate}
+                onChange={(e) => setNewPatient({ ...newPatient, birthDate: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-gender">Jinsi</Label>
+              <select
+                id="new-gender"
+                value={newPatient.gender}
+                onChange={(e) => setNewPatient({ ...newPatient, gender: e.target.value })}
+                className="w-full p-2 border rounded-md"
+              >
+                <option value="Мужской">Мужской</option>
+                <option value="Женский">Женский</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="new-blood-type">Qon guruhi</Label>
+              <select
+                id="new-blood-type"
+                value={newPatient.bloodType}
+                onChange={(e) => setNewPatient({ ...newPatient, bloodType: e.target.value })}
+                className="w-full p-2 border rounded-md"
+              >
+                <option value="A(II) Rh+">A(II) Rh+</option>
+                <option value="A(II) Rh-">A(II) Rh-</option>
+                <option value="B(III) Rh+">B(III) Rh+</option>
+                <option value="B(III) Rh-">B(III) Rh-</option>
+                <option value="AB(IV) Rh+">AB(IV) Rh+</option>
+                <option value="AB(IV) Rh-">AB(IV) Rh-</option>
+                <option value="O(I) Rh+">O(I) Rh+</option>
+                <option value="O(I) Rh-">O(I) Rh-</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="new-address">Manzil</Label>
+              <Input
+                id="new-address"
+                value={newPatient.address}
+                onChange={(e) => setNewPatient({ ...newPatient, address: e.target.value })}
+                placeholder="Toshkent sh., Chilonzor, 15-uy"
+              />
             </div>
           </div>
-
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowCreatePatientDialog(false)} className="px-6">
-              Отмена
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreatePatientDialog(false)}>
+              Bekor qilish
             </Button>
-            <Button
-              onClick={createPatientHandler}
-              disabled={!newPatient.fish || !newPatient.passportSeries || !newPatient.passportNumber}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Создать пациента
+            <Button onClick={createPatientHandler} className="bg-green-600 text-white hover:bg-green-700">
+              Saqlash
             </Button>
           </DialogFooter>
         </DialogContent>

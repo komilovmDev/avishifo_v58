@@ -1,8 +1,7 @@
-// /app/patients/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation"; // useRouter был в оригинале, добавим его
+import { useRouter } from "next/navigation";
 
 // Импортируем все типы из нашего центрального файла
 import {
@@ -26,10 +25,9 @@ import { AddHistoryDialog } from "./components/dialogs/AddHistoryDialog";
 import { AddMedicationDialog } from "./components/dialogs/AddMedicationDialog";
 import { AddVitalsDialog } from "./components/dialogs/AddVitalsDialog";
 import { AddDocumentDialog } from "./components/dialogs/AddDocumentDialog";
-import { Loader2 } from "lucide-react"; // Для индикатора загрузки
+import { Loader2 } from "lucide-react";
 
 // Моковые данные в качестве ЗАПАСНОГО варианта на случай ошибки API во время разработки.
-// В production-сборке это можно удалить.
 const FALLBACK_PATIENTS: Patient[] = [
   {
     id: "p1",
@@ -79,15 +77,14 @@ export default function PatientsPage() {
   const router = useRouter();
 
   // --- Состояние компонента ---
-  const [patients, setPatients] = useState<Patient[]>([]); // НАЧИНАЕМ С ПУСТОГО МАССИВА
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(
     null
   );
-  const [isLoading, setIsLoading] = useState(true); // НАЧИНАЕМ С СОСТОЯНИЯ ЗАГРУЗКИ
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
 
-  // ... состояния для диалогов и форм остаются такими же ...
   const [showCreatePatientDialog, setShowCreatePatientDialog] = useState(false);
   const [showAddHistoryDialog, setShowAddHistoryDialog] = useState(false);
   const [showAddMedicationDialog, setShowAddMedicationDialog] = useState(false);
@@ -95,7 +92,7 @@ export default function PatientsPage() {
   const [showAddDocumentDialog, setShowAddDocumentDialog] = useState(false);
 
   const [newPatient, setNewPatient] = useState<NewPatientForm>({
-    /*...*/ fish: "",
+    fish: "",
     passportSeries: "",
     passportNumber: "",
     phone: "",
@@ -106,7 +103,7 @@ export default function PatientsPage() {
     address: "",
   });
   const [medicalHistory, setMedicalHistory] = useState<MedicalHistoryForm>({
-    /*...*/ fish: "",
+    fish: "",
     birthDate: "",
     nationality: "",
     education: "",
@@ -138,6 +135,13 @@ export default function PatientsPage() {
     musculoskeletalComplaints: "",
     nervousSystemComplaints: "",
     doctorRecommendations: "",
+    respiratoryFiles: [],
+    cardiovascularFiles: [],
+    digestiveFiles: [],
+    urinaryFiles: [],
+    endocrineFiles: [],
+    musculoskeletalFiles: [],
+    nervousSystemFiles: [],
   });
   const [newMedication, setNewMedication] = useState<NewMedicationForm>({
     name: "",
@@ -187,7 +191,6 @@ export default function PatientsPage() {
 
       const transformedPatients = validPatients.map(
         (patient: PatientResponse): Patient => ({
-          // ... Полная логика трансформации данных из вашего исходного файла ...
           id: String(patient.id),
           name: patient.full_name || "Не указано",
           phone: patient.phone || "Не указан",
@@ -204,7 +207,7 @@ export default function PatientsPage() {
           lastVisit: patient.created_at
             ? new Date(patient.created_at).toLocaleDateString("ru-RU")
             : "Неизвестно",
-          status: "Наблюдение", // Пример статуса по умолчанию
+          status: "Наблюдение",
           statusColor: "amber",
           insurance: `ОМС №${patient.passport_series || ""}${
             patient.passport_number || ""
@@ -228,7 +231,6 @@ export default function PatientsPage() {
           error instanceof Error ? error.message : "Unknown error"
         }. Будут показаны запасные данные.`
       );
-      // В случае ошибки загружаем запасные данные, чтобы можно было продолжить разработку UI
       setPatients(FALLBACK_PATIENTS);
     } finally {
       setIsLoading(false);
@@ -240,22 +242,68 @@ export default function PatientsPage() {
     fetchPatients();
   }, []);
 
-  // ... Все обработчики (createPatientHandler, addHistoryEntryHandler и т.д.) остаются здесь ...
-  // Они работают с состоянием `patients` и не меняются
+  // --- Обработчики ---
   const createPatientHandler = async () => {
-    /* ... ваша логика ... */
+    // Логика создания пациента
+    setShowCreatePatientDialog(false);
+    await fetchPatients(); // Обновляем список после создания
   };
-  const addHistoryEntryHandler = () => {
-    /* ... ваша логика ... */
+
+const addHistoryEntryHandler = async () => {
+  if (!selectedPatientId) {
+    console.error("No patient selected for adding history.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("patient", selectedPatientId);
+
+  // Map text fields (example, adjust based on your MedicalHistoryForm)
+  formData.append("fish", medicalHistory.fish || "");
+  formData.append("kelgan_vaqti", medicalHistory.visitDate || "");
+  formData.append("shikoyatlar", medicalHistory.mainComplaints || "");
+
+  // Add files (example for respiratoryFiles)
+  (medicalHistory.respiratoryFiles || []).forEach((file) =>
+    formData.append("nafas_tizimi_hujjat", file)
+  );
+
+  try {
+    const token = localStorage.getItem("accessToken");
+    const response = await fetch(
+      "https://new.avishifo.uz/api/patients/kasallik-tarixi/",
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      }
+    );
+
+    if (!response.ok) throw new Error("Failed to save medical history");
+    setShowAddHistoryDialog(false);
+    await fetchPatients(); // Refresh patient data
+  } catch (error) {
+    console.error("Error saving history:", error);
+    alert("Ошибка при сохранении истории болезни.");
+  }
+};
+
+  const addMedicationHandler = async () => {
+    // Логика добавления медикаментов
+    setShowAddMedicationDialog(false);
+    await fetchPatients();
   };
-  const addMedicationHandler = () => {
-    /* ... ваша логика ... */
+
+  const addVitalsHandler = async () => {
+    // Логика добавления витальных показателей
+    setShowAddVitalsDialog(false);
+    await fetchPatients();
   };
-  const addVitalsHandler = () => {
-    /* ... ваша логика ... */
-  };
-  const addDocumentHandler = () => {
-    /* ... ваша логика ... */
+
+  const addDocumentHandler = async () => {
+    // Логика добавления документа
+    setShowAddDocumentDialog(false);
+    await fetchPatients();
   };
 
   // Фильтрация и выборка данных
@@ -305,7 +353,6 @@ export default function PatientsPage() {
         />
       )}
 
-      {/* Диалоговые окна остаются здесь, так как их состояние управляется этим компонентом */}
       <CreatePatientDialog
         open={showCreatePatientDialog}
         onOpenChange={setShowCreatePatientDialog}
@@ -319,6 +366,7 @@ export default function PatientsPage() {
         onOpenChange={setShowAddHistoryDialog}
         medicalHistory={medicalHistory}
         setMedicalHistory={setMedicalHistory}
+        patientId={selectedPatientId} // Pass the selected patient ID
         onSubmit={addHistoryEntryHandler}
       />
       <AddMedicationDialog
