@@ -785,8 +785,8 @@ export function AiRadiologSection() {
                 <CardTitle className="text-xl font-bold">AviRadiolog</CardTitle>
                 <div className="flex items-center gap-2">
                   <p className="text-blue-100 text-sm">Powered by new.aviradiolog.uz</p>
-                  {getConnectionIcon()}
-                  <span className="text-xs text-blue-200">{getConnectionText()}</span>
+                  {/* {getConnectionIcon()}
+                  <span className="text-xs text-blue-200">{getConnectionText()}</span> */}
                 </div>
               </div>
             </div>
@@ -806,32 +806,6 @@ export function AiRadiologSection() {
         </CardHeader>
 
         <CardContent className="flex-1 flex flex-col p-0">
-          {connectionStatus === "connected" && (
-            <Alert className="m-4 mb-0 border-green-200 bg-green-50">
-              <Sparkles className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                <div className="max-w-2xl mx-auto text-gray-800 text-sm leading-snug space-y-3 text-left">
-  <p><strong>AviRadiolog</strong> — это инструмент для быстрой и точной расшифровки медицинских изображений: КТ, МРТ, рентген, УЗИ.</p>
-
-  <p><strong>Что нужно сделать:</strong></p>
-  <p>1. Загрузите изображение (JPEG, PNG, DICOM, PDF).</p>
-  <p>2. Укажите контекст: возраст, жалобы, анамнез.</p>
-  <p>3. Сформулируйте задачу: диагноз, дифференцировка, тактика?</p>
-  <p>4. Получите ответ:</p>
-  <p>- Расшифровка снимка</p>
-  <p>- Диагноз и дифференциальный ряд</p>
-  <p>- Рекомендации по обследованию и действиям</p>
-
-  <p><strong>Примеры запросов:</strong></p>
-  <p>- КТ грудной клетки, очаг в S6, 35 лет — мнение?</p>
-  <p>- МРТ колена, травма 2 недели назад — есть ли повреждение менисков?</p>
-</div>
-AviRadiolog подключен к backend API! Теперь вы можете загружать изображения для анализа напрямую с
-                сервера new.aviradiolog.uz. История синхронизируется автоматически.
-              </AlertDescription>
-            </Alert>
-          )}
-
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
             <TabsList className="grid w-full grid-cols-2 bg-gray-100 m-4 mb-0">
               <TabsTrigger value="chat" className="flex items-center gap-2">
