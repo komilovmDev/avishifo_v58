@@ -782,7 +782,7 @@ export function AiRadiologSection() {
                 <Bot className="w-6 h-6" />
               </div>
               <div>
-                <CardTitle className="text-xl font-bold">ИИ AviRadiolog</CardTitle>
+                <CardTitle className="text-xl font-bold">AviRadiolog</CardTitle>
                 <div className="flex items-center gap-2">
                   <p className="text-blue-100 text-sm">Powered by new.aviradiolog.uz</p>
                   {getConnectionIcon()}
@@ -810,7 +810,23 @@ export function AiRadiologSection() {
             <Alert className="m-4 mb-0 border-green-200 bg-green-50">
               <Sparkles className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">
-                ИИ AviRadiolog подключен к backend API! Теперь вы можете загружать изображения для анализа напрямую с
+                <div className="max-w-2xl mx-auto text-gray-800 text-sm leading-snug space-y-3 text-left">
+  <p><strong>AviRadiolog</strong> — это инструмент для быстрой и точной расшифровки медицинских изображений: КТ, МРТ, рентген, УЗИ.</p>
+
+  <p><strong>Что нужно сделать:</strong></p>
+  <p>1. Загрузите изображение (JPEG, PNG, DICOM, PDF).</p>
+  <p>2. Укажите контекст: возраст, жалобы, анамнез.</p>
+  <p>3. Сформулируйте задачу: диагноз, дифференцировка, тактика?</p>
+  <p>4. Получите ответ:</p>
+  <p>- Расшифровка снимка</p>
+  <p>- Диагноз и дифференциальный ряд</p>
+  <p>- Рекомендации по обследованию и действиям</p>
+
+  <p><strong>Примеры запросов:</strong></p>
+  <p>- КТ грудной клетки, очаг в S6, 35 лет — мнение?</p>
+  <p>- МРТ колена, травма 2 недели назад — есть ли повреждение менисков?</p>
+</div>
+AviRadiolog подключен к backend API! Теперь вы можете загружать изображения для анализа напрямую с
                 сервера new.aviradiolog.uz. История синхронизируется автоматически.
               </AlertDescription>
             </Alert>
@@ -843,7 +859,7 @@ export function AiRadiologSection() {
                         <Sparkles className="w-4 h-4 text-white" />
                       </div>
                     </div>
-                    <h2 className="text-3xl font-bold text-gray-800 mb-4">Подключен к Backend API!</h2>
+                    <h2 className="text-3xl font-bold text-gray-800 mb-4">Подключен к AviRadiolog</h2>
                     <div className="w-full mx-auto mb-5 text-gray-800 text-sm leading-snug space-y-3 text-left">
                       <p><strong>AviRadiolog</strong> — это инструмент для быстрой и точной расшифровки медицинских изображений: КТ, МРТ, рентген, УЗИ.</p>
 
@@ -884,7 +900,7 @@ export function AiRadiologSection() {
                     )}
 
                     <div className="w-full max-w-4xl">
-                      <h3 className="text-lg font-semibold text-gray-700 mb-4 text-left">Возможности Backend API</h3>
+                      <h3 className="text-lg font-semibold text-gray-700 mb-4 text-left">Возможности AviRadiolog</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {suggestedPrompts.map((item, index) => (
                           <Card

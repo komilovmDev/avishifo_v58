@@ -383,11 +383,11 @@ export function AiChatSection() {
       attachments:
         attachments.length > 0
           ? attachments.map((att) => ({
-              type: att.type,
-              name: att.name,
-              url: att.url,
-              size: att.size,
-            }))
+            type: att.type,
+            name: att.name,
+            url: att.url,
+            size: att.size,
+          }))
           : undefined,
     }
 
@@ -428,7 +428,7 @@ export function AiChatSection() {
       }
 
       // Send text message to backend
-      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_message/`, {
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_message_radiolog/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -491,7 +491,7 @@ export function AiChatSection() {
       const formData = new FormData()
       formData.append("image", imageFile)
 
-      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_image/`, {
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_image_radiolog/`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -814,18 +814,18 @@ export function AiChatSection() {
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 to-blue-50">
       <Card className="flex-1 flex flex-col shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader className="border-b bg-gradient-to-r from blue-600 to-purple-600 text-white">
+        <CardHeader className="border-b bg-gradient-to-r from-blue-600 to-purple-600 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white/20 rounded-lg">
                 <Bot className="w-6 h-6" />
               </div>
               <div>
-                <CardTitle className="text-xl font-bold">ИИ Авишифо</CardTitle>
+                <CardTitle className="text-xl font-bold">AviShifo</CardTitle>
                 <div className="flex items-center gap-2">
                   <p className="text-blue-100 text-sm">Powered by new.avishifo.uz</p>
-                  {getConnectionIcon()}
-                  <span className="text-xs text-blue-200">{getConnectionText()}</span>
+                  {/* {getConnectionIcon()}
+                  <span className="text-xs text-blue-200">{getConnectionText()}</span> */}
                 </div>
               </div>
             </div>
@@ -882,12 +882,23 @@ export function AiChatSection() {
                         <Sparkles className="w-4 h-4 text-white" />
                       </div>
                     </div>
-                    <h2 className="text-3xl font-bold text-gray-800 mb-4">Подключен к Backend API!</h2>
-                    <p className="text-gray-600 mb-8 max-w-md">
-                      Теперь я использую полную мощь backend API new.avishifo.uz для предоставления детальных
-                      медицинских консультаций, анализа изображений и актуальных рекомендаций. Вся история
-                      синхронизируется с сервером.
-                    </p>
+                    <h2 className="text-3xl font-bold text-gray-800 mb-4">Подключен к  Avishio!</h2>
+                    <div className="w-full mb-5 mx-auto text-gray-800 text-sm leading-snug space-y-3 text-left">
+                      <p><strong>Добро пожаловать, доктор.</strong></p>
+                      <p>Теперь вы можете использовать весь потенциал AviShifo.ai для совместной диагностики и лечения пациентов.</p>
+                      <p>Здесь вы можете задать любой медицинский вопрос: от диагностики редких заболеваний до подбора индивидуального плана лечения.</p>
+                      <p>Платформа поддерживает вас на каждом этапе принятия клинического решения.</p>
+
+                      <p><strong>🧠 Чтобы получить наиболее точную консультацию от AviShifo.ai, пожалуйста, введите:</strong></p>
+                      <p>- Субъективные данные (жалобы, анамнез, симптомы)</p>
+                      <p>- Объективные данные (данные осмотра, ЧСС, АД, температура и т.д.)</p>
+                      <p>- Лабораторные данные (анализы крови, мочи и др.)</p>
+                      <p>- Инструментальные данные (рентген, КТ, УЗИ и др.)</p>
+
+                      <p>📎 Вы можете загрузить эти данные в текстовом виде, а также прикреплять изображения или документы.</p>
+
+                      <p>🤝 AviShifo работает как ваш интеллектуальный ассистент – анализирует, сопоставляет и помогает выстроить дифференциальную диагностику, персонализированное лечение и оказывает полную экспертную поддержку вам до полного выздоровления пациента.</p>
+                    </div>
 
                     {chatStats && (
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 w-full max-w-2xl">
@@ -913,7 +924,7 @@ export function AiChatSection() {
                     )}
 
                     <div className="w-full max-w-4xl">
-                      <h3 className="text-lg font-semibold text-gray-700 mb-4 text-left">Backend API возможности</h3>
+                      <h3 className="text-lg font-semibold text-gray-700 mb-4 text-left">Возможности Avishifo</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {suggestedPrompts.map((item, index) => (
                           <Card
@@ -943,13 +954,12 @@ export function AiChatSection() {
                       {msg.role === "assistant" && (
                         <Avatar className="w-10 h-10 shrink-0">
                           <AvatarFallback
-                            className={`${
-                              msg.isError
+                            className={`${msg.isError
                                 ? "bg-red-500"
                                 : msg.isFallback
                                   ? "bg-orange-500"
                                   : "bg-gradient-to-r from-blue-500 to-purple-500"
-                            } text-white relative`}
+                              } text-white relative`}
                           >
                             {msg.isError ? (
                               <AlertCircle className="w-5 h-5" />
@@ -969,24 +979,22 @@ export function AiChatSection() {
                         </Avatar>
                       )}
                       <div
-                        className={`rounded-2xl p-4 max-w-xs sm:max-w-md lg:max-w-lg ${
-                          msg.role === "user"
+                        className={`rounded-2xl p-4 max-w-xs sm:max-w-md lg:max-w-lg ${msg.role === "user"
                             ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-md shadow-lg"
                             : msg.isError
                               ? "bg-red-50 border border-red-200 text-red-800 rounded-bl-md shadow-sm"
                               : msg.isFallback
                                 ? "bg-orange-50 border border-orange-200 text-orange-800 rounded-bl-md shadow-sm"
                                 : "bg-white border border-gray-200 text-gray-800 rounded-bl-md shadow-sm"
-                        }`}
+                          }`}
                       >
                         {msg.attachments && msg.attachments.length > 0 && (
                           <div className="mb-3 space-y-2">
                             {msg.attachments.map((attachment, attIndex) => (
                               <div
                                 key={attIndex}
-                                className={`rounded-lg overflow-hidden border ${
-                                  msg.role === "user" ? "border-blue-400" : "border-gray-200"
-                                }`}
+                                className={`rounded-lg overflow-hidden border ${msg.role === "user" ? "border-blue-400" : "border-gray-200"
+                                  }`}
                               >
                                 {attachment.type === "image" ? (
                                   <div className="relative group">
@@ -1018,11 +1026,10 @@ export function AiChatSection() {
                                       }}
                                     />
                                     <div
-                                      className={`absolute bottom-0 left-0 right-0 p-2 text-xs rounded-b-lg ${
-                                        msg.role === "user"
+                                      className={`absolute bottom-0 left-0 right-0 p-2 text-xs rounded-b-lg ${msg.role === "user"
                                           ? "bg-blue-600/70 text-white"
                                           : "bg-gray-100/70 text-gray-700"
-                                      }`}
+                                        }`}
                                     >
                                       <div className="flex items-center justify-between">
                                         <span className="truncate">{attachment.name}</span>
@@ -1039,9 +1046,8 @@ export function AiChatSection() {
                                   </div>
                                 ) : (
                                   <div
-                                    className={`flex items-center gap-2 p-2 ${
-                                      msg.role === "user" ? "bg-blue-700/50" : "bg-gray-100"
-                                    }`}
+                                    className={`flex items-center gap-2 p-2 ${msg.role === "user" ? "bg-blue-700/50" : "bg-gray-100"
+                                      }`}
                                   >
                                     <File
                                       className={`w-4 h-4 ${msg.role === "user" ? "text-blue-100" : "text-gray-500"}`}
@@ -1066,15 +1072,14 @@ export function AiChatSection() {
                           <MarkdownContent content={msg.content} />
                         </div>
                         <span
-                          className={`text-xs mt-2 block ${
-                            msg.role === "user"
+                          className={`text-xs mt-2 block ${msg.role === "user"
                               ? "text-blue-100"
                               : msg.isError
                                 ? "text-red-600"
                                 : msg.isFallback
                                   ? "text-orange-600"
                                   : "text-gray-500"
-                          }`}
+                            }`}
                         >
                           {msg.timestamp}
                           {!msg.isFallback && !msg.isError && msg.role === "assistant" && (
