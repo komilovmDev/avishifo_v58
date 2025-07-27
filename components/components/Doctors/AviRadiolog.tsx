@@ -35,7 +35,7 @@ import { useEffect, useRef, useState } from "react"
 import { Textarea } from "@/components/ui/textarea"
 
 // API Base URL
-const API_BASE_URL = "https://new.aviradiolog.uz" // Yangi API uchun o'zgartirildi
+const API_BASE_URL = "https://new.avishifo.uz" // Yangi API uchun o'zgartirildi
 
 interface AiMessage {
   id?: string
@@ -190,7 +190,7 @@ export function AiRadiologSection() {
         return null
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/gpt/chats/`, {
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -230,7 +230,7 @@ export function AiRadiologSection() {
         return
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/gpt/chats/`, {
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -289,7 +289,7 @@ export function AiRadiologSection() {
         return
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/gpt/stats/`, {
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/stats/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -410,7 +410,7 @@ export function AiRadiologSection() {
         }
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/gpt/chats/${currentSessionId}/send_message/`, {
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_message/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -472,7 +472,7 @@ export function AiRadiologSection() {
       const formData = new FormData()
       formData.append("image", imageFile)
 
-      const response = await fetch(`${API_BASE_URL}/api/gpt/chats/${currentSessionId}/send_image/`, {
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_image/`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -544,7 +544,7 @@ export function AiRadiologSection() {
         return
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/gpt/chats/${session.id}/`, {
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${session.id}/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -605,7 +605,7 @@ export function AiRadiologSection() {
     try {
       const token = getAuthToken()
       if (token && !sessionId.startsWith("local-")) {
-        await fetch(`${API_BASE_URL}/api/gpt/chats/${sessionId}/`, {
+        await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${sessionId}/`, {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -641,7 +641,7 @@ export function AiRadiologSection() {
     try {
       const token = getAuthToken()
       if (token) {
-        const response = await fetch(`${API_BASE_URL}/api/gpt/chats/?search=${encodeURIComponent(query)}`, {
+        const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/?search=${encodeURIComponent(query)}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
