@@ -410,7 +410,7 @@ export function AiRadiologSection() {
         }
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_message/`, {
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_message_radiolog/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -472,7 +472,7 @@ export function AiRadiologSection() {
       const formData = new FormData()
       formData.append("image", imageFile)
 
-      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_image/`, {
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_image_radiolog/`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
