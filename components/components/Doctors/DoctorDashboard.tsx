@@ -50,7 +50,7 @@ const sidebarItems = [
     id: "AviRadiolog",
     label: "AviRadiolog",
     icon: Brain,
-    color: "from-blue-500 to-purple-500",
+    color: "from-red-500 to-purple-500",
   },
   {
     id: "appointments",
