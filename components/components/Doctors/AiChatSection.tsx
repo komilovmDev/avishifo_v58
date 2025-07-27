@@ -1118,7 +1118,7 @@ export function AiChatSection() {
                             style={{ animationDelay: "0.2s" }}
                           ></div>
                         </div>
-                        <span className="text-sm text-gray-600">Backend API обрабатывает запрос...</span>
+                        <span className="text-sm text-gray-600">AviShifo обрабатывает запрос...</span>
                       </div>
                     </div>
                   </div>
