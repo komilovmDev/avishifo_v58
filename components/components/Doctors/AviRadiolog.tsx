@@ -368,11 +368,11 @@ export function AiRadiologSection() {
       attachments:
         attachments.length > 0
           ? attachments.map((att) => ({
-              type: att.type,
-              name: att.name,
-              url: att.url,
-              size: att.size,
-            }))
+            type: att.type,
+            name: att.name,
+            url: att.url,
+            size: att.size,
+          }))
           : undefined,
     }
 
@@ -844,12 +844,22 @@ export function AiRadiologSection() {
                       </div>
                     </div>
                     <h2 className="text-3xl font-bold text-gray-800 mb-4">Подключен к Backend API!</h2>
-                    <p className="text-gray-600 mb-8 max-w-md">
-                      Теперь я использую полную мощь backend API new.aviradiolog.uz для анализа рентгеновских снимков,
-                      МРТ и других медицинских изображений. Загружайте изображения для детального анализа, и история
-                      синхронизируется с сервером.
-                    </p>
+                    <div className="w-full mx-auto mb-5 text-gray-800 text-sm leading-snug space-y-3 text-left">
+                      <p><strong>AviRadiolog</strong> — это инструмент для быстрой и точной расшифровки медицинских изображений: КТ, МРТ, рентген, УЗИ.</p>
 
+                      <p><strong>Что нужно сделать:</strong></p>
+                      <p>1. Загрузите изображение (JPEG, PNG, DICOM, PDF).</p>
+                      <p>2. Укажите контекст: возраст, жалобы, анамнез.</p>
+                      <p>3. Сформулируйте задачу: диагноз, дифференцировка, тактика?</p>
+                      <p>4. Получите ответ:</p>
+                      <p>- Расшифровка снимка</p>
+                      <p>- Диагноз и дифференциальный ряд</p>
+                      <p>- Рекомендации по обследованию и действиям</p>
+
+                      <p><strong>Примеры запросов:</strong></p>
+                      <p>- КТ грудной клетки, очаг в S6, 35 лет — мнение?</p>
+                      <p>- МРТ колена, травма 2 недели назад — есть ли повреждение менисков?</p>
+                    </div>
                     {chatStats && (
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 w-full max-w-2xl">
                         <div className="bg-white rounded-lg p-3 border border-gray-200">
@@ -904,13 +914,12 @@ export function AiRadiologSection() {
                       {msg.role === "assistant" && (
                         <Avatar className="w-10 h-10 shrink-0">
                           <AvatarFallback
-                            className={`${
-                              msg.isError
-                                ? "bg-red-500"
-                                : msg.isFallback
-                                  ? "bg-orange-500"
-                                  : "bg-gradient-to-r from-blue-500 to-purple-500"
-                            } text-white relative`}
+                            className={`${msg.isError
+                              ? "bg-red-500"
+                              : msg.isFallback
+                                ? "bg-orange-500"
+                                : "bg-gradient-to-r from-blue-500 to-purple-500"
+                              } text-white relative`}
                           >
                             {msg.isError ? (
                               <AlertCircle className="w-5 h-5" />
@@ -930,24 +939,22 @@ export function AiRadiologSection() {
                         </Avatar>
                       )}
                       <div
-                        className={`rounded-2xl p-4 max-w-xs sm:max-w-md lg:max-w-lg ${
-                          msg.role === "user"
-                            ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-md shadow-lg"
-                            : msg.isError
-                              ? "bg-red-50 border border-red-200 text-red-800 rounded-bl-md shadow-sm"
-                              : msg.isFallback
-                                ? "bg-orange-50 border border-orange-200 text-orange-800 rounded-bl-md shadow-sm"
-                                : "bg-white border border-gray-200 text-gray-800 rounded-bl-md shadow-sm"
-                        }`}
+                        className={`rounded-2xl p-4 max-w-xs sm:max-w-md lg:max-w-lg ${msg.role === "user"
+                          ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-md shadow-lg"
+                          : msg.isError
+                            ? "bg-red-50 border border-red-200 text-red-800 rounded-bl-md shadow-sm"
+                            : msg.isFallback
+                              ? "bg-orange-50 border border-orange-200 text-orange-800 rounded-bl-md shadow-sm"
+                              : "bg-white border border-gray-200 text-gray-800 rounded-bl-md shadow-sm"
+                          }`}
                       >
                         {msg.attachments && msg.attachments.length > 0 && (
                           <div className="mb-3 space-y-2">
                             {msg.attachments.map((attachment, attIndex) => (
                               <div
                                 key={attIndex}
-                                className={`rounded-lg overflow-hidden border ${
-                                  msg.role === "user" ? "border-blue-400" : "border-gray-200"
-                                }`}
+                                className={`rounded-lg overflow-hidden border ${msg.role === "user" ? "border-blue-400" : "border-gray-200"
+                                  }`}
                               >
                                 {attachment.type === "image" ? (
                                   <div className="relative group">
@@ -978,11 +985,10 @@ export function AiRadiologSection() {
                                       }}
                                     />
                                     <div
-                                      className={`absolute bottom-0 left-0 right-0 p-2 text-xs rounded-b-lg ${
-                                        msg.role === "user"
-                                          ? "bg-blue-600/70 text-white"
-                                          : "bg-gray-100/70 text-gray-700"
-                                      }`}
+                                      className={`absolute bottom-0 left-0 right-0 p-2 text-xs rounded-b-lg ${msg.role === "user"
+                                        ? "bg-blue-600/70 text-white"
+                                        : "bg-gray-100/70 text-gray-700"
+                                        }`}
                                     >
                                       <div className="flex items-center justify-between">
                                         <span className="truncate">{attachment.name}</span>
@@ -999,9 +1005,8 @@ export function AiRadiologSection() {
                                   </div>
                                 ) : (
                                   <div
-                                    className={`flex items-center gap-2 p-2 ${
-                                      msg.role === "user" ? "bg-blue-700/50" : "bg-gray-100"
-                                    }`}
+                                    className={`flex items-center gap-2 p-2 ${msg.role === "user" ? "bg-blue-700/50" : "bg-gray-100"
+                                      }`}
                                   >
                                     <File
                                       className={`w-4 h-4 ${msg.role === "user" ? "text-blue-100" : "text-gray-500"}`}
@@ -1026,15 +1031,14 @@ export function AiRadiologSection() {
                           <MarkdownContent content={msg.content} />
                         </div>
                         <span
-                          className={`text-xs mt-2 block ${
-                            msg.role === "user"
-                              ? "text-blue-100"
-                              : msg.isError
-                                ? "text-red-600"
-                                : msg.isFallback
-                                  ? "text-orange-600"
-                                  : "text-gray-500"
-                          }`}
+                          className={`text-xs mt-2 block ${msg.role === "user"
+                            ? "text-blue-100"
+                            : msg.isError
+                              ? "text-red-600"
+                              : msg.isFallback
+                                ? "text-orange-600"
+                                : "text-gray-500"
+                            }`}
                         >
                           {msg.timestamp}
                           {!msg.isFallback && !msg.isError && msg.role === "assistant" && (
