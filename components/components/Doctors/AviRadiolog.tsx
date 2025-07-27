@@ -1093,7 +1093,7 @@ AviRadiolog подключен к backend API! Теперь вы можете з
                             style={{ animationDelay: "0.2s" }}
                           ></div>
                         </div>
-                        <span className="text-sm text-gray-600">Backend API анализирует изображение...</span>
+                        <span className="text-sm text-gray-600">AviRadiolog анализирует изображение...</span>
                       </div>
                     </div>
                   </div>
