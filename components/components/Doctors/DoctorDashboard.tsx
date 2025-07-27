@@ -10,6 +10,7 @@ import { TopBar } from "./TopBar"
 
 // Импорты компонентов для каждого раздела
 import { AiChatSection } from "./AiChatSection"
+import { AiRadiologSection } from "./AviRadiolog"
 import { PsychologicalTestSection } from "./PsychologicalTestSection"
 import { WHOStandardsSection } from "./WHOStandardsSection"
 import { ChatSection } from "./ChatSection"
@@ -42,6 +43,12 @@ const sidebarItems = [
   {
     id: "ai-chat",
     label: "AI Авишифо",
+    icon: Brain,
+    color: "from-blue-500 to-purple-500",
+  },
+  {
+    id: "AviRadiolog",
+    label: "AviRadiolog",
     icon: Brain,
     color: "from-blue-500 to-purple-500",
   },
@@ -105,6 +112,7 @@ export function DoctorDashboard({ onLogout }: DoctorDashboardProps) {
           
           {activeSection === "profile" && <ProfileSection />}
           {activeSection === "ai-chat" && <AiChatSection />}
+          {activeSection === "AviRadiolog" && <AiRadiologSection />}
           {activeSection === "psychological-test" && <PsychologicalTestSection />}
           {activeSection === "who-standards" && <WHOStandardsSection />}
           
