@@ -845,7 +845,7 @@ export function AiChatSection() {
         </CardHeader>
 
         <CardContent className="flex-1 flex flex-col p-0">
-          {connectionStatus === "connected" && (
+          {/* {connectionStatus === "connected" && (
             <Alert className="m-4 mb-0 border-green-200 bg-green-50">
               <Sparkles className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">
@@ -853,7 +853,7 @@ export function AiChatSection() {
                 История чатов синхронизируется автоматически.
               </AlertDescription>
             </Alert>
-          )}
+          )} */}
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
             <TabsList className="grid w-full grid-cols-2 bg-gray-100 m-4 mb-0">
