@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { use, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import axios from "axios"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -234,7 +234,7 @@ export default function DoctorProfilePage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-6">
                 <Avatar className="w-20 h-20 border-4 border-blue-200">
-                  <AvatarImage src="/placeholder.svg" />
+                  <AvatarImage src={userProfile.profile_picture || "/placeholder.svg"} />
                   <AvatarFallback className="bg-blue-500 text-white text-2xl font-bold">
                     {userProfile.first_name?.[0]}{userProfile.last_name?.[0] || "Д"}
                   </AvatarFallback>
