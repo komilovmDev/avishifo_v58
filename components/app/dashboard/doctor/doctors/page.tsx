@@ -194,21 +194,27 @@ export default function DoctorsPage() {
   const [showReviews, setShowReviews] = useState(false)
 
   useEffect(() => {
-    // In real app, fetch doctors from API
-    fetchDoctors()
+    // Check if we're in browser environment before fetching
+    if (typeof window !== 'undefined') {
+      // In real app, fetch doctors from API
+      fetchDoctors()
+    }
   }, [])
 
   const fetchDoctors = async () => {
     setIsLoading(true)
     try {
-      const token = localStorage.getItem("accessToken")
-      if (token) {
-        const response = await axios.get(`${API_BASE_URL}/api/doctors/`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        // Group doctors by specialization
-        const grouped = groupDoctorsBySpecialization(response.data)
-        setDoctorsByCategory(grouped)
+      // Check if we're in browser environment
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem("accessToken")
+        if (token) {
+          const response = await axios.get(`${API_BASE_URL}/api/doctors/`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          // Group doctors by specialization
+          const grouped = groupDoctorsBySpecialization(response.data)
+          setDoctorsByCategory(grouped)
+        }
       }
     } catch (error) {
       console.error("Error fetching doctors:", error)
@@ -241,6 +247,11 @@ export default function DoctorsPage() {
   const handleDoctorClick = (doctor: Doctor) => {
     setSelectedDoctor(doctor)
     
+    // Check if we're in browser environment
+    if (typeof window === 'undefined') {
+      return
+    }
+    
     // Recently viewed doctors ga qo'shish
     const recentlyViewed = localStorage.getItem('recentlyViewedDoctors')
     let viewedIds: number[] = []
@@ -272,14 +283,17 @@ export default function DoctorsPage() {
     // Telefon qilish uchun chat page ga o'tish
     console.log("Записаться на прием к:", doctor.full_name)
     
-    // Doctor ma'lumotlarini localStorage ga saqlash (chat page da telefon qilish uchun)
-    localStorage.setItem('selectedDoctorForChat', JSON.stringify({
-      id: doctor.id,
-      name: doctor.full_name,
-      specialization: doctor.specialization,
-      profile_picture: doctor.profile_picture,
-      action: 'call' // Telefon qilish uchun belgi
-    }))
+    // Check if we're in browser environment
+    if (typeof window !== 'undefined') {
+      // Doctor ma'lumotlarini localStorage ga saqlash (chat page da telefon qilish uchun)
+      localStorage.setItem('selectedDoctorForChat', JSON.stringify({
+        id: doctor.id,
+        name: doctor.full_name,
+        specialization: doctor.specialization,
+        profile_picture: doctor.profile_picture,
+        action: 'call' // Teleфон qilish uchun belgi
+      }))
+    }
     
     // Chat page ga o'tish
     router.push('/dashboard/doctor/chat')
@@ -289,14 +303,17 @@ export default function DoctorsPage() {
     // SMS yuborish uchun chat page ga o'tish
     console.log("Отправить сообщение:", doctor.full_name)
     
-    // Doctor ma'lumotlarini localStorage ga saqlash (chat page da SMS yuborish uchun)
-    localStorage.setItem('selectedDoctorForChat', JSON.stringify({
-      id: doctor.id,
-      name: doctor.full_name,
-      specialization: doctor.specialization,
-      profile_picture: doctor.profile_picture,
-      action: 'message' // SMS yuborish uchun belgi
-    }))
+    // Check if we're in browser environment
+    if (typeof window !== 'undefined') {
+      // Doctor ma'lumotlarini localStorage ga saqlash (chat page da SMS yuborish uchun)
+      localStorage.setItem('selectedDoctorForChat', JSON.stringify({
+        id: doctor.id,
+        name: doctor.full_name,
+        specialization: doctor.specialization,
+        profile_picture: doctor.profile_picture,
+        action: 'message' // SMS yuborish uchun belgi
+      }))
+    }
     
     // Chat page ga o'tish
     router.push('/dashboard/doctor/chat')
@@ -351,6 +368,13 @@ export default function DoctorsPage() {
 
   // Get recently viewed doctors (last 3 viewed)
   const getRecentlyViewedDoctors = () => {
+    // Check if we're in browser environment
+    if (typeof window === 'undefined') {
+      return Object.values(doctorsByCategory)
+        .flat()
+        .slice(0, 3)
+    }
+    
     // localStorage dan recently viewed doctors ni olish
     const recentlyViewed = localStorage.getItem('recentlyViewedDoctors')
     if (recentlyViewed) {
