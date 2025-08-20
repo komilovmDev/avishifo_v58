@@ -2,6 +2,7 @@
 "use client"
 
 import { ProfileSection } from "./ProfileSection"
+import Link from "next/link"
 
 interface DoctorDashboardProps {
   onLogout: () => void
@@ -16,41 +17,61 @@ export function DoctorDashboard({ onLogout }: DoctorDashboardProps) {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Профиль</h3>
-          <p className="text-gray-600 mb-4">Управляйте вашим профилем и настройками</p>
-          <div className="text-sm text-gray-500">100% заполнен</div>
-        </div>
+        <Link href="/dashboard/doctor/profile" className="block">
+          <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow cursor-pointer">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Профиль</h3>
+            <p className="text-gray-600 mb-4">Управляйте вашим профилем и настройками</p>
+            <div className="text-sm text-gray-500">100% заполнен</div>
+          </div>
+        </Link>
         
-        <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Пациенты</h3>
-          <p className="text-gray-600 mb-4">Просматривайте историю и записи пациентов</p>
-          <div className="text-sm text-gray-500">Активных: 12</div>
-        </div>
+        <Link href="/dashboard/doctor/doctors" className="block">
+          <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow cursor-pointer">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Врачи</h3>
+            <p className="text-gray-600 mb-4">Просматривайте врачей по специализациям</p>
+            <div className="text-sm text-gray-500">Доступно категорий: 4</div>
+          </div>
+        </Link>
         
-        <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Записи</h3>
-          <p className="text-gray-600 mb-4">Управляйте записями на прием</p>
-          <div className="text-sm text-gray-500">Сегодня: 8</div>
-        </div>
+        <Link href="/dashboard/doctor/patients" className="block">
+          <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow cursor-pointer">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Пациенты</h3>
+            <p className="text-gray-600 mb-4">Просматривайте историю и записи пациентов</p>
+            <div className="text-sm text-gray-500">Активных: 12</div>
+          </div>
+        </Link>
         
-        <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Авишифо</h3>
-          <p className="text-gray-600 mb-4">Искусственный интеллект для диагностики</p>
-          <div className="text-sm text-gray-500">Доступно</div>
-        </div>
+        <Link href="/dashboard/doctor/appointments" className="block">
+          <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow cursor-pointer">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Записи</h3>
+            <p className="text-gray-600 mb-4">Управляйте записями на прием</p>
+            <div className="text-sm text-gray-500">Сегодня: 8</div>
+          </div>
+        </Link>
         
-        <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Чат</h3>
-          <p className="text-gray-600 mb-4">Общайтесь с пациентами и коллегами</p>
-          <div className="text-sm text-gray-500">Новых: 3</div>
-        </div>
+        <Link href="/dashboard/doctor/ai-chat" className="block">
+          <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow cursor-pointer">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Авишифо</h3>
+            <p className="text-gray-600 mb-4">Искусственный интеллект для диагностики</p>
+            <div className="text-sm text-gray-500">Доступно</div>
+          </div>
+        </Link>
         
-        <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Стандарты ВОЗ</h3>
-          <p className="text-gray-600 mb-4">Актуальные медицинские стандарты</p>
-          <div className="text-sm text-gray-500">Обновлено</div>
-        </div>
+        <Link href="/dashboard/doctor/chat" className="block">
+          <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow cursor-pointer">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Чат</h3>
+            <p className="text-gray-600 mb-4">Общайтесь с пациентами и коллегами</p>
+            <div className="text-sm text-gray-500">Новых: 3</div>
+          </div>
+        </Link>
+        
+        <Link href="/dashboard/doctor/who-standards" className="block">
+          <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow cursor-pointer">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Стандарты ВОЗ</h3>
+            <p className="text-gray-600 mb-4">Актуальные медицинские стандарты</p>
+            <div className="text-sm text-gray-500">Обновлено</div>
+          </div>
+        </Link>
       </div>
     </div>
   )

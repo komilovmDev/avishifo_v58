@@ -29,7 +29,7 @@ const sidebarItems: SidebarItem[] = [
     label: "Врачи", 
     icon: Stethoscope, 
     color: "from-emerald-500 to-teal-500",
-    href: "/doctors"
+    href: "/dashboard/doctor/doctors"
   },
   {
     id: "ai-chat",
