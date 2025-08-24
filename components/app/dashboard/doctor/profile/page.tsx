@@ -14,14 +14,36 @@ import {
   Edit3, Save, X, Stethoscope, Building, BarChart3, MessageCircle, LogOut, 
   Activity, Users, FileText, Eye, Plus, Trash2, Heart, Globe, Languages,
   Shield, Zap, TrendingUp, AlertCircle, CheckCircle, Clock3, DollarSign,
-  UserCheck, CalendarDays, Clock4, Search, Check, X as XIcon
+  UserCheck, CalendarDays, Clock4, Search, Check, X as XIcon, Camera
 } from "lucide-react"
 
-// API Configuration
-const API_BASE_URL = "https://new.avishifo.uz"
+// API Configuration - Updated with correct endpoints
+// const API_BASE_URL = "http://localhost:8000" // Development server
+const API_BASE_URL = "https://new.avishifo.uz" // Production server
+
+// Updated API endpoints based on backend structure
 const DOCTOR_PROFILE_API = `${API_BASE_URL}/api/doctors/profile/`
 const DOCTOR_PROFILE_PAGE_API = `${API_BASE_URL}/api/doctors/profile/page/`
+const DOCTOR_PROFILE_STATS_API = `${API_BASE_URL}/api/doctors/profile/stats/`
 const DOCTOR_PROFILE_OPTIONS_API = `${API_BASE_URL}/api/doctors/profile/options/`
+const DOCTOR_PROFILE_FIELDS_API = `${API_BASE_URL}/api/doctors/profile/fields-info/`
+const DOCTOR_SPECIALTIES_API = `${API_BASE_URL}/api/doctors/specialties/`
+const DOCTOR_SPECIALTIES_STATS_API = `${API_BASE_URL}/api/doctors/specialties/stats/`
+
+// Authentication helper function
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("accessToken")
+  return {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  }
+}
+
+// Check if user is authenticated
+const isAuthenticated = () => {
+  const token = localStorage.getItem("accessToken")
+  return !!token
+}
 
 // Default doctor data structure
 const DEFAULT_DOCTOR_DATA = {
@@ -130,22 +152,22 @@ export default function DoctorProfilePage() {
 
   const loadProfileOptions = async () => {
     try {
-      const token = localStorage.getItem("accessToken")
-      if (!token) return
+      if (!isAuthenticated()) return
 
+      // Load languages, working hours, and availability from profile options API
       const response = await axios.get(DOCTOR_PROFILE_OPTIONS_API, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: getAuthHeaders()
       })
       
       if (response.data.success) {
         const options = response.data.data
         setAvailableLanguages(options.languages || [])
-        setAvailableSpecializations(options.specializations || [])
         setAvailableWorkingHours(options.working_hours || [])
         setAvailableAvailability(options.availability || [])
+        console.log("✅ Profile options loaded successfully")
       }
     } catch (error) {
-      console.error("Error loading profile options:", error)
+      console.error("❌ Error loading profile options:", error)
       // Fallback to default options if API fails
       setAvailableLanguages([
         "Узбекский", "Русский", "Казахский", "Киргизский", "Таджикский", "Туркменский",
@@ -158,27 +180,6 @@ export default function DoctorProfilePage() {
         "Хорватский", "Словенский", "Македонский", "Албанский", "Греческий",
         "Иврит", "Амхарский", "Суахили", "Зулу", "Африкаанс", "Хауса", "Йоруба"
       ])
-      setAvailableSpecializations([
-        "Врач общей практики (терапевт)", "Педиатр (детский врач)", "Семейный врач",
-        "Кардиолог", "Сосудистый хирург", "Гематолог", "Пульмонолог (лёгкие)",
-        "Фтизиатр (туберкулёз)", "Гастроэнтеролог", "Проктолог (колопроктолог)",
-        "Гепатолог (печень)", "Уролог", "Андролог (мужское здоровье)", "Нефролог (почки)",
-        "Гинеколог", "Репродуктолог (ЭКО, бесплодие)", "Акушер-гинеколог",
-        "Эндокринолог (щитовидка, диабет)", "Невролог", "Нейрохирург", "Психиатр",
-        "Психотерапевт", "Нарколог", "Детский кардиолог", "Детский невролог",
-        "Детский эндокринолог", "Детский хирург", "Неонатолог", "Хирург общей практики",
-        "Травматолог-ортопед", "Онкохирург", "Пластический хирург", "Челюстно-лицевой хирург",
-        "Торакальный хирург", "Кардиохирург", "Офтальмолог (глазной врач)",
-        "Отоларинголог (ЛОР)", "Сурдолог (слух)", "Дерматолог", "Косметолог",
-        "Венеролог", "Онколог", "Детский онколог", "Радиолог (рентген, МРТ, КТ)",
-        "УЗИ-диагност", "Лаборант (клиническая лаборатория)", "Патологоанатом",
-        "Генетик", "Физиотерапевт", "Реабилитолог", "ЛФК-врач", "Паллиативный врач",
-        "Анестезиолог-реаниматолог", "Врач скорой помощи", "Токсиколог",
-        "Врач-эпидемиолог", "Врач-гигиенист", "Врач по медико-профилактическому делу",
-        "Стоматолог-терапевт", "Стоматолог-хирург", "Стоматолог-ортопед", "Ортодонт",
-        "Детский стоматолог", "Имплантолог", "Спортивный врач", "Судебно-медицинский эксперт",
-        "Врач медицины катастроф"
-      ])
       setAvailableWorkingHours([
         "9:00-18:00", "8:00-17:00", "10:00-19:00", "9:00-17:00", "8:00-18:00",
         "10:00-18:00", "9:00-16:00", "8:00-16:00", "10:00-16:00", "24/7",
@@ -190,13 +191,33 @@ export default function DoctorProfilePage() {
         "24/7", "Гибкий график"
       ])
     }
+
+    // Load specialties from backend API separately
+    try {
+      console.log("🔄 Loading specialties from:", DOCTOR_SPECIALTIES_API)
+      const specialtiesResponse = await axios.get(DOCTOR_SPECIALTIES_API)
+      console.log("📡 Specialties API response:", specialtiesResponse.data)
+      
+      if (specialtiesResponse.data.success) {
+        const backendSpecialties = specialtiesResponse.data.data.map(spec => spec.label)
+        setAvailableSpecializations(backendSpecialties)
+        console.log("✅ Specialties loaded from backend:", backendSpecialties)
+        console.log("✅ Total specialties count:", backendSpecialties.length)
+      } else {
+        console.warn("⚠️ Backend specialties API returned no data")
+        setAvailableSpecializations([])
+      }
+    } catch (error) {
+      console.error("❌ Error loading specialties from backend:", error)
+      console.error("❌ Error details:", error.response?.data || error.message)
+      setAvailableSpecializations([])
+    }
   }
 
   const checkAuth = async () => {
-    const token = localStorage.getItem("accessToken")
-    if (!token) {
-      console.log("No access token found")
-      setIsProfileLoading(false)
+    if (!isAuthenticated()) {
+      console.log("🔒 No access token found - redirecting to login")
+      router.push("/login")
       return
     }
 
@@ -204,9 +225,9 @@ export default function DoctorProfilePage() {
       setIsProfileLoading(true)
       setProfileError(null)
       
-      // First try to get the comprehensive profile
-      const response = await axios.get(DOCTOR_PROFILE_API, {
-        headers: { Authorization: `Bearer ${token}` }
+      // Load profile data from the main profile page API
+      const response = await axios.get(DOCTOR_PROFILE_PAGE_API, {
+        headers: getAuthHeaders()
       })
       
       if (response.data.success) {
@@ -215,52 +236,20 @@ export default function DoctorProfilePage() {
         updateFormDataFromProfile(doctorData)
         console.log("✅ Профиль доктора успешно загружен")
         console.log("📊 Полные данные профиля:", doctorData)
-        console.log("🔍 Ключевые поля:")
-        console.log("  - Имя:", doctorData.full_name || `${doctorData.first_name || ''} ${doctorData.last_name || ''}`)
-        console.log("  - Email:", doctorData.email)
-        console.log("  - Телефон:", doctorData.phone || doctorData.phone_number)
-        console.log("  - Специализации:", doctorData.specializations)
-        console.log("  - Языки:", doctorData.languages)
-        console.log("  - Опыт:", doctorData.experience || doctorData.years_experience)
-        console.log("  - Образование:", doctorData.education)
-        console.log("  - Биография:", doctorData.bio)
-        console.log("  - Адрес:", doctorData.address || doctorData.location)
-        console.log("  - Страна:", doctorData.country)
-        console.log("  - Область:", doctorData.region)
-        console.log("  - Район:", doctorData.district)
-        console.log("  - Сертификаты:", doctorData.certifications)
-        console.log("  - Медицинская лицензия:", doctorData.medical_license)
-        console.log("  - Страхование:", doctorData.insurance)
-        console.log("  - Рабочие часы:", doctorData.working_hours)
-        console.log("  - Доступность:", doctorData.availability)
-        console.log("  - Стоимость консультации:", doctorData.consultation_fee)
-        console.log("  - Экстренный контакт:", doctorData.emergency_contact)
-        console.log("  - Дата рождения:", doctorData.date_of_birth)
-        console.log("  - Пол:", doctorData.gender)
-        console.log("  - Рейтинг:", doctorData.rating)
-        console.log("  - Количество пациентов:", doctorData.total_patients)
-        console.log("  - Количество консультаций:", doctorData.monthly_consultations)
       } else {
-        // Fallback to profile page API
-        const pageResponse = await axios.get(DOCTOR_PROFILE_PAGE_API, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        
-        if (pageResponse.data) {
-          setUserProfile(pageResponse.data)
-          updateFormDataFromProfile(pageResponse.data)
-          console.log("✅ Профиль загружен через fallback API")
-          console.log("📊 Fallback данные профиля:", pageResponse.data)
-        }
+        throw new Error(response.data.message || "Failed to load profile")
       }
     } catch (error) {
-      console.error("Error fetching doctor profile:", error)
+      console.error("❌ Error fetching doctor profile:", error)
+      
       if (error.response?.status === 401) {
         localStorage.removeItem("accessToken")
         alert("🔒 Сессия истекла. Пожалуйста, войдите в систему снова.")
         router.push("/login")
+      } else if (error.response?.status === 404) {
+        setProfileError("Профиль доктора не найден. Возможно, нужно создать профиль.")
       } else {
-        setProfileError("Ошибка загрузки профиля. Попробуйте обновить страницу.")
+        setProfileError(`Ошибка загрузки профиля: ${error.response?.data?.message || error.message}`)
       }
     } finally {
       setIsProfileLoading(false)
@@ -311,28 +300,24 @@ export default function DoctorProfilePage() {
   }
 
   const handleSave = async () => {
+    if (!isAuthenticated()) {
+      alert("🔒 Пожалуйста, войдите в систему для сохранения профиля")
+      setIsEditing(false)
+      return
+    }
+
     setIsLoading(true)
     try {
-      const token = localStorage.getItem("accessToken")
-      
-      if (!token) {
-        alert("🔒 Пожалуйста, войдите в систему для сохранения профиля")
-        setIsEditing(false)
-        return
-      }
-
-      // Prepare data for backend
+      // Prepare data for backend using the correct API format
       const updateData = {
-        // User fields
-        user: {
-          first_name: formData.fullName.split(' ')[0] || "",
-          last_name: formData.fullName.split(' ').slice(1).join(' ') || "",
-          email: formData.email,
-          phone_number: formData.phone
-        },
-        // Doctor fields
-        bio: formData.bio,
+        full_name: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        specialization: formData.specialization,
+        experience: formData.experience,
         education: formData.education,
+        bio: formData.bio,
+        languages: formData.languages,
         certifications: formData.certifications,
         date_of_birth: formData.dateOfBirth,
         gender: formData.gender,
@@ -344,32 +329,30 @@ export default function DoctorProfilePage() {
         medical_license: formData.medicalLicense,
         insurance: formData.insurance,
         working_hours: formData.workingHours,
-        consultation_fee: formData.consultationFee ? 
-          parseInt(formData.consultationFee.replace(/[^\d]/g, '')) : null,
-        availability: formData.availability,
-        languages_spoken: formData.languages,
-        specializations: formData.specialization
+        consultation_fee: formData.consultationFee,
+        availability: formData.availability
       }
 
-      // Send PATCH request to update profile
-      const response = await axios.patch(DOCTOR_PROFILE_API, updateData, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      console.log("📤 Sending update data:", updateData)
+
+      // Send PATCH request to update profile using the profile page API
+      const response = await axios.patch(DOCTOR_PROFILE_PAGE_API, updateData, {
+        headers: getAuthHeaders()
       })
       
       if (response.data.success) {
-        setUserProfile(response.data.data)
-        updateFormDataFromProfile(response.data.data)
+        const updatedProfile = response.data.data
+        setUserProfile(updatedProfile)
+        updateFormDataFromProfile(updatedProfile)
         alert("✅ Профиль успешно обновлен!")
         setIsEditing(false)
+        console.log("✅ Profile updated successfully:", updatedProfile)
       } else {
         throw new Error(response.data.message || "Ошибка обновления профиля")
       }
       
     } catch (error: any) {
-      console.error("Error updating profile:", error)
+      console.error("❌ Error updating profile:", error)
       
       if (error.response?.status === 401) {
         localStorage.removeItem("accessToken")
@@ -377,6 +360,8 @@ export default function DoctorProfilePage() {
         router.push("/login")
       } else if (error.response?.status === 403) {
         alert("❌ Нет прав для обновления профиля")
+      } else if (error.response?.status === 404) {
+        alert("❌ Профиль не найден. Возможно, нужно создать профиль.")
       } else if (error.response?.status >= 500) {
         alert("🔧 Ошибка сервера. Попробуйте позже.")
       } else {
@@ -397,9 +382,12 @@ export default function DoctorProfilePage() {
   }
 
   const handleLogout = () => {
+    // Clear all authentication data
     localStorage.removeItem("accessToken")
     localStorage.removeItem("refreshToken")
     localStorage.removeItem("userType")
+    localStorage.removeItem("user")
+    
     alert("🚪 Вы вышли из системы")
     router.push("/login")
   }
@@ -441,6 +429,61 @@ export default function DoctorProfilePage() {
     "Гибкий график"
   ]
 
+  const handleProfilePictureChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      try {
+        // Create a preview URL for immediate display
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          const result = e.target?.result as string
+          // Update the profile picture immediately for preview
+          setUserProfile(prev => ({
+            ...prev,
+            profile_picture: result
+          }))
+        }
+        reader.readAsDataURL(file)
+        
+        // Upload file to server
+        const formData = new FormData()
+        formData.append('profile_picture', file)
+        
+        console.log("📸 Uploading profile picture:", file.name)
+        
+        // Upload to server using the profile page API
+        const uploadResponse = await axios.patch(DOCTOR_PROFILE_PAGE_API, formData, {
+          headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        
+        if (uploadResponse.data.success) {
+          console.log("✅ Profile picture uploaded successfully")
+          // Update profile with server response
+          if (uploadResponse.data.data?.profile_picture) {
+            setUserProfile(prev => ({
+              ...prev,
+              profile_picture: uploadResponse.data.data.profile_picture
+            }))
+          }
+          // Also refresh the profile to get updated data
+          checkAuth()
+        } else {
+          throw new Error(uploadResponse.data.message || "Upload failed")
+        }
+      } catch (error) {
+        console.error("❌ Error uploading profile picture:", error)
+        // Show error message to user
+        alert("❌ Profil rasmini yuklashda xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring.")
+        
+        // Revert to previous profile picture
+        checkAuth()
+      }
+    }
+  }
+
   // Show loading state
   if (isProfileLoading) {
     return (
@@ -479,21 +522,48 @@ export default function DoctorProfilePage() {
           <CardContent className="p-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-6">
-                <Avatar className="w-20 h-20 border-4 border-blue-200">
-                  <AvatarImage src={userProfile.profile_picture || "/placeholder.svg"} />
-                  <AvatarFallback className="bg-blue-500 text-white text-2xl font-bold">
-                    {(userProfile.first_name?.[0] || "") + (userProfile.last_name?.[0] || "") || "Д"}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar className={`w-20 h-20 border-4 ${isEditing ? 'border-blue-200 cursor-pointer hover:border-blue-400' : 'border-gray-200'} transition-colors`}>
+                    <AvatarImage 
+                      src={
+                        userProfile.profile_picture 
+                          ? userProfile.profile_picture.startsWith('http') 
+                            ? userProfile.profile_picture 
+                            : `https://new.avishifo.uz${userProfile.profile_picture}`
+                          : "/placeholder.svg"
+                      } 
+                      alt="Profile Picture"
+                    />
+                    <AvatarFallback className="bg-blue-500 text-white text-2xl font-bold">
+                      {(userProfile.first_name?.[0] || "") + (userProfile.last_name?.[0] || "") || "Д"}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+
+                  
+                  {/* Camera icon only shows when editing */}
+                  {isEditing && (
+                    <div className="absolute -bottom-2 -right-2">
+                      <label htmlFor="profile-picture-input" className="cursor-pointer">
+                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors">
+                          <Camera className="w-4 h-4 text-white" />
+                        </div>
+                      </label>
+                      <input
+                        id="profile-picture-input"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleProfilePictureChange}
+                      />
+                    </div>
+                  )}
+                </div>
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">
                     {userProfile.full_name || `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || "Доктор"}
                   </h1>
                   <div className="flex items-center gap-4 mb-3">
-                    <Badge className="bg-blue-100 text-blue-700 border-blue-200 px-3 py-1 text-sm">
-                      <Stethoscope className="w-4 h-4 mr-2" />
-                      {userProfile.specialization || userProfile.specializations?.[0] || "Врач"}
-                    </Badge>
                     <Badge className="bg-green-100 text-green-700 border-green-200 px-3 py-1 text-sm">
                       <Clock className="w-4 h-4 mr-2" />
                       {userProfile.experience || `${userProfile.years_experience || 0} лет`}
@@ -508,7 +578,7 @@ export default function DoctorProfilePage() {
                   <div className="flex items-center gap-2 text-gray-600">
                     <MapPin className="w-4 h-4 text-gray-500" />
                     <span className="font-medium">Адрес:</span>
-                    <span>{userProfile.location || userProfile.address || `${userProfile.country || ''} ${userProfile.region || ''} ${userProfile.district || ''}`.trim() || "Адрес не указан"}</span>
+                    <span>{userProfile.country || ''} {userProfile.region || ''}</span>
                   </div>
                 </div>
               </div>
@@ -528,15 +598,7 @@ export default function DoctorProfilePage() {
                     Редактировать
                   </Button>
                 )}
-                <Button 
-                  variant="outline" 
-                  onClick={() => checkAuth()} 
-                  disabled={isProfileLoading}
-                  className="px-4"
-                >
-                  <Activity className="w-4 h-4 mr-2" />
-                  Обновить
-                </Button>
+
                 <Button variant="outline" onClick={handleLogout} className="px-6">
                   <LogOut className="w-4 h-4 mr-2" />
                   Выйти
@@ -2411,54 +2473,77 @@ export default function DoctorProfilePage() {
 
             {/* Specializations Grid */}
             <div className="p-6 overflow-y-auto max-h-[60vh]">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filteredSpecializations.map((specialization) => {
-                  const isSelected = formData.specialization && formData.specialization.includes(specialization)
-                  return (
-                    <button
-                      key={specialization}
-                      type="button"
-                      onClick={() => {
-                        if (isSelected) {
-                          // Remove specialization
-                          handleInputChange("specialization", formData.specialization.filter(spec => spec !== specialization))
-                        } else {
-                          // Add specialization
-                          handleInputChange("specialization", [...(formData.specialization || []), specialization])
-                        }
-                      }}
-                      className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                        isSelected
-                          ? 'border-green-500 bg-gradient-to-r from-green-50 to-emerald-50 shadow-md'
-                          : 'border-gray-200 bg-white hover:border-green-300 hover:bg-green-50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+              {availableSpecializations.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Stethoscope className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 text-lg">Загрузка специализаций...</p>
+                  <p className="text-gray-400">Пожалуйста, подождите</p>
+                  <div className="mt-4 text-sm text-gray-400">
+                    <p>Debug: availableSpecializations.length = {availableSpecializations.length}</p>
+                    <p>Debug: filteredSpecializations.length = {filteredSpecializations.length}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {filteredSpecializations.map((specialization) => {
+                    const isSelected = formData.specialization && formData.specialization.includes(specialization)
+                    return (
+                      <button
+                        key={specialization}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            // Remove specialization
+                            handleInputChange("specialization", formData.specialization.filter(spec => spec !== specialization))
+                          } else {
+                            // Add specialization
+                            handleInputChange("specialization", [...(formData.specialization || []), specialization])
+                          }
+                        }}
+                        className={`p-4 rounded-xl border-2 transition-all duration-200 ${
                           isSelected
-                            ? 'border-green-500 bg-green-500'
-                            : 'border-gray-300 bg-white'
-                        }`}>
-                          {isSelected && <Check className="w-3 h-3 text-white" />}
+                            ? 'border-green-500 bg-gradient-to-r from-green-50 to-emerald-50 shadow-md'
+                            : 'border-gray-200 bg-white hover:border-green-300 hover:bg-green-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                            isSelected
+                              ? 'border-green-500 bg-green-500'
+                              : 'border-gray-300 bg-white'
+                          }`}>
+                            {isSelected && <Check className="w-3 h-3 text-white" />}
+                          </div>
+                          <span className={`font-medium text-left ${
+                            isSelected ? 'text-green-800' : 'text-gray-700'
+                          }`}>
+                            {specialization}
+                          </span>
                         </div>
-                        <span className={`font-medium text-left ${
-                          isSelected ? 'text-green-800' : 'text-gray-700'
-                        }`}>
-                          {specialization}
-                        </span>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
               
-              {filteredSpecializations.length === 0 && (
+              {availableSpecializations.length > 0 && filteredSpecializations.length === 0 && (
                 <div className="text-center py-12">
                   <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 text-lg">Специализации не найдены</p>
                   <p className="text-gray-400">Попробуйте другой поисковый запрос</p>
                 </div>
               )}
+              
+              {/* Debug Information */}
+              <div className="mt-4 p-4 bg-gray-100 rounded-lg text-xs text-gray-600">
+                <p><strong>Debug Info:</strong></p>
+                <p>availableSpecializations: {availableSpecializations.length} items</p>
+                <p>filteredSpecializations: {filteredSpecializations.length} items</p>
+                <p>specializationSearch: "{specializationSearch}"</p>
+                <p>API URL: {DOCTOR_SPECIALTIES_API}</p>
+              </div>
             </div>
 
             {/* Modal Footer */}
