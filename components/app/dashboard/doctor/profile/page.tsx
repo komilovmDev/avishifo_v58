@@ -17,77 +17,83 @@ import {
   UserCheck, CalendarDays, Clock4, Search, Check, X as XIcon
 } from "lucide-react"
 
-
+// API Configuration
 const API_BASE_URL = "https://new.avishifo.uz"
+const DOCTOR_PROFILE_API = `${API_BASE_URL}/api/doctors/profile/`
+const DOCTOR_PROFILE_PAGE_API = `${API_BASE_URL}/api/doctors/profile/page/`
+const DOCTOR_PROFILE_OPTIONS_API = `${API_BASE_URL}/api/doctors/profile/options/`
 
-const MOCK_DOCTOR_DATA = {
-  full_name: "Доктор Ахмедов Алишер",
-  first_name: "Алишер",
-  last_name: "Ахмедов",
-  profile_picture: "/placeholder.svg",
-  email: "alisher.ahmedov@example.com",
-  phone: "+998 90 123 45 67",
-  specialization: ["Кардиолог"],
-  experience: "15 лет",
-  education: "Ташкентский медицинский университет",
-  location: "Улица Марифатчи, Хорезмский область, Узбекистан",
-  country: "Узбекистан",
-  region: "Хорезмская",
-  district: "Ургенчский",
-  bio: "Опытный кардиолог с 15-летним стажем работы. Специализируюсь на лечении сердечно-сосудистых заболеваний.",
-  languages: ["Узбекский", "Русский", "Английский"],
-  certifications: "Сертификат кардиолога, Европейское общество кардиологов",
-  date_of_birth: "1985-03-15",
-  gender: "Мужской",
-  address: "Улица Марифатчи, дом 15",
-  emergency_contact: "+998 90 987 65 43",
-  medical_license: "MD-12345",
-  insurance: "Страховая компания 'Медицинская защита'",
-  working_hours: "9:00-18:00",
-  consultation_fee: "150,000 сум",
-  availability: "Понедельник - Пятница",
-  total_patients: 127,
-  monthly_consultations: 89,
-  rating: 4.9,
-  total_reviews: 156,
-  years_experience: 15,
-  completed_treatments: 234,
-  active_patients: 45,
-  monthly_income: 4500000,
-  languages_spoken: ["Узбекский", "Русский", "Английский"],
-  specializations: ["Кардиология", "Эхокардиография", "ЭКГ"],
-  awards: ["Лучший врач года 2023", "Отличник здравоохранения"],
-  research_papers: 12,
-  conferences_attended: 28
+// Default doctor data structure
+const DEFAULT_DOCTOR_DATA = {
+  full_name: "",
+  first_name: "",
+  last_name: "",
+  profile_picture: null,
+  email: "",
+  phone: "",
+  specialization: "Врач",
+  experience: "Опыт не указан",
+  education: "",
+  location: "Адрес не указан",
+  country: "",
+  region: "",
+  district: "",
+  bio: "",
+  languages: [],
+  certifications: "",
+  date_of_birth: null,
+  gender: "",
+  address: "",
+  emergency_contact: "",
+  medical_license: "",
+  insurance: "",
+  working_hours: "",
+  consultation_fee: "Не указано",
+  availability: "",
+  total_patients: 0,
+  monthly_consultations: 0,
+  rating: "4.9",
+  total_reviews: 0,
+  years_experience: 0,
+  completed_treatments: 0,
+  active_patients: 0,
+  monthly_income: 0,
+  languages_spoken: [],
+  specializations: [],
+  awards: [],
+  research_papers: 0,
+  conferences_attended: 0
 }
 
 export default function DoctorProfilePage() {
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
-  const [userProfile, setUserProfile] = useState(MOCK_DOCTOR_DATA)
+  const [userProfile, setUserProfile] = useState(DEFAULT_DOCTOR_DATA)
+  const [isProfileLoading, setIsProfileLoading] = useState(true)
+  const [profileError, setProfileError] = useState(null)
   const [formData, setFormData] = useState({
-    fullName: MOCK_DOCTOR_DATA.full_name,
-    email: MOCK_DOCTOR_DATA.email,
-    phone: MOCK_DOCTOR_DATA.phone,
-    specialization: ["Кардиолог"],
-    experience: MOCK_DOCTOR_DATA.experience,
-    education: MOCK_DOCTOR_DATA.education,
-    location: MOCK_DOCTOR_DATA.location,
-    bio: MOCK_DOCTOR_DATA.bio,
-    languages: ["Узбекский", "Русский", "Английский"],
-    certifications: MOCK_DOCTOR_DATA.certifications,
-    dateOfBirth: MOCK_DOCTOR_DATA.date_of_birth,
-    gender: MOCK_DOCTOR_DATA.gender,
-    address: MOCK_DOCTOR_DATA.address,
-    country: "Узбекистан",
-    region: "Хорезмская",
-    district: "Ургенчский",
-    emergencyContact: MOCK_DOCTOR_DATA.emergency_contact,
-    medicalLicense: MOCK_DOCTOR_DATA.medical_license,
-    insurance: MOCK_DOCTOR_DATA.insurance,
-    workingHours: MOCK_DOCTOR_DATA.working_hours,
-    consultationFee: MOCK_DOCTOR_DATA.consultation_fee,
-    availability: MOCK_DOCTOR_DATA.availability
+    fullName: "",
+    email: "",
+    phone: "",
+    specialization: [],
+    experience: "",
+    education: "",
+    location: "",
+    bio: "",
+    languages: [],
+    certifications: "",
+    dateOfBirth: "",
+    gender: "",
+    address: "",
+    country: "",
+    region: "",
+    district: "",
+    emergencyContact: "",
+    medicalLicense: "",
+    insurance: "",
+    workingHours: "",
+    consultationFee: "",
+    availability: ""
   })
   const [isLoading, setIsLoading] = useState(false)
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false)
@@ -96,185 +102,199 @@ export default function DoctorProfilePage() {
   const [specializationSearch, setSpecializationSearch] = useState("")
   const [isWorkingHoursModalOpen, setIsWorkingHoursModalOpen] = useState(false)
   const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] = useState(false)
+  const [availableLanguages, setAvailableLanguages] = useState([])
+  const [availableSpecializations, setAvailableSpecializations] = useState([])
+  const [availableWorkingHours, setAvailableWorkingHours] = useState([])
+  const [availableAvailability, setAvailableAvailability] = useState([])
 
-  const allLanguages = [
-    // Osiyo tillari
-    "Узбекский", "Русский", "Казахский", "Киргизский", "Таджикский", "Туркменский",
-    "Китайский", "Корейский", "Японский", "Вьетнамский", "Тайский", "Малайский",
-    "Индонезийский", "Филиппинский", "Бенгальский", "Хинди", "Урду", "Персидский",
-    "Арабский", "Турецкий", "Азербайджанский", "Грузинский", "Армянский",
-    
-    // Yevropa tillari
-    "Английский", "Немецкий", "Французский", "Испанский", "Итальянский", "Португальский",
-    "Голландский", "Шведский", "Норвежский", "Датский", "Финский", "Польский",
-    "Чешский", "Словацкий", "Венгерский", "Румынский", "Болгарский", "Сербский",
-    "Хорватский", "Словенский", "Македонский", "Албанский", "Греческий",
-    
-    // Boshqa tillar
-    "Иврит", "Амхарский", "Суахили", "Зулу", "Африкаанс", "Хауса", "Йоруба"
-  ]
+  // Load available options from backend
+  useEffect(() => {
+    loadProfileOptions()
+  }, [])
 
-  const allSpecializations = [
-    // Asosiy ixtisosliklar
-    "Врач общей практики (терапевт)",
-    "Педиатр (детский врач)",
-    "Семейный врач",
-    "Кардиолог",
-    "Сосудистый хирург",
-    "Гематолог",
-    "Пульмонолог (лёгкие)",
-    "Фтизиатр (туберкулёз)",
-    "Гастроэнтеролог",
-    "Проктолог (колопроктолог)",
-    "Гепатолог (печень)",
-    "Уролог",
-    "Андролог (мужское здоровье)",
-    "Нефролог (почки)",
-    "Гинеколог",
-    "Репродуктолог (ЭКО, бесплодие)",
-    "Акушер-гинеколог",
-    "Эндокринолог (щитовидка, диабет)",
-    "Невролог",
-    "Нейрохирург",
-    "Психиатр",
-    "Психотерапевт",
-    "Нарколог",
-    
-    // Bolalar ixtisosliklari
-    "Детский кардиолог",
-    "Детский невролог",
-    "Детский эндокринолог",
-    "Детский хирург",
-    "Неонатолог",
-    
-    // Jarrohlik ixtisosliklari
-    "Хирург общей практики",
-    "Травматолог-ортопед",
-    "Онкохирург",
-    "Пластический хирург",
-    "Челюстно-лицевой хирург",
-    "Торакальный хирург",
-    "Кардиохирург",
-    
-    // Boshqa ixtisosliklar
-    "Офтальмолог (глазной врач)",
-    "Отоларинголог (ЛОР)",
-    "Сурдолог (слух)",
-    "Дерматолог",
-    "Косметолог",
-    "Венеролог",
-    "Онколог",
-    "Детский онколог",
-    "Радиолог (рентген, МРТ, КТ)",
-    "УЗИ-диагност",
-    "Лаборант (клиническая лаборатория)",
-    "Патологоанатом",
-    "Генетик",
-    "Физиотерапевт",
-    "Реабилитолог",
-    "ЛФК-врач",
-    "Паллиативный врач",
-    "Анестезиолог-реаниматолог",
-    "Врач скорой помощи",
-    "Токсиколог",
-    "Врач-эпидемиолог",
-    "Врач-гигиенист",
-    "Врач по медико-профилактическому делу",
-    
-    // Stomatologiya
-    "Стоматолог-терапевт",
-    "Стоматолог-хирург",
-    "Стоматолог-ортопед",
-    "Ортодонт",
-    "Детский стоматолог",
-    "Имплантолог",
-    
-    // Maxsus ixtisosliklar
-    "Спортивный врач",
-    "Судебно-медицинский эксперт",
-    "Врач медицины катастроф"
-  ]
-
-  const filteredLanguages = allLanguages.filter(lang => 
-    lang.toLowerCase().includes(languageSearch.toLowerCase())
-  )
-
-  const filteredSpecializations = allSpecializations.filter(spec => 
-    spec.toLowerCase().includes(specializationSearch.toLowerCase())
-  )
-
-  const allWorkingHours = [
-    "9:00-18:00",
-    "8:00-17:00",
-    "10:00-19:00",
-    "9:00-17:00",
-    "8:00-18:00",
-    "10:00-18:00",
-    "9:00-16:00",
-    "8:00-16:00",
-    "10:00-16:00",
-    "24/7",
-    "По вызову",
-    "Гибкий график"
-  ]
-
-  const allAvailability = [
-    "Понедельник - Пятница",
-    "Пн-Пт",
-    "Понедельник - Суббота",
-    "Пн-Сб",
-    "Ежедневно",
-    "По будням",
-    "По выходным",
-    "По записи",
-    "Экстренные случаи",
-    "24/7",
-    "Гибкий график"
-  ]
-
+  // Load doctor profile data
   useEffect(() => {
     checkAuth()
   }, [])
 
-  const checkAuth = async () => {
-    const token = localStorage.getItem("accessToken")
-    if (!token) return
+  // Monitor userProfile changes
+  useEffect(() => {
+    if (userProfile && Object.keys(userProfile).length > 0) {
+      console.log("📱 userProfile state обновлен:")
+      console.log("  - Полный объект:", userProfile)
+      console.log("  - Тип данных:", typeof userProfile)
+      console.log("  - Количество ключей:", Object.keys(userProfile).length)
+      console.log("  - Доступные ключи:", Object.keys(userProfile))
+    }
+  }, [userProfile])
 
+  const loadProfileOptions = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/accounts/profile/`, {
+      const token = localStorage.getItem("accessToken")
+      if (!token) return
+
+      const response = await axios.get(DOCTOR_PROFILE_OPTIONS_API, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      const userData = response.data
-      if (userData.user_type === "doctor") {
-        setUserProfile(userData)
-        setFormData({
-          fullName: userData.full_name || `${userData.first_name} ${userData.last_name}` || "",
-          email: userData.email || "",
-          phone: userData.phone || "",
-          specialization: userData.specialization ? (typeof userData.specialization === 'string' ? userData.specialization.split(", ") : (Array.isArray(userData.specialization) ? userData.specialization : [])) : [],
-          experience: userData.experience || "",
-          education: userData.education || "",
-          location: userData.location || "",
-          bio: userData.bio || "",
-          languages: userData.languages ? (typeof userData.languages === 'string' ? userData.languages.split(", ") : (Array.isArray(userData.languages) ? userData.languages : [])) : [],
-          certifications: userData.certifications || "",
-          dateOfBirth: userData.date_of_birth || "",
-          gender: userData.gender || "",
-          address: userData.address || "",
-          country: userData.country || "Узбекистан",
-          region: userData.region || "Хорезмская",
-          district: userData.district || "Ургенчский",
-          emergencyContact: userData.emergency_contact || "",
-          medicalLicense: userData.medical_license || "",
-          insurance: userData.insurance || "",
-          workingHours: userData.working_hours || "",
-          consultationFee: userData.consultation_fee || "",
-          availability: userData.availability || ""
-        })
+      
+      if (response.data.success) {
+        const options = response.data.data
+        setAvailableLanguages(options.languages || [])
+        setAvailableSpecializations(options.specializations || [])
+        setAvailableWorkingHours(options.working_hours || [])
+        setAvailableAvailability(options.availability || [])
       }
     } catch (error) {
-      console.error("API error, using mock data:", error)
+      console.error("Error loading profile options:", error)
+      // Fallback to default options if API fails
+      setAvailableLanguages([
+        "Узбекский", "Русский", "Казахский", "Киргизский", "Таджикский", "Туркменский",
+        "Китайский", "Корейский", "Японский", "Вьетнамский", "Тайский", "Малайский",
+        "Индонезийский", "Филиппинский", "Бенгальский", "Хинди", "Урду", "Персидский",
+        "Арабский", "Турецкий", "Азербайджанский", "Грузинский", "Армянский",
+        "Английский", "Немецкий", "Французский", "Испанский", "Итальянский", "Португальский",
+        "Голландский", "Шведский", "Норвежский", "Датский", "Финский", "Польский",
+        "Чешский", "Словацкий", "Венгерский", "Румынский", "Болгарский", "Сербский",
+        "Хорватский", "Словенский", "Македонский", "Албанский", "Греческий",
+        "Иврит", "Амхарский", "Суахили", "Зулу", "Африкаанс", "Хауса", "Йоруба"
+      ])
+      setAvailableSpecializations([
+        "Врач общей практики (терапевт)", "Педиатр (детский врач)", "Семейный врач",
+        "Кардиолог", "Сосудистый хирург", "Гематолог", "Пульмонолог (лёгкие)",
+        "Фтизиатр (туберкулёз)", "Гастроэнтеролог", "Проктолог (колопроктолог)",
+        "Гепатолог (печень)", "Уролог", "Андролог (мужское здоровье)", "Нефролог (почки)",
+        "Гинеколог", "Репродуктолог (ЭКО, бесплодие)", "Акушер-гинеколог",
+        "Эндокринолог (щитовидка, диабет)", "Невролог", "Нейрохирург", "Психиатр",
+        "Психотерапевт", "Нарколог", "Детский кардиолог", "Детский невролог",
+        "Детский эндокринолог", "Детский хирург", "Неонатолог", "Хирург общей практики",
+        "Травматолог-ортопед", "Онкохирург", "Пластический хирург", "Челюстно-лицевой хирург",
+        "Торакальный хирург", "Кардиохирург", "Офтальмолог (глазной врач)",
+        "Отоларинголог (ЛОР)", "Сурдолог (слух)", "Дерматолог", "Косметолог",
+        "Венеролог", "Онколог", "Детский онколог", "Радиолог (рентген, МРТ, КТ)",
+        "УЗИ-диагност", "Лаборант (клиническая лаборатория)", "Патологоанатом",
+        "Генетик", "Физиотерапевт", "Реабилитолог", "ЛФК-врач", "Паллиативный врач",
+        "Анестезиолог-реаниматолог", "Врач скорой помощи", "Токсиколог",
+        "Врач-эпидемиолог", "Врач-гигиенист", "Врач по медико-профилактическому делу",
+        "Стоматолог-терапевт", "Стоматолог-хирург", "Стоматолог-ортопед", "Ортодонт",
+        "Детский стоматолог", "Имплантолог", "Спортивный врач", "Судебно-медицинский эксперт",
+        "Врач медицины катастроф"
+      ])
+      setAvailableWorkingHours([
+        "9:00-18:00", "8:00-17:00", "10:00-19:00", "9:00-17:00", "8:00-18:00",
+        "10:00-18:00", "9:00-16:00", "8:00-16:00", "10:00-16:00", "24/7",
+        "По вызову", "Гибкий график"
+      ])
+      setAvailableAvailability([
+        "Понедельник - Пятница", "Пн-Пт", "Понедельник - Суббота", "Пн-Сб",
+        "Ежедневно", "По будням", "По выходным", "По записи", "Экстренные случаи",
+        "24/7", "Гибкий график"
+      ])
     }
+  }
+
+  const checkAuth = async () => {
+    const token = localStorage.getItem("accessToken")
+    if (!token) {
+      console.log("No access token found")
+      setIsProfileLoading(false)
+      return
+    }
+
+    try {
+      setIsProfileLoading(true)
+      setProfileError(null)
+      
+      // First try to get the comprehensive profile
+      const response = await axios.get(DOCTOR_PROFILE_API, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      if (response.data.success) {
+        const doctorData = response.data.data
+        setUserProfile(doctorData)
+        updateFormDataFromProfile(doctorData)
+        console.log("✅ Профиль доктора успешно загружен")
+        console.log("📊 Полные данные профиля:", doctorData)
+        console.log("🔍 Ключевые поля:")
+        console.log("  - Имя:", doctorData.full_name || `${doctorData.first_name || ''} ${doctorData.last_name || ''}`)
+        console.log("  - Email:", doctorData.email)
+        console.log("  - Телефон:", doctorData.phone || doctorData.phone_number)
+        console.log("  - Специализации:", doctorData.specializations)
+        console.log("  - Языки:", doctorData.languages)
+        console.log("  - Опыт:", doctorData.experience || doctorData.years_experience)
+        console.log("  - Образование:", doctorData.education)
+        console.log("  - Биография:", doctorData.bio)
+        console.log("  - Адрес:", doctorData.address || doctorData.location)
+        console.log("  - Страна:", doctorData.country)
+        console.log("  - Область:", doctorData.region)
+        console.log("  - Район:", doctorData.district)
+        console.log("  - Сертификаты:", doctorData.certifications)
+        console.log("  - Медицинская лицензия:", doctorData.medical_license)
+        console.log("  - Страхование:", doctorData.insurance)
+        console.log("  - Рабочие часы:", doctorData.working_hours)
+        console.log("  - Доступность:", doctorData.availability)
+        console.log("  - Стоимость консультации:", doctorData.consultation_fee)
+        console.log("  - Экстренный контакт:", doctorData.emergency_contact)
+        console.log("  - Дата рождения:", doctorData.date_of_birth)
+        console.log("  - Пол:", doctorData.gender)
+        console.log("  - Рейтинг:", doctorData.rating)
+        console.log("  - Количество пациентов:", doctorData.total_patients)
+        console.log("  - Количество консультаций:", doctorData.monthly_consultations)
+      } else {
+        // Fallback to profile page API
+        const pageResponse = await axios.get(DOCTOR_PROFILE_PAGE_API, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        
+        if (pageResponse.data) {
+          setUserProfile(pageResponse.data)
+          updateFormDataFromProfile(pageResponse.data)
+          console.log("✅ Профиль загружен через fallback API")
+          console.log("📊 Fallback данные профиля:", pageResponse.data)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching doctor profile:", error)
+      if (error.response?.status === 401) {
+        localStorage.removeItem("accessToken")
+        alert("🔒 Сессия истекла. Пожалуйста, войдите в систему снова.")
+        router.push("/login")
+      } else {
+        setProfileError("Ошибка загрузки профиля. Попробуйте обновить страницу.")
+      }
+    } finally {
+      setIsProfileLoading(false)
+    }
+  }
+
+  const updateFormDataFromProfile = (profileData) => {
+    console.log("🔄 Обновление formData из профиля:", profileData)
+    setFormData({
+      fullName: profileData.full_name || `${profileData.first_name} ${profileData.last_name}` || "",
+      email: profileData.email || "",
+      phone: profileData.phone || "",
+      specialization: profileData.specializations ? 
+        (Array.isArray(profileData.specializations) ? profileData.specializations : []) : [],
+      experience: profileData.experience || "",
+      education: profileData.education || "",
+      location: profileData.location || "",
+      bio: profileData.bio || "",
+      languages: profileData.languages ? 
+        (Array.isArray(profileData.languages) ? profileData.languages : []) : [],
+      certifications: profileData.certifications || "",
+      dateOfBirth: profileData.date_of_birth || "",
+      gender: profileData.gender || "",
+      address: profileData.address || "",
+      country: profileData.country || "",
+      region: profileData.region || "",
+      district: profileData.district || "",
+      emergencyContact: profileData.emergency_contact || "",
+      medicalLicense: profileData.medical_license || "",
+      insurance: profileData.insurance || "",
+      workingHours: profileData.working_hours || "",
+      consultationFee: profileData.consultation_fee || "",
+      availability: profileData.availability || ""
+    })
   }
 
   const handleInputChange = (field: string, value: string | string[]) => {
@@ -296,114 +316,74 @@ export default function DoctorProfilePage() {
       const token = localStorage.getItem("accessToken")
       
       if (!token) {
-        // Agar token yo'q bo'lsa, local saqlash
-        const updatedLanguages = Array.isArray(formData.languages) ? formData.languages.join(", ") : (formData.languages || "")
-        setUserProfile({
-          ...userProfile,
-          full_name: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
-          specialization: formData.specialization,
-          experience: formData.experience,
-          education: formData.education,
-          location: formData.location,
-          bio: formData.bio,
-          languages: updatedLanguages,
-          certifications: formData.certifications,
-          date_of_birth: formData.dateOfBirth,
-          gender: formData.gender,
-          address: formData.address,
-          emergency_contact: formData.emergencyContact,
-          medical_license: formData.medicalLicense,
-          insurance: formData.insurance,
-          working_hours: formData.workingHours,
-          consultation_fee: formData.consultationFee,
-          availability: formData.availability
-        })
-        // Update formData languages to match the saved format
-        setFormData(prev => ({
-          ...prev,
-          languages: Array.isArray(formData.languages) ? formData.languages : []
-        }))
-        alert("✅ Профиль обновлен локально! (Войдите в систему для синхронизации с сервером)")
+        alert("🔒 Пожалуйста, войдите в систему для сохранения профиля")
         setIsEditing(false)
         return
       }
 
-      // Token bor bo'lsa, serverga yuborish
-              const updateData = {
-          full_name: formData.fullName,
+      // Prepare data for backend
+      const updateData = {
+        // User fields
+        user: {
+          first_name: formData.fullName.split(' ')[0] || "",
+          last_name: formData.fullName.split(' ').slice(1).join(' ') || "",
           email: formData.email,
-          phone: formData.phone,
-          specialization: Array.isArray(formData.specialization) ? formData.specialization.join(", ") : (formData.specialization || ""),
-          experience: formData.experience,
-        education: formData.education,
-        location: formData.location,
+          phone_number: formData.phone
+        },
+        // Doctor fields
         bio: formData.bio,
-        languages: Array.isArray(formData.languages) ? formData.languages.join(", ") : (formData.languages || ""),
+        education: formData.education,
         certifications: formData.certifications,
         date_of_birth: formData.dateOfBirth,
         gender: formData.gender,
         address: formData.address,
+        country: formData.country,
+        region: formData.region,
+        district: formData.district,
         emergency_contact: formData.emergencyContact,
         medical_license: formData.medicalLicense,
         insurance: formData.insurance,
         working_hours: formData.workingHours,
-        consultation_fee: formData.consultationFee,
-        availability: formData.availability
+        consultation_fee: formData.consultationFee ? 
+          parseInt(formData.consultationFee.replace(/[^\d]/g, '')) : null,
+        availability: formData.availability,
+        languages_spoken: formData.languages,
+        specializations: formData.specialization
       }
 
-      const response = await axios.patch(`${API_BASE_URL}/api/accounts/profile/`, updateData, {
+      // Send PATCH request to update profile
+      const response = await axios.patch(DOCTOR_PROFILE_API, updateData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       })
       
-      setUserProfile(response.data)
-      alert("✅ Профиль успешно обновлен на сервере!")
-      setIsEditing(false)
+      if (response.data.success) {
+        setUserProfile(response.data.data)
+        updateFormDataFromProfile(response.data.data)
+        alert("✅ Профиль успешно обновлен!")
+        setIsEditing(false)
+      } else {
+        throw new Error(response.data.message || "Ошибка обновления профиля")
+      }
       
     } catch (error: any) {
       console.error("Error updating profile:", error)
       
       if (error.response?.status === 401) {
-        // Token noto'g'ri yoki muddati tugagan
         localStorage.removeItem("accessToken")
-        alert("🔒 Сессия истекла. Профиль сохранен локально. Пожалуйста, войдите в систему снова.")
-        
-        // Local saqlash
-        const updatedLanguages = Array.isArray(formData.languages) ? formData.languages.join(", ") : (formData.languages || "")
-        const updatedSpecializations = Array.isArray(formData.specialization) ? formData.specialization.join(", ") : (formData.specialization || "")
-        setUserProfile({
-          ...userProfile,
-          full_name: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
-          specialization: updatedSpecializations,
-          experience: formData.experience,
-          education: formData.education,
-          location: formData.location,
-          bio: formData.bio,
-          languages: updatedLanguages,
-          certifications: formData.certifications,
-          date_of_birth: formData.dateOfBirth,
-          gender: formData.gender,
-          address: formData.address,
-          emergency_contact: formData.emergencyContact,
-          medical_license: formData.medicalLicense,
-          insurance: formData.insurance,
-          working_hours: formData.workingHours,
-          consultation_fee: formData.consultationFee,
-          availability: formData.availability
-        })
-        setIsEditing(false)
+        alert("🔒 Сессия истекла. Пожалуйста, войдите в систему снова.")
+        router.push("/login")
       } else if (error.response?.status === 403) {
         alert("❌ Нет прав для обновления профиля")
       } else if (error.response?.status >= 500) {
         alert("🔧 Ошибка сервера. Попробуйте позже.")
       } else {
-        const errorMessage = error.response?.data?.detail || error.response?.data?.message || "Неизвестная ошибка"
+        const errorMessage = error.response?.data?.detail || 
+                           error.response?.data?.message || 
+                           error.message || 
+                           "Неизвестная ошибка"
         alert(`❌ Ошибка: ${errorMessage}`)
       }
     } finally {
@@ -412,30 +392,7 @@ export default function DoctorProfilePage() {
   }
 
   const handleCancel = () => {
-    setFormData({
-      fullName: userProfile?.full_name || `${userProfile?.first_name} ${userProfile?.last_name}` || "",
-      email: userProfile?.email || "",
-      phone: userProfile?.phone || "",
-      specialization: userProfile?.specialization ? (typeof userProfile.specialization === 'string' ? userProfile.specialization.split(", ") : (Array.isArray(userProfile.specialization) ? userProfile.specialization : [])) : [],
-      experience: userProfile?.experience || "",
-      education: userProfile?.education || "",
-      location: userProfile?.location || "",
-      bio: userProfile?.bio || "",
-                languages: userProfile?.languages ? (typeof userProfile.languages === 'string' ? userProfile.languages.split(", ") : (Array.isArray(userProfile.languages) ? userProfile.languages : [])) : [],
-      certifications: userProfile?.certifications || "",
-      dateOfBirth: userProfile?.date_of_birth || "",
-      gender: userProfile?.gender || "",
-      address: userProfile?.address || "",
-      country: userProfile?.country || "Узбекистан",
-      region: userProfile?.region || "Хорезмская",
-      district: userProfile?.district || "Ургенчский",
-      emergencyContact: userProfile?.emergency_contact || "",
-      medicalLicense: userProfile?.medical_license || "",
-      insurance: userProfile?.insurance || "",
-      workingHours: userProfile?.working_hours || "",
-      consultationFee: userProfile?.consultation_fee || "",
-      availability: userProfile?.availability || ""
-    })
+    updateFormDataFromProfile(userProfile)
     setIsEditing(false)
   }
 
@@ -445,6 +402,73 @@ export default function DoctorProfilePage() {
     localStorage.removeItem("userType")
     alert("🚪 Вы вышли из системы")
     router.push("/login")
+  }
+
+  const filteredLanguages = availableLanguages.filter(lang => 
+    lang.toLowerCase().includes(languageSearch.toLowerCase())
+  )
+
+  const filteredSpecializations = availableSpecializations.filter(spec => 
+    spec.toLowerCase().includes(specializationSearch.toLowerCase())
+  )
+
+  const allWorkingHours = availableWorkingHours.length > 0 ? availableWorkingHours : [
+    "9:00-18:00",
+    "8:00-17:00",
+    "10:00-19:00",
+    "9:00-17:00",
+    "8:00-18:00",
+    "10:00-18:00",
+    "9:00-16:00",
+    "8:00-16:00",
+    "10:00-16:00",
+    "24/7",
+    "По вызову",
+    "Гибкий график"
+  ]
+
+  const allAvailability = availableAvailability.length > 0 ? availableAvailability : [
+    "Понедельник - Пятница",
+    "Пн-Пт",
+    "Понедельник - Суббота",
+    "Пн-Сб",
+    "Ежедневно",
+    "По будням",
+    "По выходным",
+    "По записи",
+    "Экстренные случаи",
+    "24/7",
+    "Гибкий график"
+  ]
+
+  // Show loading state
+  if (isProfileLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-xl text-gray-600">Загрузка профиля доктора...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (profileError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-32 h-32 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-16 h-16 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Ошибка загрузки</h2>
+          <p className="text-gray-600 mb-4">{profileError}</p>
+          <Button onClick={() => checkAuth()} className="bg-blue-600 hover:bg-blue-700">
+            Попробовать снова
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -458,33 +482,33 @@ export default function DoctorProfilePage() {
                 <Avatar className="w-20 h-20 border-4 border-blue-200">
                   <AvatarImage src={userProfile.profile_picture || "/placeholder.svg"} />
                   <AvatarFallback className="bg-blue-500 text-white text-2xl font-bold">
-                    {userProfile.first_name?.[0]}{userProfile.last_name?.[0] || "Д"}
+                    {(userProfile.first_name?.[0] || "") + (userProfile.last_name?.[0] || "") || "Д"}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                    {userProfile.full_name || `${userProfile.first_name} ${userProfile.last_name}`}
+                    {userProfile.full_name || `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || "Доктор"}
                   </h1>
                   <div className="flex items-center gap-4 mb-3">
                     <Badge className="bg-blue-100 text-blue-700 border-blue-200 px-3 py-1 text-sm">
                       <Stethoscope className="w-4 h-4 mr-2" />
-                      {userProfile.specialization || "Врач"}
+                      {userProfile.specialization || userProfile.specializations?.[0] || "Врач"}
                     </Badge>
                     <Badge className="bg-green-100 text-green-700 border-green-200 px-3 py-1 text-sm">
                       <Clock className="w-4 h-4 mr-2" />
-                      {userProfile.experience || "15 лет"}
+                      {userProfile.experience || `${userProfile.years_experience || 0} лет`}
                     </Badge>
                     <div className="flex items-center gap-2">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star key={star} className="w-5 h-5 text-yellow-400 fill-current" />
                       ))}
-                      <span className="ml-2 text-gray-600 font-medium">{userProfile.rating || "4.9"}</span>
+                      <span className="ml-2 text-gray-600 font-medium">{userProfile.rating || "0.0"}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
                     <MapPin className="w-4 h-4 text-gray-500" />
                     <span className="font-medium">Адрес:</span>
-                    <span>{userProfile.location || "Улица Марифатчи, Хорезмский область, Узбекистан"}</span>
+                    <span>{userProfile.location || userProfile.address || `${userProfile.country || ''} ${userProfile.region || ''} ${userProfile.district || ''}`.trim() || "Адрес не указан"}</span>
                   </div>
                 </div>
               </div>
@@ -504,6 +528,15 @@ export default function DoctorProfilePage() {
                     Редактировать
                   </Button>
                 )}
+                <Button 
+                  variant="outline" 
+                  onClick={() => checkAuth()} 
+                  disabled={isProfileLoading}
+                  className="px-4"
+                >
+                  <Activity className="w-4 h-4 mr-2" />
+                  Обновить
+                </Button>
                 <Button variant="outline" onClick={handleLogout} className="px-6">
                   <LogOut className="w-4 h-4 mr-2" />
                   Выйти
@@ -520,7 +553,7 @@ export default function DoctorProfilePage() {
               <div className="w-16 h-16 bg-blue-200 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="w-8 h-8 text-blue-600" />
               </div>
-              <p className="text-3xl font-bold text-blue-700 mb-1">{userProfile.total_patients || 127}</p>
+              <p className="text-3xl font-bold text-blue-700 mb-1">{userProfile.total_patients || userProfile.active_patients || 0}</p>
               <p className="text-blue-600 font-medium">Пациенты</p>
             </CardContent>
           </Card>
@@ -530,7 +563,7 @@ export default function DoctorProfilePage() {
               <div className="w-16 h-16 bg-green-200 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Activity className="w-8 h-8 text-green-600" />
               </div>
-              <p className="text-3xl font-bold text-green-700 mb-1">{userProfile.monthly_consultations || 89}</p>
+              <p className="text-3xl font-bold text-green-700 mb-1">{userProfile.monthly_consultations || 0}</p>
               <p className="text-green-600 font-medium">Консультации</p>
             </CardContent>
           </Card>
@@ -540,7 +573,7 @@ export default function DoctorProfilePage() {
               <div className="w-16 h-16 bg-purple-200 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Star className="w-8 h-8 text-purple-600" />
               </div>
-              <p className="text-3xl font-bold text-purple-700 mb-1">{userProfile.rating || "4.9"}</p>
+              <p className="text-3xl font-bold text-purple-700 mb-1">{userProfile.rating || "0.0"}</p>
               <p className="text-purple-600 font-medium">Рейтинг</p>
             </CardContent>
           </Card>
@@ -550,7 +583,7 @@ export default function DoctorProfilePage() {
               <div className="w-16 h-16 bg-orange-200 rounded-full flex items-center justify-center mx-auto mb-4">
                 <DollarSign className="w-8 h-8 text-orange-600" />
               </div>
-              <p className="text-3xl font-bold text-orange-700 mb-1">{userProfile.consultation_fee || "150,000 сум"}</p>
+              <p className="text-3xl font-bold text-orange-700 mb-1">{userProfile.consultation_fee || "Не указано"}</p>
               <p className="text-orange-600 font-medium">Стоимость консультации</p>
             </CardContent>
           </Card>
@@ -582,9 +615,9 @@ export default function DoctorProfilePage() {
                         className="w-full border-gray-300 focus:border-blue-500"
                       />
                     ) : (
-                      <div className="p-3 bg-gray-50 rounded-lg border">
-                        <p className="text-gray-700 font-medium">{formData.fullName || "Не указано"}</p>
-                      </div>
+                                          <div className="p-3 bg-gray-50 rounded-lg border">
+                      <p className="text-gray-700 font-medium">{userProfile.full_name || `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || formData.fullName || "Не указано"}</p>
+                    </div>
                     )}
                   </div>
                   <div>
@@ -600,9 +633,9 @@ export default function DoctorProfilePage() {
                         className="w-full border-gray-300 focus:border-blue-500"
                       />
                     ) : (
-                      <div className="p-3 bg-gray-50 rounded-lg border">
-                        <p className="text-gray-700 font-medium">{formData.email || "Не указано"}</p>
-                      </div>
+                                          <div className="p-3 bg-gray-50 rounded-lg border">
+                      <p className="text-gray-700 font-medium">{userProfile.email || formData.email || "Не указано"}</p>
+                    </div>
                     )}
                   </div>
                 </div>
@@ -622,7 +655,7 @@ export default function DoctorProfilePage() {
                     />
                   ) : (
                     <div className="p-4 bg-gray-50 rounded-lg border">
-                      <p className="text-gray-700 leading-relaxed">{formData.bio || "Биография не указана"}</p>
+                      <p className="text-gray-700 leading-relaxed">{userProfile.bio || formData.bio || "Биография не указана"}</p>
                     </div>
                   )}
                 </div>
@@ -696,16 +729,16 @@ export default function DoctorProfilePage() {
                     </div>
                   ) : (
                     <div className="p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border border-gray-200">
-                      {formData.languages && formData.languages.length > 0 ? (
+                      {(userProfile.languages && userProfile.languages.length > 0) || (formData.languages && formData.languages.length > 0) ? (
                         <div className="space-y-3">
                           <div className="flex items-center gap-2">
                             <Globe className="w-4 h-4 text-blue-600" />
                             <span className="text-sm font-medium text-gray-700">
-                              Языки ({formData.languages.length})
+                              Языки ({(userProfile.languages || formData.languages || []).length})
                             </span>
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            {formData.languages.map((language) => (
+                            {(userProfile.languages || userProfile.languages_spoken || formData.languages || []).map((language) => (
                               <span
                                 key={language}
                                 className="inline-flex items-center px-3 py-2 rounded-full text-sm font-medium bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 border border-blue-200"
@@ -739,9 +772,9 @@ export default function DoctorProfilePage() {
                         className="w-full border-gray-300 focus:border-blue-500"
                       />
                     ) : (
-                      <div className="p-3 bg-gray-50 rounded-lg border">
-                        <p className="text-gray-700 font-medium">{formData.dateOfBirth || "Не указано"}</p>
-                      </div>
+                                          <div className="p-3 bg-gray-50 rounded-lg border">
+                      <p className="text-gray-700 font-medium">{userProfile.date_of_birth || formData.dateOfBirth || "Не указано"}</p>
+                    </div>
                     )}
                   </div>
                   <div>
@@ -760,9 +793,9 @@ export default function DoctorProfilePage() {
                         <option value="Женский">Женский</option>
                       </select>
                     ) : (
-                      <div className="p-3 bg-gray-50 rounded-lg border">
-                        <p className="text-gray-700 font-medium">{formData.gender || "Не указано"}</p>
-                      </div>
+                                          <div className="p-3 bg-gray-50 rounded-lg border">
+                      <p className="text-gray-700 font-medium">{userProfile.gender || formData.gender || "Не указано"}</p>
+                    </div>
                     )}
                   </div>
                 </div>
@@ -847,18 +880,18 @@ export default function DoctorProfilePage() {
                     </div>
                   ) : (
                     <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
-                      {formData.specialization && formData.specialization.length > 0 ? (
+                      {(userProfile.specializations && userProfile.specializations.length > 0) || (formData.specialization && formData.specialization.length > 0) ? (
                         <div className="space-y-3">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-green-200 rounded-full flex items-center justify-center">
                               <Stethoscope className="w-5 h-5 text-green-600" />
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-green-700">Специализации ({formData.specialization.length})</p>
+                              <p className="text-sm font-medium text-green-700">Специализации ({(userProfile.specializations || formData.specialization || []).length})</p>
                             </div>
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            {formData.specialization.map((spec) => (
+                            {(userProfile.specializations || formData.specialization || []).map((spec) => (
                               <span
                                 key={spec}
                                 className="inline-flex items-center px-3 py-2 rounded-full text-sm font-medium bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200"
@@ -891,9 +924,9 @@ export default function DoctorProfilePage() {
                         className="w-full border-gray-300 focus:border-blue-500"
                       />
                     ) : (
-                      <div className="p-3 bg-gray-50 rounded-lg border">
-                        <p className="text-gray-700 font-medium">{formData.experience || "Не указано"}</p>
-                      </div>
+                                          <div className="p-3 bg-gray-50 rounded-lg border">
+                      <p className="text-gray-700 font-medium">{userProfile.experience || userProfile.years_experience || formData.experience || "Не указано"}</p>
+                    </div>
                     )}
                   </div>
                   <div>
@@ -908,9 +941,9 @@ export default function DoctorProfilePage() {
                         className="w-full border-gray-300 focus:border-blue-500"
                       />
                     ) : (
-                      <div className="p-3 bg-gray-50 rounded-lg border">
-                        <p className="text-gray-700 font-medium">{formData.education || "Не указано"}</p>
-                      </div>
+                                          <div className="p-3 bg-gray-50 rounded-lg border">
+                      <p className="text-gray-700 font-medium">{userProfile.education || formData.education || "Не указано"}</p>
+                    </div>
                     )}
                   </div>
                 </div>
@@ -932,7 +965,7 @@ export default function DoctorProfilePage() {
                     />
                   ) : (
                     <div className="p-3 bg-gray-50 rounded-lg border">
-                      <p className="text-gray-700">{formData.certifications || "Не указано"}</p>
+                      <p className="text-gray-700">{userProfile.certifications || formData.certifications || "Не указано"}</p>
                     </div>
                   )}
                 </div>
@@ -950,9 +983,9 @@ export default function DoctorProfilePage() {
                         className="w-full border-gray-300 focus:border-blue-500"
                       />
                     ) : (
-                      <div className="p-3 bg-gray-50 rounded-lg border">
-                        <p className="text-gray-700 font-medium">{formData.medicalLicense || "Не указано"}</p>
-                      </div>
+                                          <div className="p-3 bg-gray-50 rounded-lg border">
+                      <p className="text-gray-700 font-medium">{userProfile.medical_license || formData.medicalLicense || "Не указано"}</p>
+                    </div>
                     )}
                   </div>
                   <div>
@@ -967,9 +1000,9 @@ export default function DoctorProfilePage() {
                         className="w-full border-gray-300 focus:border-blue-500"
                       />
                     ) : (
-                      <div className="p-3 bg-gray-50 rounded-lg border">
-                        <p className="text-gray-700 font-medium">{formData.insurance || "Не указано"}</p>
-                      </div>
+                                          <div className="p-3 bg-gray-50 rounded-lg border">
+                      <p className="text-gray-700 font-medium">{userProfile.insurance || formData.insurance || "Не указано"}</p>
+                    </div>
                     )}
                   </div>
                 </div>
@@ -1045,14 +1078,14 @@ export default function DoctorProfilePage() {
                     </div>
                   ) : (
                     <div className="p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl border border-purple-200">
-                      {formData.workingHours ? (
+                      {(userProfile.working_hours || formData.workingHours) ? (
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-purple-200 rounded-full flex items-center justify-center">
                             <Clock4 className="w-5 h-5 text-purple-600" />
                           </div>
                           <div>
                             <p className="text-sm font-medium text-purple-700">Рабочие часы</p>
-                            <p className="font-medium text-purple-800">{formData.workingHours}</p>
+                            <p className="font-medium text-purple-800">{userProfile.working_hours || formData.workingHours}</p>
                           </div>
                         </div>
                       ) : (
@@ -1125,14 +1158,14 @@ export default function DoctorProfilePage() {
                     </div>
                   ) : (
                     <div className="p-4 bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl border border-purple-200">
-                      {formData.availability ? (
+                      {(userProfile.availability || formData.availability) ? (
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-purple-200 rounded-full flex items-center justify-center">
                             <CalendarDays className="w-5 h-5 text-purple-600" />
                           </div>
                           <div>
                             <p className="text-sm font-medium text-purple-700">Доступность</p>
-                            <p className="font-medium text-purple-800">{formData.availability}</p>
+                            <p className="font-medium text-purple-800">{userProfile.availability || formData.availability}</p>
                           </div>
                         </div>
                       ) : (
@@ -1166,7 +1199,7 @@ export default function DoctorProfilePage() {
                           </div>
                           <div>
                             <p className="text-sm font-medium text-orange-700">Стоимость консультации</p>
-                            <p className="text-2xl font-bold text-orange-800">{formData.consultationFee || "150,000 сум"}</p>
+                            <p className="text-2xl font-bold text-orange-800">{formData.consultationFee || userProfile.consultation_fee || "Не указано"}</p>
                           </div>
                         </div>
                       </div>
@@ -1198,9 +1231,9 @@ export default function DoctorProfilePage() {
                         className="w-full border-gray-300 focus:border-blue-500"
                       />
                     ) : (
-                      <div className="p-3 bg-gray-50 rounded-lg border">
-                        <p className="text-gray-700 font-medium">{formData.phone || "Не указано"}</p>
-                      </div>
+                                          <div className="p-3 bg-gray-50 rounded-lg border">
+                      <p className="text-gray-700 font-medium">{userProfile.phone || userProfile.phone_number || formData.phone || "Не указано"}</p>
+                    </div>
                     )}
                   </div>
                   <div>
@@ -1215,9 +1248,9 @@ export default function DoctorProfilePage() {
                         className="w-full border-gray-300 focus:border-blue-500"
                       />
                     ) : (
-                      <div className="p-3 bg-gray-50 rounded-lg border">
-                        <p className="text-gray-700 font-medium">{formData.emergencyContact || "Не указано"}</p>
-                      </div>
+                                          <div className="p-3 bg-gray-50 rounded-lg border">
+                      <p className="text-gray-700 font-medium">{userProfile.emergency_contact || formData.emergencyContact || "Не указано"}</p>
+                    </div>
                     )}
                   </div>
                 </div>
@@ -1244,9 +1277,9 @@ export default function DoctorProfilePage() {
                         <option value="Казахстан">Казахстан</option>
                       </select>
                     ) : (
-                      <div className="p-3 bg-gray-50 rounded-lg border">
-                        <p className="text-gray-700 font-medium">{formData.country || "Не указано"}</p>
-                      </div>
+                                          <div className="p-3 bg-gray-50 rounded-lg border">
+                      <p className="text-gray-700 font-medium">{userProfile.country || formData.country || "Не указано"}</p>
+                    </div>
                     )}
                   </div>
                   
@@ -1414,9 +1447,9 @@ export default function DoctorProfilePage() {
                         )}
                       </select>
                     ) : (
-                      <div className="p-3 bg-gray-50 rounded-lg border">
-                        <p className="text-gray-700 font-medium">{formData.region || "Не указано"}</p>
-                      </div>
+                                          <div className="p-3 bg-gray-50 rounded-lg border">
+                      <p className="text-gray-700 font-medium">{userProfile.region || formData.region || "Не указано"}</p>
+                    </div>
                     )}
                   </div>
                   
@@ -1884,9 +1917,9 @@ export default function DoctorProfilePage() {
 
                       </select>
                     ) : (
-                      <div className="p-3 bg-gray-50 rounded-lg border">
-                        <p className="text-gray-700 font-medium">{formData.district || "Не указано"}</p>
-                      </div>
+                                          <div className="p-3 bg-gray-50 rounded-lg border">
+                      <p className="text-gray-700 font-medium">{userProfile.district || formData.district || "Не указано"}</p>
+                    </div>
                     )}
                   </div>
                 </div>
@@ -1905,7 +1938,7 @@ export default function DoctorProfilePage() {
                     />
                   ) : (
                     <div className="p-3 bg-gray-50 rounded-lg border">
-                      <p className="text-gray-700 font-medium">{formData.address || "Не указано"}</p>
+                      <p className="text-gray-700 font-medium">{formData.address || userProfile.address || "Не указано"}</p>
                     </div>
                   )}
                 </div>
@@ -2090,7 +2123,7 @@ export default function DoctorProfilePage() {
                     </div>
                     <span className="text-gray-700">Активные пациенты</span>
                   </div>
-                  <span className="font-bold text-blue-600">{userProfile.active_patients || 45}</span>
+                  <span className="font-bold text-blue-600">{userProfile.active_patients || userProfile.patients_accepted_count || 0}</span>
                 </div>
                 
                 <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
@@ -2100,7 +2133,7 @@ export default function DoctorProfilePage() {
                     </div>
                     <span className="text-gray-700">Завершенные курсы</span>
                   </div>
-                  <span className="font-bold text-green-600">{userProfile.completed_treatments || 234}</span>
+                  <span className="font-bold text-green-600">{userProfile.completed_treatments || 0}</span>
                 </div>
                 
                 <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
@@ -2110,7 +2143,7 @@ export default function DoctorProfilePage() {
                     </div>
                     <span className="text-gray-700">Исследования</span>
                   </div>
-                  <span className="font-bold text-purple-600">{userProfile.research_papers || 12}</span>
+                  <span className="font-bold text-purple-600">{userProfile.research_papers || 0}</span>
                 </div>
                 
                 <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
@@ -2120,7 +2153,7 @@ export default function DoctorProfilePage() {
                     </div>
                     <span className="text-gray-700">Конференции</span>
                   </div>
-                  <span className="font-bold text-orange-600">{userProfile.conferences_attended || 28}</span>
+                  <span className="font-bold text-orange-600">{userProfile.conferences_attended || 0}</span>
                 </div>
               </CardContent>
             </Card>
@@ -2311,7 +2344,7 @@ export default function DoctorProfilePage() {
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-600">
-                  Всего языков: <span className="font-medium">{allLanguages.length}</span>
+                  Всего языков: <span className="font-medium">{availableLanguages.length}</span>
                 </div>
                 <div className="flex gap-3">
                   <button
@@ -2432,7 +2465,7 @@ export default function DoctorProfilePage() {
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-600">
-                  Всего специализаций: <span className="font-medium">{allSpecializations.length}</span>
+                  Всего специализаций: <span className="font-medium">{availableSpecializations.length}</span>
                 </div>
                 <div className="flex gap-3">
                   <button

@@ -204,7 +204,7 @@ export default function DoctorLayout({
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        <main className="flex-1 p-4 md:p-8 overflow-auto">
+        <main className="flex-1 overflow-auto">
           {children}
         </main>
       </div>
