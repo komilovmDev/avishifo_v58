@@ -33,7 +33,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     id: "ai-chat",
-    label: "AI Авишифо",
+    label: "AI",
     icon: Brain,
     color: "from-blue-500 to-purple-500",
     href: "/dashboard/doctor/ai-chat"

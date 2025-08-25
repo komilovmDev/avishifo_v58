@@ -202,7 +202,7 @@ export function AiChatSection() {
   const aiModels = [
     {
       id: "avishifo-ai",
-      name: "Avi-Shifo AI",
+      name: "AviShifo AI",
       description: "Наш самый умный медицинский ассистент",
       icon: <Brain className="w-5 h-5" />,
       isPremium: true,
@@ -212,7 +212,7 @@ export function AiChatSection() {
     },
     {
       id: "avishifo-radiolog",
-      name: "Avi-Shifo Radiolog",
+      name: "Avi-Radiolog",
       description: "Специализированный анализ медицинских изображений",
       icon: <Stethoscope className="w-5 h-5" />,
       isPremium: true,
@@ -1053,9 +1053,9 @@ export function AiChatSection() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  AviShifo AI
+                  Ai
                 </h1>
-                <p className="text-sm text-gray-500">Powered by new.avishifo.uz</p>
+                <p className="text-sm text-gray-500">Powered by avishifo.uz</p>
               </div>
             </div>
 
