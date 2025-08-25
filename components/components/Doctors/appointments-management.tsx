@@ -304,31 +304,31 @@ export function AppointmentsManagementSection() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/25">
-            <Calendar className="w-8 h-8 text-white" />
+    <div className="space-y-8">
+      <div className="flex items-center justify-between mb-10">
+        <div className="flex items-center gap-6">
+          <div className="w-20 h-20 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/25">
+            <Calendar className="w-10 h-10 text-white" />
           </div>
           <div>
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <h2 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
               Записи Пациентов
             </h2>
-            <p className="text-gray-500 text-lg">Управление запросами на запись и подтвержденными приемами</p>
+            <p className="text-gray-500 text-xl">Управление запросами на запись и подтвержденными приемами</p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-4">
           <Button
             onClick={handleRefresh}
             disabled={refreshing}
             variant="outline"
-            className="h-12 rounded-xl border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200"
+            className="h-14 px-6 rounded-xl border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-5 h-5 mr-3 ${refreshing ? "animate-spin" : ""}`} />
             Обновить
           </Button>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-48 h-12 rounded-xl border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200">
+            <SelectTrigger className="w-52 h-14 rounded-xl border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200">
               <SelectValue placeholder="Приоритет" />
             </SelectTrigger>
             <SelectContent>
@@ -343,7 +343,7 @@ export function AppointmentsManagementSection() {
             <Search className="w-5 h-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <Input
               placeholder="Поиск записей..."
-              className="pl-12 w-80 h-12 rounded-xl border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md focus:shadow-lg transition-all duration-200"
+              className="pl-12 w-80 h-14 rounded-xl border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md focus:shadow-lg transition-all duration-200"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -352,7 +352,7 @@ export function AppointmentsManagementSection() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
         <Card className="bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 border-amber-200/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group overflow-hidden relative">
           <div className="absolute inset-0 bg-gradient-to-br from-amber-400/10 to-orange-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
           <CardContent className="p-6 text-center relative z-10">
