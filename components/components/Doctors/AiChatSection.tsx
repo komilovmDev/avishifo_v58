@@ -44,6 +44,23 @@ import { Textarea } from "@/components/ui/textarea"
 
 // API Base URL
 const API_BASE_URL = "https://new.avishifo.uz"
+// const API_BASE_URL = "http://localhost:8000"
+
+// Helper function to generate default titles for chat sessions
+const generateDefaultTitle = (sessionId: string) => {
+  const titles = [
+    "Медицинская консультация",
+    "Диагностика",
+    "Анализ симптомов",
+    "План лечения",
+    "Вопросы здоровья",
+    "Медицинский совет",
+    "Клинический случай",
+    "Консультация врача"
+  ]
+  const randomIndex = parseInt(sessionId) % titles.length
+  return titles[randomIndex]
+}
 
 interface AiMessage {
   id?: string
@@ -54,6 +71,7 @@ interface AiMessage {
   isFallback?: boolean
   tokens_used?: number
   response_time_ms?: number
+  model_used?: string
   attachments?: {
     type: "image" | "file"
     name: string
@@ -120,6 +138,11 @@ export function AiChatSection() {
   const [selectedModel, setSelectedModel] = useState("avishifo-ai")
   const [showModelMenu, setShowModelMenu] = useState(false)
   const [isHistoryOpen, setIsHistoryOpen] = useState(true)
+  const [showModelSwitchConfirm, setShowModelSwitchConfirm] = useState(false)
+  const [pendingModelSwitch, setPendingModelSwitch] = useState<string | null>(null)
+  const [showModelSwitchNotification, setShowModelSwitchNotification] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null)
 
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([])
   const [chatStats, setChatStats] = useState<ChatStats | null>(null)
@@ -248,6 +271,67 @@ export function AiChatSection() {
     return localStorage.getItem("accessToken") || localStorage.getItem("token")
   }
 
+  // Helper function to generate meaningful titles from user messages
+  const generateTitleFromMessage = (message: string) => {
+    // Clean and truncate the message
+    let title = message.trim()
+    
+    // Remove common prefixes and clean up
+    const prefixesToRemove = [
+      "помогите", "помоги", "нужна помощь", "нужна консультация", "вопрос", "вопросы",
+      "help", "help me", "need help", "need consultation", "question", "questions"
+    ]
+    
+    for (const prefix of prefixesToRemove) {
+      if (title.toLowerCase().startsWith(prefix.toLowerCase())) {
+        title = title.slice(prefix.length).trim()
+      }
+    }
+    
+    // If message is still too long, truncate it
+    if (title.length > 40) {
+      const words = title.split(" ")
+      if (words.length > 6) {
+        title = words.slice(0, 6).join(" ") + "..."
+      } else {
+        title = title.slice(0, 40) + "..."
+      }
+    }
+    
+    // If title is empty or too short, use a default
+    if (!title || title.length < 3) {
+      title = "Новый чат"
+    }
+    
+    return title
+  }
+
+  // Helper function to update chat session title
+  const updateChatSessionTitle = (sessionId: string | null, newTitle: string) => {
+    if (!sessionId) return
+    
+    // Update local state
+    setChatSessions((prev: ChatSession[]) => 
+      prev.map((session: ChatSession) => 
+        session.id === sessionId 
+          ? { ...session, title: newTitle }
+          : session
+      )
+    )
+    
+    // Update local storage
+    const storedSessions = localStorage.getItem("avishifo_chat_sessions")
+    if (storedSessions) {
+      const sessions = JSON.parse(storedSessions)
+      const updatedSessions = sessions.map((session: any) => 
+        session.id === sessionId 
+          ? { ...session, title: newTitle }
+          : session
+      )
+      localStorage.setItem("avishifo_chat_sessions", JSON.stringify(updatedSessions))
+    }
+  }
+
   // Создание новой сессии чата через API
   const createNewChatSession = async () => {
     try {
@@ -312,7 +396,7 @@ export function AiChatSection() {
         const transformedSessions =
           data.results?.map((session: any) => ({
             id: session.id,
-            title: session.title || `Чат ${session.id}`,
+            title: session.title || generateDefaultTitle(session.id),
             date: session.created_at?.split("T")[0] || new Date().toISOString().split("T")[0],
             last_message: session.last_message || "",
             messages_count: session.messages_count || 0,
@@ -455,11 +539,17 @@ export function AiChatSection() {
           : undefined,
     }
 
-    setCurrentChat((prev) => [...prev, userMessage])
-    const currentMessage = message
-    setMessage("")
-    setAttachments([])
-    setIsLoading(true)
+            setCurrentChat((prev) => [...prev, userMessage])
+        const currentMessage = message
+        setMessage("")
+        setAttachments([])
+        setIsLoading(true)
+        
+        // Update chat title if this is the first user message
+        if (currentChat.length === 1) { // Only assistant message exists
+          const newTitle = generateTitleFromMessage(currentMessage)
+          updateChatSessionTitle(currentSessionId, newTitle)
+        }
 
     try {
       const token = getAuthToken()
@@ -500,6 +590,7 @@ export function AiChatSection() {
         },
         body: JSON.stringify({
           content: currentMessage,
+          model: selectedModel,  // Send the selected model to backend
         }),
       })
 
@@ -515,6 +606,7 @@ export function AiChatSection() {
             minute: "2-digit",
           }),
           response_time_ms: responseTime,
+          model_used: data.model_used,  // Store which model was used
         }
 
         setCurrentChat((prev) => [...prev, assistantMessage])
@@ -618,6 +710,30 @@ export function AiChatSection() {
     setMessage(promptText)
   }
 
+  const handleModelSwitch = (newModelId: string) => {
+    if (newModelId !== selectedModel) {
+      // If there are messages in current chat, show confirmation
+      if (currentChat.length > 1) {
+        setPendingModelSwitch(newModelId)
+        setShowModelSwitchConfirm(true)
+      } else {
+        // No messages, switch directly
+        setSelectedModel(newModelId)
+        startNewChat(true)
+      }
+    }
+    setShowModelMenu(false)
+  }
+
+  const confirmModelSwitch = () => {
+    if (pendingModelSwitch) {
+      setSelectedModel(pendingModelSwitch)
+      startNewChat(true)
+      setPendingModelSwitch(null)
+      setShowModelSwitchConfirm(false)
+    }
+  }
+
   const loadChatSession = async (session: ChatSession) => {
     try {
       const token = getAuthToken()
@@ -653,6 +769,7 @@ export function AiChatSection() {
               hour: "2-digit",
               minute: "2-digit",
             }),
+            model_used: msg.model_used || undefined,  // Include model information if available
           })) || []
 
         setCurrentChat(transformedMessages)
@@ -676,12 +793,24 @@ export function AiChatSection() {
     }
   }
 
-  const startNewChat = async () => {
+  const startNewChat = async (modelSwitched: boolean = false) => {
+    // Generate appropriate welcome message based on selected model
+    let welcomeMessage = ""
+    
+    if (selectedModel === "chatgpt-5") {
+      welcomeMessage = modelSwitched 
+        ? `Здравствуйте! Я ChatGPT-5. Переключился на новую модель и готов начать новый диалог. Чем могу помочь?`
+        : "Здравствуйте! Я ChatGPT-5, ваш медицинский ИИ-ассистент. Готов помочь вам с любыми медицинскими вопросами, диагностикой, анализом симптомов и составлением планов лечения. Чем могу помочь сегодня?"
+    } else {
+      welcomeMessage = modelSwitched 
+        ? `Здравствуйте! Я ${aiModels.find(m => m.id === selectedModel)?.name}. Переключился на новую модель и готов начать новый диалог. Чем могу помочь?`
+        : "Здравствуйте, уважаемый доктор! Я рад присоединиться к вашей работе в качестве медицинского консультанта AviShifo. Вместе с вами я готов анализировать сложные случаи, помогать в принятии клинических решений и сопровождать пациента на всём пути лечения — до полного выздоровления. Введите или загрузите необходимую информацию — и начнём."
+    }
+    
     setCurrentChat([
       {
         role: "assistant",
-        content:
-          "Здравствуйте, уважаемый доктор! Я рад присоединиться к вашей работе в качестве медицинского консультанта AviShifo. Вместе с вами я готов анализировать сложные случаи, помогать в принятии клинических решений и сопровождать пациента на всём пути лечения — до полного выздоровления. Введите или загрузите необходимую информацию — и начнём.",
+        content: welcomeMessage,
         timestamp: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
@@ -694,6 +823,32 @@ export function AiChatSection() {
     setCurrentSessionId(newSessionId)
     setActiveTab("chat")
     setConnectionStatus("connected")
+    
+    // Add new session to local storage with a meaningful title
+    if (newSessionId) {
+      const newSession = {
+        id: newSessionId,
+        title: "Новый чат",
+        date: new Date().toISOString().split("T")[0],
+        last_message: "",
+        messages_count: 1,
+        total_tokens_used: 0,
+      }
+      
+      setChatSessions(prev => [newSession, ...prev])
+      
+      // Also save to local storage
+      const storedSessions = localStorage.getItem("avishifo_chat_sessions")
+      const sessions = storedSessions ? JSON.parse(storedSessions) : []
+      sessions.unshift(newSession)
+      localStorage.setItem("avishifo_chat_sessions", JSON.stringify(sessions))
+    }
+    
+    // Show notification if model was switched
+    if (modelSwitched) {
+      setShowModelSwitchNotification(true)
+      setTimeout(() => setShowModelSwitchNotification(false), 5000) // Hide after 5 seconds
+    }
   }
 
   const deleteChatSession = async (sessionId: string) => {
@@ -701,15 +856,19 @@ export function AiChatSection() {
       const token = getAuthToken()
       if (token && !sessionId.startsWith("local-")) {
         // Try to delete via backend API
-        await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${sessionId}/`, {
+        const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${sessionId}/`, {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`,
           },
         })
+        
+        if (!response.ok) {
+          console.warn(`Backend delete failed with status: ${response.status}`)
+        }
       }
 
-      // Update local storage
+      // Always update local storage and state regardless of backend response
       const storedSessions = localStorage.getItem("avishifo_chat_sessions")
       if (storedSessions) {
         const sessions = JSON.parse(storedSessions)
@@ -720,14 +879,20 @@ export function AiChatSection() {
 
       // Update state
       setChatSessions((prev) => prev.filter((session) => session.id !== sessionId))
+      
+      // If current session is deleted, start a new chat
       if (currentSessionId === sessionId) {
         startNewChat()
       }
 
       // Update stats
       loadChatStats()
+      
+      console.log(`Successfully deleted chat session: ${sessionId}`)
     } catch (error) {
       console.error("Error deleting session:", error)
+      // Even if there's an error, try to remove from local state
+      setChatSessions((prev) => prev.filter((session) => session.id !== sessionId))
     }
   }
 
@@ -752,7 +917,7 @@ export function AiChatSection() {
           const transformedSessions =
             data.results?.map((session: any) => ({
               id: session.id,
-              title: session.title || `Чат ${session.id}`,
+              title: session.title || generateDefaultTitle(session.id),
               date: session.created_at?.split("T")[0] || new Date().toISOString().split("T")[0],
               last_message: session.last_message || "",
               messages_count: session.messages_count || 0,
@@ -898,7 +1063,7 @@ export function AiChatSection() {
             <div className="relative model-menu-container">
               <button
                 onClick={() => setShowModelMenu(!showModelMenu)}
-                className="flex items-center gap-3 bg-white/80 backdrop-blur-sm border border-gray-200/60 hover:border-blue-300/80 px-6 py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 active:scale-95"
+                className="flex items-center gap-3 bg-white/80 backdrop-blur-sm border border-gray-200/60 hover:border-blue-300/80 px-6 py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 active:scale-95 relative group"
               >
                 <div className="flex items-center gap-3">
                   <div className={`p-2.5 rounded-xl ${aiModels.find(m => m.id === selectedModel)?.bgColor} text-white shadow-lg`}>
@@ -916,6 +1081,12 @@ export function AiChatSection() {
                 <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${showModelMenu ? 'rotate-180' : ''}`} />
               </button>
               
+              {/* Tooltip */}
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap z-20">
+                Сменить AI модель (начнется новый чат)
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -mt-1 w-2 h-2 bg-gray-900 rotate-45"></div>
+              </div>
+              
               {/* Model Menu Dropdown */}
               {showModelMenu && (
                 <div className="absolute top-full right-0 mt-3 w-80 bg-white/95 backdrop-blur-sm rounded-2xl border border-gray-200/60 shadow-2xl z-50 overflow-hidden">
@@ -932,10 +1103,7 @@ export function AiChatSection() {
                             ? 'bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 shadow-md scale-105' 
                             : 'hover:bg-gray-50/80 hover:shadow-sm border-2 border-transparent'
                         }`}
-                        onClick={() => {
-                          setSelectedModel(model.id)
-                          setShowModelMenu(false)
-                        }}
+                        onClick={() => handleModelSwitch(model.id)}
                       >
                         <div className="flex items-start gap-3">
                           <div className={`p-2 rounded-lg transition-all duration-300 ${
@@ -963,10 +1131,15 @@ export function AiChatSection() {
                                   Upgrade
                                 </button>
                               ) : (
-                                model.isSelected && (
+                                model.isSelected ? (
                                   <div className="flex items-center gap-2 text-green-600">
                                     <Check className="w-3 h-3" />
                                     <span className="text-xs font-medium">Выбрано</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1 text-blue-600">
+                                    <Plus className="w-3 h-3" />
+                                    <span className="text-xs font-medium">Новый чат</span>
                                   </div>
                                 )
                               )}
@@ -1028,6 +1201,12 @@ export function AiChatSection() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  {showModelSwitchNotification && (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-blue-50/90 rounded-full border border-blue-200/70 animate-pulse">
+                      <div className="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
+                      <span className="text-sm font-medium text-blue-700">Модель изменена - новый чат</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 px-3 py-2 bg-green-50/80 rounded-full border border-green-200/60">
                     <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></div>
                     <span className="text-sm font-medium text-green-700">Подключен</span>
@@ -1049,6 +1228,10 @@ export function AiChatSection() {
                   <p className="text-gray-600 mb-8 max-w-3xl mx-auto text-base leading-relaxed">
                     Я готов помочь вам с медицинскими вопросами, диагностикой и лечением. Задайте вопрос или загрузите медицинские данные для начала.
                   </p>
+                  <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>Активная модель: {aiModels.find(m => m.id === selectedModel)?.name}</span>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -1075,6 +1258,12 @@ export function AiChatSection() {
                             <>
                               <span>•</span>
                               <span>{msg.response_time_ms}ms</span>
+                            </>
+                          )}
+                          {msg.model_used && (
+                            <>
+                              <span>•</span>
+                              <span className="font-medium text-blue-600">{msg.model_used}</span>
                             </>
                           )}
                         </div>
@@ -1321,7 +1510,8 @@ export function AiChatSection() {
                           className="text-gray-400 hover:text-red-500 hover:bg-red-50/80"
                           onClick={(e) => {
                             e.stopPropagation()
-                            deleteChatSession(session.id)
+                            setSessionToDelete(session.id)
+                            setShowDeleteConfirm(true)
                           }}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -1331,6 +1521,85 @@ export function AiChatSection() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Chat Session Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="text-center mb-6">
+              <div className="mx-auto w-16 h-16 bg-gradient-to-r from-red-500 to-red-600 rounded-full flex items-center justify-center mb-4">
+                <Trash2 className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Удалить чат?</h3>
+              <p className="text-gray-600">
+                Это действие нельзя отменить. Весь чат и все сообщения будут удалены навсегда.
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDeleteConfirm(false)
+                  setSessionToDelete(null)
+                }}
+                className="flex-1"
+              >
+                Отмена
+              </Button>
+              <Button
+                onClick={() => {
+                  if (sessionToDelete) {
+                    deleteChatSession(sessionToDelete)
+                    setShowDeleteConfirm(false)
+                    setSessionToDelete(null)
+                  }
+                }}
+                className="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white"
+              >
+                Удалить
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Model Switch Confirmation Dialog */}
+      {showModelSwitchConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="text-center mb-6">
+              <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-4">
+                <Bot className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Сменить AI модель?</h3>
+                            <p className="text-gray-600">
+                При смене модели текущий чат будет завершен и начнется новый. 
+                Все несохраненные сообщения будут потеряны.
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowModelSwitchConfirm(false)
+                  setPendingModelSwitch(null)
+                }}
+                className="flex-1"
+              >
+                Отмена
+              </Button>
+              <Button
+                onClick={confirmModelSwitch}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              >
+                Сменить модель
+              </Button>
             </div>
           </div>
         </div>
