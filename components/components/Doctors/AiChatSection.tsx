@@ -30,6 +30,8 @@ import {
   Crown,
   Check,
   Play,
+  Copy,
+  Edit,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -101,19 +103,24 @@ interface ChatStats {
 }
 
 // Компонент для рендеринга markdown контента
-function MarkdownContent({ content }: { content: string }) {
+function MarkdownContent({ content, isUserMessage = false }: { content: string; isUserMessage?: boolean }) {
   // Простая функция для парсинга markdown
   const formatContent = (text: string) => {
+    const textColor = isUserMessage ? "text-white" : "text-gray-800"
+    const headingColor = isUserMessage ? "text-white" : "text-gray-800"
+    const codeBg = isUserMessage ? "bg-white/20" : "bg-gray-100"
+    const codeText = isUserMessage ? "text-white" : "text-gray-800"
+    
     return text
-      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // **текст** -> <strong>текст</strong>
-      .replace(/\*(.*?)\*/g, "<em>$1</em>") // *текст* -> <em>текст</em>
-      .replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-sm">$1</code>') // `код` -> <code>код</code>
-      .replace(/^### (.*$)/gm, '<h3 class="text-lg font-semibold mt-4 mb-2 text-gray-800">$1</h3>') // ### заголовок
-      .replace(/^## (.*$)/gm, '<h2 class="text-xl font-semibold mt-4 mb-2 text-gray-800">$1</h2>') // ## заголовок
-      .replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mt-4 mb-2 text-gray-800">$1</h1>') // # заголовок
-      .replace(/^\d+\.\s(.*$)/gm, '<li class="ml-4 mb-1">$1</li>') // 1. пункт -> <li>пункт</li>
-      .replace(/^-\s(.*$)/gm, '<li class="ml-4 mb-1 list-disc">$1</li>') // - пункт -> <li>пункт</li>
-      .replace(/\n\n/g, '</p><p class="mb-2">') // двойной перенос -> новый параграф
+      .replace(/\*\*(.*?)\*\*/g, `<strong class="${textColor}">$1</strong>`) // **текст** -> <strong>текст</strong>
+      .replace(/\*(.*?)\*/g, `<em class="${textColor}">$1</em>`) // *текст* -> <em>текст</em>
+      .replace(/`(.*?)`/g, `<code class="${codeBg} ${codeText} px-1 py-0.5 rounded text-sm">$1</code>`) // `код` -> <code>код</code>
+      .replace(/^### (.*$)/gm, `<h3 class="text-lg font-semibold mt-4 mb-2 ${headingColor}">$1</h3>`) // ### заголовок
+      .replace(/^## (.*$)/gm, `<h2 class="text-xl font-semibold mt-4 mb-2 ${headingColor}">$1</h2>`) // ## заголовок
+      .replace(/^# (.*$)/gm, `<h1 class="text-2xl font-bold mt-4 mb-2 ${headingColor}">$1</h1>`) // # заголовок
+      .replace(/^\d+\.\s(.*$)/gm, `<li class="ml-4 mb-1 ${textColor}">$1</li>`) // 1. пункт -> <li>пункт</li>
+      .replace(/^-\s(.*$)/gm, `<li class="ml-4 mb-1 list-disc ${textColor}">$1</li>`) // - пункт -> <li>пункт</li>
+      .replace(/\n\n/g, `</p><p class="mb-2 ${textColor}">`) // двойной перенос -> новый параграф
       .replace(/\n/g, "<br>") // одинарный перенос -> <br>
   }
 
@@ -123,7 +130,7 @@ function MarkdownContent({ content }: { content: string }) {
     <div
       className="prose prose-sm max-w-none"
       dangerouslySetInnerHTML={{
-        __html: `<p class="mb-2">${formattedContent}</p>`,
+        __html: `<p class="mb-2 ${isUserMessage ? 'text-white' : 'text-gray-800'}">${formattedContent}</p>`,
       }}
     />
   )
@@ -1264,11 +1271,11 @@ export function AiChatSection() {
                 <div className="hidden md:flex items-center gap-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600">{chatStats.total_sessions}</div>
-                    <div className="text-xs text-gray-500">Сессий</div>
+                    <div className="text-xs text-gray-600">Сессий</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-green-600">{chatStats.total_messages}</div>
-                    <div className="text-xs text-gray-500">Сообщений</div>
+                    <div className="text-xs text-gray-600">Сообщений</div>
                   </div>
                 </div>
               )}
@@ -1288,9 +1295,9 @@ export function AiChatSection() {
       <div className="h-[calc(100vh-120px)] flex overflow-hidden">
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col">
-          <div className="bg-white/95 backdrop-blur-md rounded-none border-r border-gray-200/60 flex flex-col h-full overflow-hidden shadow-lg">
+          <div className="bg-white rounded-none border-r border-gray-200 flex flex-col h-full overflow-hidden shadow-lg">
             {/* Chat Header */}
-            <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-purple-50/90 border-b border-gray-200/60 px-6 py-5 backdrop-blur-sm">
+            <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b border-gray-200 px-6 py-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className={`p-3 rounded-2xl ${aiModels.find(m => m.id === selectedModel)?.bgColor} text-white shadow-xl ring-4 ring-white/20`}>
@@ -1307,13 +1314,13 @@ export function AiChatSection() {
                 </div>
                 <div className="flex items-center gap-3">
                   {showModelSwitchNotification && (
-                    <div className="flex items-center gap-2 px-4 py-2 bg-blue-50/90 rounded-full border border-blue-200/70 animate-pulse">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full border border-blue-200 animate-pulse">
                       <div className="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
                       <span className="text-sm font-medium text-blue-700">Модель изменена - новый чат</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 px-3 py-2 bg-green-50/80 rounded-full border border-green-200/60">
-                    <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></div>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-full border border-green-200">
+                    <div className="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
                     <span className="text-sm font-medium text-green-700">Подключен</span>
                   </div>
                 </div>
@@ -1321,7 +1328,7 @@ export function AiChatSection() {
             </div>
 
             {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent" ref={scrollAreaRef}>
+            <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent" ref={scrollAreaRef}>
               {currentChat.length === 1 ? (
                 <div className="text-center py-12">
                   <div className={`inline-flex p-8 rounded-full ${aiModels.find(m => m.id === selectedModel)?.bgColor} text-white mb-8 shadow-2xl ring-6 ring-white/20`}>
@@ -1333,7 +1340,7 @@ export function AiChatSection() {
                   <p className="text-gray-600 mb-8 max-w-3xl mx-auto text-base leading-relaxed">
                     Я готов помочь вам с медицинскими вопросами, диагностикой и лечением. Задайте вопрос или загрузите медицинские данные для начала.
                   </p>
-                  <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                  <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     <span>Активная модель: {aiModels.find(m => m.id === selectedModel)?.name}</span>
                   </div>
@@ -1352,8 +1359,8 @@ export function AiChatSection() {
                       <div
                         className={`max-w-md lg:max-w-2xl rounded-2xl p-5 shadow-lg ${
                           msg.role === "user"
-                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                            : "bg-white/80 backdrop-blur-sm border border-gray-200/60"
+                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-xl"
+                            : "bg-white border border-gray-200 shadow-md"
                         }`}
                       >
                         {/* Show image attachments if they exist */}
@@ -1380,12 +1387,12 @@ export function AiChatSection() {
                                   </div>
                                 )}
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-white/90">{attachment.name}</p>
-                                  <p className="text-xs text-white/70">
+                                  <p className="text-sm font-medium text-white">{attachment.name}</p>
+                                  <p className="text-xs text-white/80">
                                     {attachment.size ? `${(attachment.size / 1024).toFixed(1)} KB` : 'File'}
                                   </p>
                                   {attachment.type === "image" && (
-                                    <p className="text-xs text-blue-200 mt-1">Медицинское изображение для анализа</p>
+                                    <p className="text-xs text-blue-100 mt-1">Медицинское изображение для анализа</p>
                                   )}
                                 </div>
                               </div>
@@ -1394,29 +1401,102 @@ export function AiChatSection() {
                         )}
                         
                         {/* Message content */}
-                        <MarkdownContent content={msg.content} />
+                        <MarkdownContent content={msg.content} isUserMessage={msg.role === "user"} />
                         
-                        <div className="text-xs text-gray-500 mt-3 flex items-center gap-2">
-                          <span>{msg.timestamp}</span>
-                          {msg.response_time_ms && (
-                            <>
-                              <span>•</span>
-                              <span>{msg.response_time_ms}ms</span>
-                            </>
-                          )}
-                          {msg.model_used && (
-                            <>
-                              <span>•</span>
-                              <span className="font-medium text-blue-600">{msg.model_used}</span>
-                            </>
-                          )}
-                          {msg.attachments && msg.attachments.length > 0 && (
-                            <>
-                              <span>•</span>
-                              <span className="text-green-600">✓ Анализ завершен</span>
-                            </>
-                          )}
-                        </div>
+                                                 <div className={`text-xs mt-3 flex items-center gap-2 ${
+                           msg.role === "user" 
+                             ? "text-blue-100" 
+                             : "text-gray-600"
+                         }`}>
+                           <span>{msg.timestamp}</span>
+                           {msg.response_time_ms && (
+                             <>
+                               <span>•</span>
+                               <span>{msg.response_time_ms}ms</span>
+                             </>
+                           )}
+                           {msg.role === "user" && (
+                             <>
+                               <span>•</span>
+                               <Button
+                                 size="sm"
+                                 variant="ghost"
+                                 className="h-6 px-2 py-1 text-xs text-blue-200 hover:text-blue-100"
+                                 onClick={async () => {
+                                   try {
+                                     await navigator.clipboard.writeText(msg.content || '');
+                                     console.log('User message copied to clipboard');
+                                   } catch (err) {
+                                     console.error('Failed to copy user message:', err);
+                                     // Fallback for older browsers
+                                     const textArea = document.createElement('textarea');
+                                     textArea.value = msg.content || '';
+                                     document.body.appendChild(textArea);
+                                     textArea.select();
+                                     document.execCommand('copy');
+                                     document.body.removeChild(textArea);
+                                   }
+                                 }}
+                               >
+                                 <Copy className="w-3 h-3 mr-1" />
+                                 Copy
+                               </Button>
+                                                               <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 py-1 text-xs text-green-200 hover:text-green-100"
+                                  onClick={() => {
+                                    // Allow editing user messages by putting the content back in the input field
+                                    setMessage(msg.content);
+                                    // Scroll to the input area
+                                    if (scrollAreaRef.current) {
+                                      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+                                    }
+                                  }}
+                                  title="Edit message"
+                                >
+                                  <Edit className="w-3 h-3 mr-1" />
+                                  Edit
+                                </Button>
+                             </>
+                           )}
+                           {msg.role === "assistant" && (
+                              <>
+                                <span>•</span>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 py-1 text-xs text-blue-600 hover:text-blue-700"
+                                  onClick={async () => {
+                                    try {
+                                      await navigator.clipboard.writeText(msg.content || '');
+                                      console.log('AI response copied to clipboard');
+                                    } catch (err) {
+                                      console.error('Failed to copy AI response:', err);
+                                      // Fallback for older browsers
+                                      const textArea = document.createElement('textarea');
+                                      textArea.value = msg.content || '';
+                                      document.body.appendChild(textArea);
+                                      textArea.select();
+                                      document.execCommand('copy');
+                                      document.body.removeChild(textArea);
+                                    }
+                                  }}
+                                >
+                                  <Copy className="w-3 h-3 mr-1" />
+                                  Copy
+                                </Button>
+                              </>
+                            )}
+                           {msg.attachments && msg.attachments.length > 0 && (
+                             <>
+                               <span>•</span>
+                               <span className={`${
+                                 msg.role === "user" ? "text-green-200" : "text-green-600"
+                               }`}>✓ Анализ завершен</span>
+                             </>
+                           )}
+                         </div>
                       </div>
                     </div>
                   ))}
@@ -1428,14 +1508,14 @@ export function AiChatSection() {
                           {aiModels.find(m => m.id === selectedModel)?.icon || <Bot className="w-6 h-6" />}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-2xl p-5 shadow-lg">
+                      <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-md">
                         <div className="flex items-center gap-3">
                           <div className="flex gap-1">
                             <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
                             <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
                             <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
                           </div>
-                          <span className="text-gray-600">
+                          <span className="text-gray-700 font-medium">
                             {attachments.length > 0 ? "Анализирую изображение..." : "Обрабатываю запрос..."}
                           </span>
                         </div>
@@ -1447,13 +1527,13 @@ export function AiChatSection() {
             </div>
 
             {/* Message Input */}
-            <div className="border-t border-gray-200/60 p-6 bg-gradient-to-r from-gray-50/90 to-blue-50/90 backdrop-blur-sm">
+            <div className="border-t border-gray-200 p-6 bg-gradient-to-r from-gray-50 to-blue-50">
               {attachments.length > 0 && (
                 <div className="mb-4 flex flex-wrap gap-3">
                   {attachments.map((attachment, index) => (
                     <div
                       key={index}
-                      className="bg-white/90 backdrop-blur-sm rounded-lg border border-gray-200/60 p-3 shadow-sm"
+                      className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm"
                     >
                       {attachment.type === "image" ? (
                         <div className="space-y-2">
@@ -1495,63 +1575,105 @@ export function AiChatSection() {
                 </div>
               )}
               
-              <div className="flex gap-3 bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/60 p-4 shadow-xl items-end ring-1 ring-gray-100/50">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  multiple
-                  accept="image/*,.pdf,.doc,.docx,.txt"
-                />
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="text-gray-500 hover:text-gray-700 hover:bg-gray-100/80 rounded-xl shrink-0 transition-all duration-200"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isLoading}
-                >
-                  <Paperclip className="w-5 h-5" />
-                </Button>
-                <Textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder={`Задайте медицинский вопрос - ${aiModels.find(m => m.id === selectedModel)?.name} готов к анализу...`}
-                  className="flex-1 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-800 placeholder:text-gray-500 resize-none min-h-[20px] max-h-[120px] overflow-y-auto text-base"
-                  disabled={isLoading}
-                  rows={1}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault()
-                      sendMessage()
-                    }
-                  }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement
-                    target.style.height = "auto"
-                    target.style.height = Math.min(target.scrollHeight, 120) + "px"
-                  }}
-                />
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="text-gray-500 hover:text-gray-700 hover:bg-gray-100/80 rounded-xl shrink-0 transition-all duration-200"
-                  disabled={isLoading}
-                >
-                  <Mic className="w-5 h-5" />
-                </Button>
-                <Button
-                  size="icon"
-                  className={`rounded-xl ${aiModels.find(m => m.id === selectedModel)?.bgColor} hover:opacity-90 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50`}
-                  onClick={sendMessage}
-                  disabled={(!message.trim() && attachments.length === 0) || isLoading}
-                >
-                  <ArrowUp className="w-5 h-5" />
-                </Button>
-              </div>
+                             <div className="flex gap-3 bg-white rounded-2xl border border-gray-200 p-4 shadow-lg items-end">
+                 <input
+                   type="file"
+                   ref={fileInputRef}
+                   onChange={handleFileSelect}
+                   className="hidden"
+                   multiple
+                   accept="image/*,.pdf,.doc,.docx,.txt"
+                 />
+                 <Button
+                   size="icon"
+                   variant="ghost"
+                   className="text-gray-500 hover:text-gray-700 hover:bg-gray-100/80 rounded-xl shrink-0 transition-all duration-200"
+                   onClick={() => fileInputRef.current?.click()}
+                   disabled={isLoading}
+                 >
+                   <Paperclip className="w-5 h-5" />
+                 </Button>
+                                   <div className="flex-1 relative">
+                    <Textarea
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder={`Задайте медицинский вопрос - ${aiModels.find(m => m.id === selectedModel)?.name} готов к анализу...`}
+                      className="w-full bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-800 placeholder:text-gray-500 resize-none min-h-[20px] max-h-[120px] overflow-y-auto text-base pr-24"
+                      disabled={isLoading}
+                      rows={1}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault()
+                          sendMessage()
+                        }
+                      }}
+                      onInput={(e) => {
+                        const target = e.target as HTMLTextAreaElement
+                        target.style.height = "auto"
+                        target.style.height = Math.min(target.scrollHeight, 120) + "px"
+                      }}
+                    />
+                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
+                      {message.trim() && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(message);
+                                console.log('Text copied to clipboard');
+                              } catch (err) {
+                                console.error('Failed to copy text:', err);
+                                // Fallback for older browsers
+                                const textArea = document.createElement('textarea');
+                                textArea.value = message;
+                                document.body.appendChild(textArea);
+                                textArea.select();
+                                document.execCommand('copy');
+                                document.body.removeChild(textArea);
+                              }
+                            }}
+                            title="Copy text"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0 text-gray-400 hover:text-green-600 hover:bg-green-50"
+                            onClick={() => {
+                              setMessage("");
+                            }}
+                            title="Clear text"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                 <Button
+                   size="icon"
+                   variant="ghost"
+                   className="text-gray-500 hover:text-gray-700 hover:bg-gray-100/80 rounded-xl shrink-0 transition-all duration-200"
+                   disabled={isLoading}
+                 >
+                   <Mic className="w-5 h-5" />
+                 </Button>
+                 <Button
+                   size="icon"
+                   className={`rounded-xl ${aiModels.find(m => m.id === selectedModel)?.bgColor} hover:opacity-90 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50`}
+                   onClick={sendMessage}
+                   disabled={(!message.trim() && attachments.length === 0) || isLoading}
+                 >
+                   <ArrowUp className="w-5 h-5" />
+                 </Button>
+               </div>
               
-              <p className="text-xs text-gray-500 mt-3 text-center">
-                <span className="text-green-600 font-medium">✓ Подключен к localhost:8000</span> • 
+              <p className="text-xs text-gray-600 mt-3 text-center">
+                <span className="text-green-600 font-medium">✓ Подключен к {API_BASE_URL}</span> • 
                 Получайте ответы от {aiModels.find(m => m.id === selectedModel)?.name} • 
                 Поддержка изображений и файлов
               </p>
@@ -1561,7 +1683,7 @@ export function AiChatSection() {
 
         {/* Right Sidebar - Chat History */}
         {isHistoryOpen && (
-          <div className="w-80 bg-white/95 backdrop-blur-md border-l border-gray-200/60 p-6 flex flex-col h-full transition-all duration-500 ease-in-out shadow-xl">
+          <div className="w-80 bg-white border-l border-gray-200 p-6 flex flex-col h-full transition-all duration-500 ease-in-out shadow-lg">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl">
