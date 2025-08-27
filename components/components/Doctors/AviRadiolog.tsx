@@ -36,6 +36,7 @@ import { Textarea } from "@/components/ui/textarea"
 
 // API Base URL
 const API_BASE_URL = "https://new.avishifo.uz" // Yangi API uchun o'zgartirildi
+// const API_BASE_URL = "http://localhost:8000"
 
 interface AiMessage {
   id?: string

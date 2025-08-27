@@ -539,17 +539,17 @@ export function AiChatSection() {
           : undefined,
     }
 
-            setCurrentChat((prev) => [...prev, userMessage])
-        const currentMessage = message
-        setMessage("")
-        setAttachments([])
-        setIsLoading(true)
-        
-        // Update chat title if this is the first user message
-        if (currentChat.length === 1) { // Only assistant message exists
-          const newTitle = generateTitleFromMessage(currentMessage)
-          updateChatSessionTitle(currentSessionId, newTitle)
-        }
+    setCurrentChat((prev) => [...prev, userMessage])
+    const currentMessage = message
+    setMessage("")
+    setAttachments([])
+    setIsLoading(true)
+    
+    // Update chat title if this is the first user message
+    if (currentChat.length === 1) { // Only assistant message exists
+      const newTitle = generateTitleFromMessage(currentMessage)
+      updateChatSessionTitle(currentSessionId, newTitle)
+    }
 
     try {
       const token = getAuthToken()
@@ -572,52 +572,30 @@ export function AiChatSection() {
         return
       }
 
-      // Handle image uploads first if any
-      if (attachments.length > 0) {
+      // If we have both image and text, send them together in one request
+      if (attachments.length > 0 && currentMessage.trim()) {
+        // Send combined image + text request
+        await sendCombinedImageAndText(attachments, currentMessage)
+      } else if (attachments.length > 0) {
+        // Only image, no text - send image and keep it in chat
         for (const attachment of attachments) {
           if (attachment.type === "image") {
+            // Create a user message with the image attachment to display in chat
+            const imageUserMessage = createImageMessage(attachment)
+            setCurrentChat((prev) => [...prev, imageUserMessage])
+            
+            // Send image to backend
             await sendImageToBackend(attachment.file)
           }
         }
+      } else if (currentMessage.trim()) {
+        // Only text, no image
+        await sendTextMessage(currentMessage)
       }
 
-      // Send text message to backend
-      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_message/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          content: currentMessage,
-          model: selectedModel,  // Send the selected model to backend
-        }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        const responseTime = Date.now() - startTime
-
-        const assistantMessage: AiMessage = {
-          role: "assistant",
-          content: data.reply || data.content || "Получен ответ от AI",
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          response_time_ms: responseTime,
-          model_used: data.model_used,  // Store which model was used
-        }
-
-        setCurrentChat((prev) => [...prev, assistantMessage])
-        setConnectionStatus("connected")
-
-        // Update chat history
-        loadChatHistory()
-        loadChatStats()
-      } else {
-        throw new Error(`HTTP ${response.status}`)
-      }
+      // Update chat history
+      loadChatHistory()
+      loadChatStats()
     } catch (error) {
       console.error("Error sending message:", error)
       setConnectionStatus("disconnected")
@@ -636,6 +614,115 @@ export function AiChatSection() {
       setCurrentChat((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  // New function to send combined image and text
+  const sendCombinedImageAndText = async (imageAttachments: any[], textMessage: string) => {
+    try {
+      const token = getAuthToken()
+      if (!token || !currentSessionId) return
+
+      // Use the new combined endpoint to prevent duplicate responses
+      if (imageAttachments.length > 0) {
+        const imageAttachment = imageAttachments[0] // Take first image
+        if (imageAttachment.type === "image") {
+          const formData = new FormData()
+          formData.append("image", imageAttachment.file)
+          formData.append("text", textMessage)
+          formData.append("model", selectedModel)
+
+          const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_combined_image_and_text/`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body: formData,
+          })
+
+          if (response.ok) {
+            const data = await response.json()
+            
+            // Add single combined response to chat
+            const assistantMessage: AiMessage = {
+              role: "assistant",
+              content: data.reply || "Изображение и текст обработаны AI",
+              timestamp: new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              model_used: data.model_used,
+            }
+            setCurrentChat((prev) => [...prev, assistantMessage])
+            setConnectionStatus("connected")
+          } else {
+            throw new Error(`HTTP ${response.status}`)
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error sending combined image and text:", error)
+      // Fallback: send them separately if the combined endpoint fails
+      if (imageAttachments.length > 0) {
+        for (const attachment of imageAttachments) {
+          if (attachment.type === "image") {
+            // Create a user message with the image attachment to display in chat
+            const imageUserMessage = createImageMessage(attachment)
+            setCurrentChat((prev) => [...prev, imageUserMessage])
+            
+            await sendImageToBackend(attachment.file)
+          }
+        }
+      }
+      if (textMessage.trim()) {
+        await sendTextMessage(textMessage)
+      }
+    }
+  }
+
+  // New function to send only text message
+  const sendTextMessage = async (textMessage: string) => {
+    try {
+      const token = getAuthToken()
+      if (!token || !currentSessionId) return
+
+      const messageStartTime = Date.now() // Define start time locally
+
+      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_message/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          content: textMessage,
+          model: selectedModel,  // Send the selected model to backend
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const responseTime = Date.now() - messageStartTime
+
+        const assistantMessage: AiMessage = {
+          role: "assistant",
+          content: data.reply || data.content || "Получен ответ от AI",
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          response_time_ms: responseTime,
+          model_used: data.model_used,  // Store which model was used
+        }
+
+        setCurrentChat((prev) => [...prev, assistantMessage])
+        setConnectionStatus("connected")
+      } else {
+        throw new Error(`HTTP ${response.status}`)
+      }
+    } catch (error) {
+      console.error("Error sending text message:", error)
+      throw error
     }
   }
 
@@ -671,6 +758,24 @@ export function AiChatSection() {
       }
     } catch (error) {
       console.error("Error sending image:", error)
+    }
+  }
+
+  // Helper function to create a user message with image attachment
+  const createImageMessage = (imageAttachment: any): AiMessage => {
+    return {
+      role: "user",
+      content: `📷 Медицинское изображение: ${imageAttachment.name}`,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      attachments: [{
+        type: imageAttachment.type,
+        name: imageAttachment.name,
+        url: imageAttachment.url,
+        size: imageAttachment.size,
+      }],
     }
   }
 
@@ -1168,7 +1273,7 @@ export function AiChatSection() {
                 </div>
               )}
               <Button 
-                onClick={startNewChat} 
+                onClick={() => startNewChat(false)} 
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
               >
                 <Plus className="w-5 h-5 mr-2" />
@@ -1251,7 +1356,46 @@ export function AiChatSection() {
                             : "bg-white/80 backdrop-blur-sm border border-gray-200/60"
                         }`}
                       >
+                        {/* Show image attachments if they exist */}
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div className="mb-4 space-y-3">
+                            {msg.attachments.map((attachment, attIndex) => (
+                              <div key={attIndex} className="flex items-center gap-3">
+                                {attachment.type === "image" ? (
+                                  <div className="relative">
+                                    <div className="w-24 h-24 relative rounded-lg overflow-hidden border-2 border-white/30 shadow-lg">
+                                      <img
+                                        src={attachment.url}
+                                        alt={attachment.name}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    </div>
+                                    <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full shadow-lg">
+                                      📷
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="w-24 h-24 relative rounded-lg bg-white/20 border-2 border-white/30 flex items-center justify-center">
+                                    <File className="w-8 h-8 text-white/80" />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-white/90">{attachment.name}</p>
+                                  <p className="text-xs text-white/70">
+                                    {attachment.size ? `${(attachment.size / 1024).toFixed(1)} KB` : 'File'}
+                                  </p>
+                                  {attachment.type === "image" && (
+                                    <p className="text-xs text-blue-200 mt-1">Медицинское изображение для анализа</p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Message content */}
                         <MarkdownContent content={msg.content} />
+                        
                         <div className="text-xs text-gray-500 mt-3 flex items-center gap-2">
                           <span>{msg.timestamp}</span>
                           {msg.response_time_ms && (
@@ -1264,6 +1408,12 @@ export function AiChatSection() {
                             <>
                               <span>•</span>
                               <span className="font-medium text-blue-600">{msg.model_used}</span>
+                            </>
+                          )}
+                          {msg.attachments && msg.attachments.length > 0 && (
+                            <>
+                              <span>•</span>
+                              <span className="text-green-600">✓ Анализ завершен</span>
                             </>
                           )}
                         </div>
@@ -1285,7 +1435,9 @@ export function AiChatSection() {
                             <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
                             <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
                           </div>
-                          <span className="text-gray-600">Обрабатываю запрос...</span>
+                          <span className="text-gray-600">
+                            {attachments.length > 0 ? "Анализирую изображение..." : "Обрабатываю запрос..."}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1297,32 +1449,47 @@ export function AiChatSection() {
             {/* Message Input */}
             <div className="border-t border-gray-200/60 p-6 bg-gradient-to-r from-gray-50/90 to-blue-50/90 backdrop-blur-sm">
               {attachments.length > 0 && (
-                <div className="mb-4 flex flex-wrap gap-2">
+                <div className="mb-4 flex flex-wrap gap-3">
                   {attachments.map((attachment, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-2 bg-white/90 backdrop-blur-sm rounded-lg border border-gray-200/60 p-2 pr-1 shadow-sm"
+                      className="bg-white/90 backdrop-blur-sm rounded-lg border border-gray-200/60 p-3 shadow-sm"
                     >
                       {attachment.type === "image" ? (
-                        <div className="w-8 h-8 relative rounded overflow-hidden">
-                          <img
-                            src={attachment.url || "/placeholder.svg"}
-                            alt={attachment.name}
-                            className="w-full h-full object-cover"
-                          />
+                        <div className="space-y-2">
+                          <div className="w-32 h-32 relative rounded-lg overflow-hidden border border-gray-200">
+                            <img
+                              src={attachment.url || "/placeholder.svg"}
+                              alt={attachment.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-700 max-w-[100px] truncate">{attachment.name}</span>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 rounded-full p-0 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                              onClick={() => removeAttachment(index)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       ) : (
-                        <File className="w-5 h-5 text-gray-500" />
+                        <div className="flex items-center gap-2">
+                          <File className="w-5 h-5 text-gray-500" />
+                          <span className="text-xs text-gray-700 max-w-[100px] truncate">{attachment.name}</span>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6 rounded-full p-0 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                            onClick={() => removeAttachment(index)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
                       )}
-                      <span className="text-xs text-gray-700 max-w-[100px] truncate">{attachment.name}</span>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-6 w-6 rounded-full p-0 text-gray-400 hover:text-red-500 hover:bg-red-50"
-                        onClick={() => removeAttachment(index)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
                     </div>
                   ))}
                 </div>
@@ -1384,7 +1551,7 @@ export function AiChatSection() {
               </div>
               
               <p className="text-xs text-gray-500 mt-3 text-center">
-                <span className="text-green-600 font-medium">✓ Подключен к new.avishifo.uz</span> • 
+                <span className="text-green-600 font-medium">✓ Подключен к localhost:8000</span> • 
                 Получайте ответы от {aiModels.find(m => m.id === selectedModel)?.name} • 
                 Поддержка изображений и файлов
               </p>
