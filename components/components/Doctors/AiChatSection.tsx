@@ -156,17 +156,7 @@ export function AiChatSection() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
 
-  const [currentChat, setCurrentChat] = useState<AiMessage[]>([
-    {
-      role: "assistant",
-      content:
-        "Здравствуйте, уважаемый доктор! Я рад присоединиться к вашей работе в качестве медицинского консультанта AviShifo. Вместе с вами я готов анализировать сложные случаи, помогать в принятии клинических решений и сопровождать пациента на всём пути лечения — до полного выздоровления. Введите или загрузите необходимую информацию — и начнём.",
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    },
-  ])
+  const [currentChat, setCurrentChat] = useState<AiMessage[]>([])
   const [message, setMessage] = useState("")
   const [attachments, setAttachments] = useState<
     {
@@ -202,8 +192,8 @@ export function AiChatSection() {
   useEffect(() => {
     loadChatHistory()
     loadChatStats()
-    // Создаем новую сессию при загрузке компонента
-    createNewChatSession()
+    // Создаем новую сессию при загрузке компонента с правильным приветственным сообщением
+    startNewChat()
   }, [])
 
   const aiModels = [
@@ -219,7 +209,7 @@ export function AiChatSection() {
     },
     {
       id: "avishifo-radiolog",
-      name: "Avi-Radiolog",
+      name: "AviRadiolog",
       description: "Специализированный анализ медицинских изображений",
       icon: <Stethoscope className="w-5 h-5" />,
       isPremium: true,
@@ -913,6 +903,47 @@ export function AiChatSection() {
       welcomeMessage = modelSwitched 
         ? `Здравствуйте! Я ChatGPT-5. Переключился на новую модель и готов начать новый диалог. Чем могу помочь?`
         : "Здравствуйте! Я ChatGPT-5, ваш медицинский ИИ-ассистент. Готов помочь вам с любыми медицинскими вопросами, диагностикой, анализом симптомов и составлением планов лечения. Чем могу помочь сегодня?"
+    } else if (selectedModel === "avishifo-radiolog") {
+      welcomeMessage = modelSwitched 
+        ? `Здравствуйте! Я AviRadiolog. Переключился на новую модель и готов начать новый диалог. Чем могу помочь?`
+        : `Уважаемый доктор!
+Для корректной работы AviRadiolog просим вносить данные пациента в следующем формате. Чем полнее и точнее будут данные, тем качественнее результат анализа.
+
+1. Общие сведения о пациенте
+
+- Возраст: ___ лет
+
+- Пол: Мужчина / Женщина
+
+- Рост / вес (опционально)
+
+- Анамнез (ключевые хронические болезни, курение, операции и т.д.)
+
+2. Клиническая картина
+
+- Жалобы (например: кашель, лихорадка 38.5 °C, боль в груди, одышка).
+
+- Давность симптомов (дни/недели).
+
+- Сопутствующие данные (например: повышение CRP, лейкоцитоз, сатурация).
+
+3. Исследование
+
+- Вид исследования: Рентген / КТ / МРТ / УЗИ.
+
+- Область исследования: Грудная клетка / брюшная полость / другое.
+
+- Проекция (для рентгена): PA / AP / Латеральная.
+
+- Дата исследования.
+
+- Формат: желательно DICOM; допустимо PNG/JPEG (но с пометкой «не DICOM»).
+
+4. Технические детали (по возможности)
+
+- Качество снимка: удовлетворительное / среднее / низкое (артефакты, движение).
+
+- Дополнительные замечания (например: послеоперационные изменения, наличие катетеров).`
     } else {
       welcomeMessage = modelSwitched 
         ? `Здравствуйте! Я ${aiModels.find(m => m.id === selectedModel)?.name}. Переключился на новую модель и готов начать новый диалог. Чем могу помочь?`
@@ -1296,36 +1327,7 @@ export function AiChatSection() {
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col">
           <div className="bg-white rounded-none border-r border-gray-200 flex flex-col h-full overflow-hidden shadow-lg">
-            {/* Chat Header */}
-            <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b border-gray-200 px-6 py-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-2xl ${aiModels.find(m => m.id === selectedModel)?.bgColor} text-white shadow-xl ring-4 ring-white/20`}>
-                    {aiModels.find(m => m.id === selectedModel)?.icon}
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-800 mb-1">
-                      {aiModels.find(m => m.id === selectedModel)?.name}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {aiModels.find(m => m.id === selectedModel)?.description}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {showModelSwitchNotification && (
-                    <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full border border-blue-200 animate-pulse">
-                      <div className="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
-                      <span className="text-sm font-medium text-blue-700">Модель изменена - новый чат</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-full border border-green-200">
-                    <div className="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
-                    <span className="text-sm font-medium text-green-700">Подключен</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            
 
             {/* Chat Messages */}
             <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent" ref={scrollAreaRef}>
@@ -1337,9 +1339,59 @@ export function AiChatSection() {
                   <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-6">
                     Добро пожаловать в {aiModels.find(m => m.id === selectedModel)?.name}!
                   </h2>
-                  <p className="text-gray-600 mb-8 max-w-3xl mx-auto text-base leading-relaxed">
-                    Я готов помочь вам с медицинскими вопросами, диагностикой и лечением. Задайте вопрос или загрузите медицинские данные для начала.
-                  </p>
+                                                        <div className="text-gray-600 mb-6 max-w-4xl mx-auto">
+                      {selectedModel === "avishifo-radiolog" ? (
+                        <div className="text-sm leading-relaxed space-y-4">
+                          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <p className="font-medium text-blue-800 mb-2">Уважаемый доктор!</p>
+                            <p className="text-blue-700">Для корректной работы AviRadiolog просим вносить данные пациента в следующем формате. Чем полнее и точнее будут данные, тем качественнее результат анализа.</p>
+                          </div>
+                          
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                              <h4 className="font-semibold text-green-800 mb-2">1. Общие сведения о пациенте</h4>
+                              <ul className="text-green-700 space-y-1 text-xs">
+                                <li>• Возраст: ___ лет</li>
+                                <li>• Пол: Мужчина / Женщина</li>
+                                <li>• Рост / вес (опционально)</li>
+                                <li>• Анамнез (хронические болезни, курение, операции)</li>
+                              </ul>
+                            </div>
+                            
+                            <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                              <h4 className="font-semibold text-purple-800 mb-2">2. Клиническая картина</h4>
+                              <ul className="text-purple-700 space-y-1 text-xs">
+                                <li>• Жалобы (кашель, лихорадка, боль в груди)</li>
+                                <li>• Давность симптомов (дни/недели)</li>
+                                <li>• Сопутствующие данные (CRP, лейкоцитоз)</li>
+                              </ul>
+                            </div>
+                          </div>
+                          
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                              <h4 className="font-semibold text-orange-800 mb-2">3. Исследование</h4>
+                              <ul className="text-orange-700 space-y-1 text-xs">
+                                <li>• Вид: Рентген / КТ / МРТ / УЗИ</li>
+                                <li>• Область: (Грудная клетка / брюшная полость)</li>
+                                <li>• Проекция: (PA / AP / Латеральная)</li>
+                                <li>• Формат: допустимо PNG/JPEG .</li>
+                              </ul>
+                            </div>
+                            
+                            <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                              <h4 className="font-semibold text-red-800 mb-2">4. Технические детали</h4>
+                              <ul className="text-red-700 space-y-1 text-xs">
+                                <li>• Качество снимка: удовлетворительное / среднее / низкое (артефакты, движение).</li>
+                                <li>• Дополнительные замечания (например: послеоперационные изменения, наличие катетеров).</li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-base leading-relaxed">Я готов помочь вам с медицинскими вопросами, диагностикой и лечением. Задайте вопрос или загрузите медицинские данные для начала.</p>
+                      )}
+                    </div>
                   <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     <span>Активная модель: {aiModels.find(m => m.id === selectedModel)?.name}</span>
