@@ -1,37 +1,10 @@
 "use client"
 
-import type React from "react"
-
+import React, { useEffect, useRef, useState } from "react"
 import {
-  Mic,
-  Plus,
-  ArrowUp,
-  Bot,
-  History,
-  MessageSquare,
-  AlertCircle,
-  Wifi,
-  WifiOff,
-  Settings,
-  Sparkles,
-  Search,
-  BarChart3,
-  Trash2,
-  Calendar,
-  Download,
-  File,
-  X,
-  Paperclip,
-  ChevronDown,
-  Star,
-  Zap,
-  Brain,
-  Stethoscope,
-  Crown,
-  Check,
-  Play,
-  Copy,
-  Edit,
+  Mic, Plus, ArrowUp, Bot, History, MessageSquare, AlertCircle, Wifi, WifiOff, Settings, Sparkles, Search,
+  BarChart3, Trash2, Calendar, Download, File, X, Paperclip, ChevronDown, Star, Zap, Brain, Stethoscope,
+  Crown, Check, Play, Copy, Edit,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -41,29 +14,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useEffect, useRef, useState } from "react"
 import { Textarea } from "@/components/ui/textarea"
 
-// API Base URL
-const API_BASE_URL = "https://new.avishifo.uz"
-// const API_BASE_URL = "http://localhost:8000"
+// Markdown uchun yangi importlar
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
-// Helper function to generate default titles for chat sessions
+
+// API Base URL
+// const API_BASE_URL = "http://localhost:8000"
+const API_BASE_URL = "https://new.avishifo.uz"
+
+// Chat sessiyalari uchun standart sarlavhalarni yaratish
 const generateDefaultTitle = (sessionId: string) => {
   const titles = [
-    "Медицинская консультация",
-    "Диагностика",
-    "Анализ симптомов",
-    "План лечения",
-    "Вопросы здоровья",
-    "Медицинский совет",
-    "Клинический случай",
-    "Консультация врача"
+    "Медицинская консультация", "Диагностика", "Анализ симптомов", "План лечения",
+    "Вопросы здоровья", "Медицинский совет", "Клинический случай", "Консультация врача"
   ]
   const randomIndex = parseInt(sessionId) % titles.length
   return titles[randomIndex]
 }
 
+// Interfeyslar
 interface AiMessage {
   id?: string
   role: "user" | "assistant"
@@ -102,112 +74,101 @@ interface ChatStats {
   sessions_this_month: number
 }
 
-// Компонент для рендеринга markdown контента в стиле ChatGPT
-function MarkdownContent({ content, isUserMessage = false }: { content: string; isUserMessage?: boolean }) {
-  // ChatGPT style formatting for medical analysis responses
-  const formatMedicalContent = (text: string) => {
-    let formatted = text
-
-    // Headers with beautiful styling and emojis
-    formatted = formatted.replace(/^(Качество и полнота данных)(.*?)$/gm, 
-      '<div class="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">📊</span>$1$2</h2></div>')
-    
-    formatted = formatted.replace(/^(Красные флаги)(.*?)$/gm, 
-      '<div class="bg-gradient-to-r from-red-500 to-pink-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">🚨</span>$1$2</h2></div>')
-    
-    formatted = formatted.replace(/^(Предварительный диагноз)(.*?)$/gm, 
-      '<div class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">🔍</span>$1$2</h2></div>')
-    
-    formatted = formatted.replace(/^(Дифференциальные диагнозы)(.*?)$/gm, 
-      '<div class="bg-gradient-to-r from-purple-500 to-violet-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">🎯</span>$1$2</h2></div>')
-    
-    formatted = formatted.replace(/^(План обследования)(.*?)$/gm, 
-      '<div class="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">📋</span>$1$2</h2></div>')
-    
-    formatted = formatted.replace(/^(Тактика лечения)(.*?)$/gm, 
-      '<div class="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">💊</span>$1$2</h2></div>')
-    
-    formatted = formatted.replace(/^(Возможные осложнения)(.*?)$/gm, 
-      '<div class="bg-gradient-to-r from-orange-500 to-red-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">⚠️</span>$1$2</h2></div>')
-    
-    formatted = formatted.replace(/^(Факторы формирования)(.*?)$/gm, 
-      '<div class="bg-gradient-to-r from-yellow-500 to-orange-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">🔬</span>$1$2</h2></div>')
-    
-    formatted = formatted.replace(/^(Ограничения)(.*?)$/gm, 
-      '<div class="bg-gradient-to-r from-gray-500 to-slate-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">ℹ️</span>$1$2</h2></div>')
-    
-    formatted = formatted.replace(/^(Заключение)(.*?)$/gm, 
-      '<div class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">✨</span>$1$2</h2></div>')
-
-    // Bullet points with beautiful styling
-    formatted = formatted.replace(/^\* (.*$)/gm, '<div class="flex items-start gap-3 mb-3"><div class="w-2 h-2 bg-blue-500 rounded-full mt-2.5 flex-shrink-0"></div><span class="text-gray-700">$1</span></div>')
-    formatted = formatted.replace(/^- (.*$)/gm, '<div class="flex items-start gap-3 mb-3"><div class="w-2 h-2 bg-blue-500 rounded-full mt-2.5 flex-shrink-0"></div><span class="text-gray-700">$1</span></div>')
-
-    // Tables with beautiful formatting
-    if (formatted.includes('|')) {
-      const lines = formatted.split('\n')
-      const tableLines = lines.filter(line => line.includes('|'))
-      
-      if (tableLines.length > 0) {
-        // Find table boundaries
-        let tableStart = -1
-        let tableEnd = -1
-        
-        for (let i = 0; i < lines.length; i++) {
-          if (lines[i].includes('|') && tableStart === -1) {
-            tableStart = i
-          } else if (tableStart !== -1 && !lines[i].includes('|')) {
-            tableEnd = i
-            break
-          }
-        }
-        
-        if (tableEnd === -1) tableEnd = lines.length
-        
-        // Format table
-        const tableContent = lines.slice(tableStart, tableEnd)
-        const formattedTable = tableContent.map((line, index) => {
-          if (index === 0) {
-            // Header row with beautiful gradient background
-            return `<div class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white px-6 py-4 rounded-t-xl font-bold text-lg shadow-lg">${line.split('|').map(cell => cell.trim()).join(' | ')}</div>`
-          } else if (index === 1) {
-            // Separator row
-            return `<div class="bg-gray-100 px-6 py-3 text-gray-600 text-sm font-medium border-b-2 border-gray-200">${line.split('|').map(cell => cell.trim()).join(' | ')}</div>`
-          } else {
-            // Data rows with beautiful hover effects
-            return `<div class="px-6 py-4 border-b border-gray-100 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 cursor-pointer group"><div class="group-hover:scale-[1.02] transition-transform duration-300">${line.split('|').map(cell => cell.trim()).join(' | ')}</div></div>`
-          }
-        }).join('')
-        
-        // Wrap table in beautiful container
-        const tableContainer = `<div class="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden my-6">${formattedTable}</div>`
-        
-        // Replace table in text
-        const beforeTable = lines.slice(0, tableStart).join('\n')
-        const afterTable = lines.slice(tableEnd).join('\n')
-        formatted = beforeTable + '\n' + tableContainer + '\n' + afterTable
-      }
-    }
-
-    // Bold text with beautiful styling
-    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-gray-900 bg-gradient-to-r from-blue-100 to-purple-100 px-2 py-1 rounded-lg">$1</strong>')
-    
-    // Italic text with beautiful styling
-    formatted = formatted.replace(/\*(.*?)\*/g, '<em class="text-gray-700 font-medium italic bg-gray-50 px-2 py-1 rounded-md">$1</em>')
-
-    // Add spacing between sections
-    formatted = formatted.replace(/\n\n/g, '<div class="h-6"></div>')
-
-    return formatted
+// YANGILANGAN MarkdownContent KOMPONENTI
+function MarkdownContent({ content }: { content: string }) {
+  // Sarlavhalar uchun maxsus uslublar va piktogrammalarni aniqlab olamiz
+  const headerStyles: { [key: string]: { icon: string; gradient: string } } = {
+    "Качество и полнота данных": { icon: "📊", gradient: "from-emerald-500 to-teal-600" },
+    "Красные флаги": { icon: "🚨", gradient: "from-red-500 to-pink-600" },
+    "Предварительный диагноз": { icon: "🔍", gradient: "from-blue-500 to-indigo-600" },
+    "Дифференциальные диагнозы": { icon: "🎯", gradient: "from-purple-500 to-violet-600" },
+    "План обследования": { icon: "📋", gradient: "from-cyan-500 to-blue-600" },
+    "Тактика лечения": { icon: "💊", gradient: "from-green-500 to-emerald-600" },
+    "Возможные осложнения": { icon: "⚠️", gradient: "from-orange-500 to-red-600" },
+    "Факторы формирования": { icon: "🔬", gradient: "from-yellow-500 to-orange-600" },
+    "Ограничения": { icon: "ℹ️", gradient: "from-gray-500 to-slate-600" },
+    "Заключение": { icon: "✨", gradient: "from-indigo-500 to-purple-600" },
   }
 
-  const formattedContent = formatMedicalContent(content)
-
   return (
-    <div 
-      className="prose prose-lg max-w-none text-gray-700 leading-relaxed space-y-4"
-      dangerouslySetInnerHTML={{ __html: formattedContent }}
-    />
+    <div className="prose prose-lg max-w-none text-gray-800 leading-relaxed">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          // H2 sarlavhalari uchun maxsus dizayn
+          h2: ({ node, ...props }) => {
+            const textContent = node?.children[0]?.type === 'text' ? node.children[0].value : ''
+            const style = headerStyles[textContent.trim()]
+            if (style) {
+              return (
+                <div
+                  className={`bg-gradient-to-r ${style.gradient} text-white px-6 py-4 rounded-xl shadow-lg my-6`}
+                >
+                  <h2 className="text-xl font-bold flex items-center gap-3 text-white my-0">
+                    <span className="text-2xl">{style.icon}</span>
+                    {textContent}
+                  </h2>
+                </div>
+              )
+            }
+            return <h2 className="font-bold text-2xl mt-6 mb-3" {...props} />
+          },
+          // Ro'yxatlar (ul) uchun chiroyli dizayn
+          ul: ({ node, ...props }) => (
+            <ul className="list-none p-0 my-4 space-y-3" {...props} />
+          ),
+          li: ({ node, ...props }) => (
+            <li className="flex items-start gap-3">
+              <span className="w-2 h-2 bg-blue-500 rounded-full mt-2.5 flex-shrink-0" />
+              <span className="flex-1">{props.children}</span>
+            </li>
+          ),
+          // Jadvallar uchun zamonaviy dizayn
+          table: ({ node, ...props }) => (
+            <div className="my-8 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200" {...props} />
+              </div>
+            </div>
+          ),
+          thead: ({ node, ...props }) => (
+            <thead className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600" {...props} />
+          ),
+          th: ({ node, ...props }) => (
+            <th
+              className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider"
+              {...props}
+            />
+          ),
+          tbody: ({ node, ...props }) => (
+            <tbody className="bg-white divide-y divide-gray-200" {...props} />
+          ),
+          tr: ({ node, ...props }) => (
+            <tr className="hover:bg-blue-50 transition-colors duration-200" {...props} />
+          ),
+          td: ({ node, ...props }) => (
+            <td className="px-6 py-4 whitespace-nowrap text-gray-700" {...props} />
+          ),
+          // Qalin matn (strong) uchun dizayn
+          strong: ({ node, ...props }) => (
+            <strong
+              className="font-bold text-gray-900 bg-gradient-to-r from-blue-100 to-purple-100 px-2 py-1 rounded-lg"
+              {...props}
+            />
+          ),
+          // Yotiq matn (em) uchun dizayn
+          em: ({ node, ...props }) => (
+            <em className="text-gray-700 font-medium italic bg-gray-50 px-2 py-1 rounded-md" {...props} />
+          ),
+          // Paragraflar orasida masofa
+          p: ({ node, ...props }) => (
+            <p className="my-4" {...props} />
+          )
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
   )
 }
 
@@ -1393,7 +1354,7 @@ export function AiChatSection() {
 
             {/* Chat Messages */}
             <div className="flex-1 overflow-y-auto p-8 bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent" ref={scrollAreaRef}>
-              {currentChat.length === 1 ? (
+              {currentChat.length <= 1 ? (
                 <div className="text-center py-16">
                   <div className={`inline-flex p-10 rounded-full ${aiModels.find(m => m.id === selectedModel)?.bgColor} text-white mb-10 shadow-3xl ring-8 ring-white/30 animate-pulse`}>
                     {aiModels.find(m => m.id === selectedModel)?.icon || <Bot className="w-24 h-24" />}
@@ -1401,7 +1362,7 @@ export function AiChatSection() {
                   <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-8 animate-fade-in">
                     Добро пожаловать в {aiModels.find(m => m.id === selectedModel)?.name}!
                   </h2>
-                                                        <div className="text-gray-600 mb-6 max-w-4xl mx-auto">
+                    <div className="text-gray-600 mb-6 max-w-4xl mx-auto">
                       {selectedModel === "avishifo-radiolog" ? (
                         <div className="text-sm leading-relaxed space-y-4">
                           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
@@ -1515,7 +1476,7 @@ export function AiChatSection() {
                         )}
                         
                         {/* Message content */}
-                        <MarkdownContent content={msg.content} isUserMessage={msg.role === "user"} />
+                        <MarkdownContent content={msg.content} />
                         
                                                  <div className={`text-xs mt-3 flex items-center gap-2 ${
                            msg.role === "user" 
@@ -1542,27 +1503,18 @@ export function AiChatSection() {
                                      console.log('User message copied to clipboard');
                                    } catch (err) {
                                      console.error('Failed to copy user message:', err);
-                                     // Fallback for older browsers
-                                     const textArea = document.createElement('textarea');
-                                     textArea.value = msg.content || '';
-                                     document.body.appendChild(textArea);
-                                     textArea.select();
-                                     document.execCommand('copy');
-                                     document.body.removeChild(textArea);
                                    }
                                  }}
                                >
                                  <Copy className="w-3 h-3 mr-1" />
                                  Copy
                                </Button>
-                                                               <Button
+                               <Button
                                   size="sm"
                                   variant="ghost"
                                   className="h-6 px-2 py-1 text-xs text-green-200 hover:text-green-100"
                                   onClick={() => {
-                                    // Allow editing user messages by putting the content back in the input field
                                     setMessage(msg.content);
-                                    // Scroll to the input area
                                     if (scrollAreaRef.current) {
                                       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
                                     }
@@ -1587,13 +1539,6 @@ export function AiChatSection() {
                                       console.log('AI response copied to clipboard');
                                     } catch (err) {
                                       console.error('Failed to copy AI response:', err);
-                                      // Fallback for older browsers
-                                      const textArea = document.createElement('textarea');
-                                      textArea.value = msg.content || '';
-                                      document.body.appendChild(textArea);
-                                      textArea.select();
-                                      document.execCommand('copy');
-                                      document.body.removeChild(textArea);
                                     }
                                   }}
                                 >
@@ -1602,14 +1547,6 @@ export function AiChatSection() {
                                 </Button>
                               </>
                             )}
-                           {msg.attachments && msg.attachments.length > 0 && (
-                             <>
-                               <span>•</span>
-                               <span className={`${
-                                 msg.role === "user" ? "text-green-200" : "text-green-600"
-                               }`}>✓ Анализ завершен</span>
-                             </>
-                           )}
                          </div>
                       </div>
                     </div>
@@ -1740,13 +1677,6 @@ export function AiChatSection() {
                                 console.log('Text copied to clipboard');
                               } catch (err) {
                                 console.error('Failed to copy text:', err);
-                                // Fallback for older browsers
-                                const textArea = document.createElement('textarea');
-                                textArea.value = message;
-                                document.body.appendChild(textArea);
-                                textArea.select();
-                                document.execCommand('copy');
-                                document.body.removeChild(textArea);
                               }
                             }}
                             title="Copy text"
