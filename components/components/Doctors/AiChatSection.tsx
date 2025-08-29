@@ -102,30 +102,112 @@ interface ChatStats {
   sessions_this_month: number
 }
 
-// Компонент для рендеринга markdown контента
+// Компонент для рендеринга markdown контента в стиле ChatGPT
 function MarkdownContent({ content, isUserMessage = false }: { content: string; isUserMessage?: boolean }) {
-  // Simple text display without markdown formatting - ChatGPT style
-  const formatContent = (text: string) => {
-    // Remove any markdown formatting and just display plain text
-    return text
-      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove **bold**
-      .replace(/\*(.*?)\*/g, '$1') // Remove *italic*
-      .replace(/`(.*?)`/g, '$1') // Remove `code`
-      .replace(/^### (.*$)/gm, '$1') // Remove ### headers
-      .replace(/^## (.*$)/gm, '$1') // Remove ## headers
-      .replace(/^# (.*$)/gm, '$1') // Remove # headers
-      .replace(/^\d+\.\s(.*$)/gm, '$1') // Remove numbered lists
-      .replace(/^-\s(.*$)/gm, '$1') // Remove bullet lists
-      .replace(/\n\n/g, '\n') // Remove double line breaks
-      .replace(/\n/g, '\n') // Keep single line breaks
+  // ChatGPT style formatting for medical analysis responses
+  const formatMedicalContent = (text: string) => {
+    let formatted = text
+
+    // Headers with beautiful styling and emojis
+    formatted = formatted.replace(/^(Качество и полнота данных)(.*?)$/gm, 
+      '<div class="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">📊</span>$1$2</h2></div>')
+    
+    formatted = formatted.replace(/^(Красные флаги)(.*?)$/gm, 
+      '<div class="bg-gradient-to-r from-red-500 to-pink-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">🚨</span>$1$2</h2></div>')
+    
+    formatted = formatted.replace(/^(Предварительный диагноз)(.*?)$/gm, 
+      '<div class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">🔍</span>$1$2</h2></div>')
+    
+    formatted = formatted.replace(/^(Дифференциальные диагнозы)(.*?)$/gm, 
+      '<div class="bg-gradient-to-r from-purple-500 to-violet-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">🎯</span>$1$2</h2></div>')
+    
+    formatted = formatted.replace(/^(План обследования)(.*?)$/gm, 
+      '<div class="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">📋</span>$1$2</h2></div>')
+    
+    formatted = formatted.replace(/^(Тактика лечения)(.*?)$/gm, 
+      '<div class="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">💊</span>$1$2</h2></div>')
+    
+    formatted = formatted.replace(/^(Возможные осложнения)(.*?)$/gm, 
+      '<div class="bg-gradient-to-r from-orange-500 to-red-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">⚠️</span>$1$2</h2></div>')
+    
+    formatted = formatted.replace(/^(Факторы формирования)(.*?)$/gm, 
+      '<div class="bg-gradient-to-r from-yellow-500 to-orange-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">🔬</span>$1$2</h2></div>')
+    
+    formatted = formatted.replace(/^(Ограничения)(.*?)$/gm, 
+      '<div class="bg-gradient-to-r from-gray-500 to-slate-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">ℹ️</span>$1$2</h2></div>')
+    
+    formatted = formatted.replace(/^(Заключение)(.*?)$/gm, 
+      '<div class="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-4 rounded-xl shadow-lg mb-4"><h2 class="text-xl font-bold flex items-center gap-3"><span class="text-2xl">✨</span>$1$2</h2></div>')
+
+    // Bullet points with beautiful styling
+    formatted = formatted.replace(/^\* (.*$)/gm, '<div class="flex items-start gap-3 mb-3"><div class="w-2 h-2 bg-blue-500 rounded-full mt-2.5 flex-shrink-0"></div><span class="text-gray-700">$1</span></div>')
+    formatted = formatted.replace(/^- (.*$)/gm, '<div class="flex items-start gap-3 mb-3"><div class="w-2 h-2 bg-blue-500 rounded-full mt-2.5 flex-shrink-0"></div><span class="text-gray-700">$1</span></div>')
+
+    // Tables with beautiful formatting
+    if (formatted.includes('|')) {
+      const lines = formatted.split('\n')
+      const tableLines = lines.filter(line => line.includes('|'))
+      
+      if (tableLines.length > 0) {
+        // Find table boundaries
+        let tableStart = -1
+        let tableEnd = -1
+        
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].includes('|') && tableStart === -1) {
+            tableStart = i
+          } else if (tableStart !== -1 && !lines[i].includes('|')) {
+            tableEnd = i
+            break
+          }
+        }
+        
+        if (tableEnd === -1) tableEnd = lines.length
+        
+        // Format table
+        const tableContent = lines.slice(tableStart, tableEnd)
+        const formattedTable = tableContent.map((line, index) => {
+          if (index === 0) {
+            // Header row with beautiful gradient background
+            return `<div class="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white px-6 py-4 rounded-t-xl font-bold text-lg shadow-lg">${line.split('|').map(cell => cell.trim()).join(' | ')}</div>`
+          } else if (index === 1) {
+            // Separator row
+            return `<div class="bg-gray-100 px-6 py-3 text-gray-600 text-sm font-medium border-b-2 border-gray-200">${line.split('|').map(cell => cell.trim()).join(' | ')}</div>`
+          } else {
+            // Data rows with beautiful hover effects
+            return `<div class="px-6 py-4 border-b border-gray-100 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 cursor-pointer group"><div class="group-hover:scale-[1.02] transition-transform duration-300">${line.split('|').map(cell => cell.trim()).join(' | ')}</div></div>`
+          }
+        }).join('')
+        
+        // Wrap table in beautiful container
+        const tableContainer = `<div class="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden my-6">${formattedTable}</div>`
+        
+        // Replace table in text
+        const beforeTable = lines.slice(0, tableStart).join('\n')
+        const afterTable = lines.slice(tableEnd).join('\n')
+        formatted = beforeTable + '\n' + tableContainer + '\n' + afterTable
+      }
+    }
+
+    // Bold text with beautiful styling
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-gray-900 bg-gradient-to-r from-blue-100 to-purple-100 px-2 py-1 rounded-lg">$1</strong>')
+    
+    // Italic text with beautiful styling
+    formatted = formatted.replace(/\*(.*?)\*/g, '<em class="text-gray-700 font-medium italic bg-gray-50 px-2 py-1 rounded-md">$1</em>')
+
+    // Add spacing between sections
+    formatted = formatted.replace(/\n\n/g, '<div class="h-6"></div>')
+
+    return formatted
   }
 
-  const formattedContent = formatContent(content)
+  const formattedContent = formatMedicalContent(content)
 
   return (
-    <div className="whitespace-pre-wrap text-base leading-relaxed">
-      {formattedContent}
-    </div>
+    <div 
+      className="prose prose-lg max-w-none text-gray-700 leading-relaxed space-y-4"
+      dangerouslySetInnerHTML={{ __html: formattedContent }}
+    />
   )
 }
 
@@ -1310,13 +1392,13 @@ export function AiChatSection() {
             
 
             {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent" ref={scrollAreaRef}>
+            <div className="flex-1 overflow-y-auto p-8 bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent" ref={scrollAreaRef}>
               {currentChat.length === 1 ? (
-                <div className="text-center py-12">
-                  <div className={`inline-flex p-8 rounded-full ${aiModels.find(m => m.id === selectedModel)?.bgColor} text-white mb-8 shadow-2xl ring-6 ring-white/20`}>
-                    {aiModels.find(m => m.id === selectedModel)?.icon || <Bot className="w-20 h-20" />}
+                <div className="text-center py-16">
+                  <div className={`inline-flex p-10 rounded-full ${aiModels.find(m => m.id === selectedModel)?.bgColor} text-white mb-10 shadow-3xl ring-8 ring-white/30 animate-pulse`}>
+                    {aiModels.find(m => m.id === selectedModel)?.icon || <Bot className="w-24 h-24" />}
                   </div>
-                  <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-6">
+                  <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-8 animate-fade-in">
                     Добро пожаловать в {aiModels.find(m => m.id === selectedModel)?.name}!
                   </h2>
                                                         <div className="text-gray-600 mb-6 max-w-4xl mx-auto">
@@ -1389,10 +1471,10 @@ export function AiChatSection() {
                         </Avatar>
                       )}
                       <div
-                        className={`max-w-md lg:max-w-2xl rounded-2xl p-5 shadow-lg ${
+                        className={`max-w-md lg:max-w-5xl rounded-3xl p-6 shadow-2xl ${
                           msg.role === "user"
-                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-xl"
-                            : "bg-white border border-gray-200 shadow-md"
+                            ? "bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white shadow-xl border border-blue-400/30"
+                            : "bg-gradient-to-r from-white via-gray-50 to-blue-50 backdrop-blur-sm border border-gray-200/60 shadow-2xl hover:shadow-3xl transition-all duration-500"
                         }`}
                       >
                         {/* Show image attachments if they exist */}
@@ -1498,7 +1580,7 @@ export function AiChatSection() {
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-6 px-2 py-1 text-xs text-blue-600 hover:text-blue-700"
+                                  className="group h-8 px-3 text-xs text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 border border-transparent hover:border-blue-200 hover:shadow-sm backdrop-blur-sm"
                                   onClick={async () => {
                                     try {
                                       await navigator.clipboard.writeText(msg.content || '');
@@ -1515,8 +1597,8 @@ export function AiChatSection() {
                                     }
                                   }}
                                 >
-                                  <Copy className="w-3 h-3 mr-1" />
-                                  Copy
+                                  <Copy className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
+                                  <span className="group-hover:text-blue-600 transition-colors duration-200">Copy</span>
                                 </Button>
                               </>
                             )}
@@ -1607,7 +1689,7 @@ export function AiChatSection() {
                 </div>
               )}
               
-                             <div className="flex gap-3 bg-white rounded-2xl border border-gray-200 p-4 shadow-lg items-end">
+                             <div className="flex gap-4 bg-gradient-to-r from-white via-gray-50/80 to-blue-50/80 rounded-3xl border border-gray-200/60 p-6 shadow-2xl items-end backdrop-blur-md">
                  <input
                    type="file"
                    ref={fileInputRef}
@@ -1619,7 +1701,7 @@ export function AiChatSection() {
                  <Button
                    size="icon"
                    variant="ghost"
-                   className="text-gray-500 hover:text-gray-700 hover:bg-gray-100/80 rounded-xl shrink-0 transition-all duration-200"
+                   className="text-gray-500 hover:text-blue-600 hover:bg-blue-50/80 rounded-xl shrink-0 transition-all duration-300 hover:scale-110 hover:shadow-lg"
                    onClick={() => fileInputRef.current?.click()}
                    disabled={isLoading}
                  >
@@ -1630,7 +1712,7 @@ export function AiChatSection() {
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder={`Задайте медицинский вопрос - ${aiModels.find(m => m.id === selectedModel)?.name} готов к анализу...`}
-                      className="w-full bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-800 placeholder:text-gray-500 resize-none min-h-[20px] max-h-[120px] overflow-y-auto text-base pr-24"
+                      className="w-full bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-800 placeholder:text-gray-500 resize-none min-h-[24px] max-h-[120px] overflow-y-auto text-base pr-24 font-medium"
                       disabled={isLoading}
                       rows={1}
                       onKeyDown={(e) => {
@@ -1689,18 +1771,18 @@ export function AiChatSection() {
                  <Button
                    size="icon"
                    variant="ghost"
-                   className="text-gray-500 hover:text-gray-700 hover:bg-gray-100/80 rounded-xl shrink-0 transition-all duration-200"
+                   className="text-gray-500 hover:text-green-600 hover:bg-green-50/80 rounded-xl shrink-0 transition-all duration-300 hover:scale-110 hover:shadow-lg"
                    disabled={isLoading}
                  >
                    <Mic className="w-5 h-5" />
                  </Button>
                  <Button
                    size="icon"
-                   className={`rounded-xl ${aiModels.find(m => m.id === selectedModel)?.bgColor} hover:opacity-90 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50`}
+                   className={`rounded-2xl ${aiModels.find(m => m.id === selectedModel)?.bgColor} hover:opacity-90 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 disabled:opacity-50 ring-4 ring-white/20 hover:ring-white/40`}
                    onClick={sendMessage}
                    disabled={(!message.trim() && attachments.length === 0) || isLoading}
                  >
-                   <ArrowUp className="w-5 h-5" />
+                   <ArrowUp className="w-6 h-6" />
                  </Button>
                </div>
               
