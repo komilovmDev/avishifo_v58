@@ -37,6 +37,7 @@ export interface VitalSign {
 export interface HistoryEntry {
   id?: string;
   date: string;
+  originalDate?: string; // Add this for proper sorting
   type: string;
   doctor: string;
   diagnosis: string;
@@ -145,4 +146,11 @@ export interface MedicalHistoryForm {
   musculoskeletalComplaints: string;
   nervousSystemComplaints: string;
   doctorRecommendations: string;
+  respiratoryFiles: File[];
+  cardiovascularFiles: File[];
+  digestiveFiles: File[];
+  urinaryFiles: File[];
+  endocrineFiles: File[];
+  musculoskeletalFiles: File[];
+  nervousSystemFiles: File[];
 }

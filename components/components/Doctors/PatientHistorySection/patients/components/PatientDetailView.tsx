@@ -20,9 +20,11 @@ interface PatientDetailViewProps {
   patient: Patient;
   onClose: () => void;
   onOpenAddHistoryDialog: () => void;
+  onOpenEditHistoryDialog: (entry: HistoryEntry) => void;
   onOpenAddMedicationDialog: () => void;
   onOpenAddVitalsDialog: () => void;
   onOpenAddDocumentDialog: () => void;
+  onRefreshHistory: () => void;
 }
 
 const TABS: { id: TabId, label: string }[] = [
@@ -37,9 +39,11 @@ export function PatientDetailView({
     patient,
     onClose,
     onOpenAddHistoryDialog,
+    onOpenEditHistoryDialog,
     onOpenAddMedicationDialog,
     onOpenAddVitalsDialog,
     onOpenAddDocumentDialog,
+    onRefreshHistory,
 }: PatientDetailViewProps) {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
 
@@ -48,7 +52,7 @@ export function PatientDetailView({
       case "overview":
         return <OverviewTab patient={patient} onOpenAddHistoryDialog={onOpenAddHistoryDialog} setActiveTab={setActiveTab} />;
       case "history":
-        return <HistoryTab patient={patient} onOpenAddHistoryDialog={onOpenAddHistoryDialog} />;
+        return <HistoryTab patient={patient} onOpenAddHistoryDialog={onOpenAddHistoryDialog} onOpenEditHistoryDialog={onOpenEditHistoryDialog} onRefreshHistory={onRefreshHistory} />;
       case "medications":
         return <MedicationsTab patient={patient} onOpenAddMedicationDialog={onOpenAddMedicationDialog} />;
       case "vitals":

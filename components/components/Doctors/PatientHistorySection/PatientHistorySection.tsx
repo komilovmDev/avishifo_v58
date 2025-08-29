@@ -22,6 +22,8 @@ import {
   ChevronUp,
 } from "lucide-react"
 
+
+
 // --- Type Definitions ---
 interface PatientResponse {
   id: number | string;
@@ -358,7 +360,7 @@ export function PatientHistorySection() {
       const patientsArray = Array.isArray(data) ? data : data.data || data.results || [data];
 
       const validPatients = patientsArray.filter(
-        (patient): patient is PatientResponse =>
+        (patient: any): patient is PatientResponse =>
           patient != null &&
           typeof patient === "object" &&
           "id" in patient &&
@@ -429,7 +431,7 @@ export function PatientHistorySection() {
       const token = localStorage.getItem("accessToken");
       if (!token) throw new Error("No access token found.");
 
-      const response = await fetch(`https://new.avishifo.uz/api/patients/kasallik-tarixi/?patient_id=1`, {
+      const response = await fetch(`https://new.avishifo.uz/api/patients/kasallik-tarixi/?patient_id=${patientId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -455,60 +457,60 @@ export function PatientHistorySection() {
                   date: new Date(entry.yuborilgan_vaqt).toLocaleDateString("ru-RU"),
                   type: "Kasallik tarixi (Uzbek)",
                   doctor: "Joriy shifokor",
-                  diagnosis: entry.shikoyatlar.split("\n")[0] || "Kompleks tekshiruv",
+                  diagnosis: entry.shikoyatlar?.split("\n")[0] || "Kompleks tekshiruv",
                   notes: `
 ASOSIY MA'LUMOTLAR:
-F.I.SH: ${entry.fish}
-Tug'ilgan sanasi: ${entry.tugilgan_sana}
-Millati: ${entry.millati}
-Ma'lumoti: ${entry.malumoti}
-Kasbi: ${entry.kasbi}
-Ish joyi: ${entry.ish_joyi}
-Ish joyidagi vazifasi: ${entry.ish_vazifasi}
-Uy manzili: ${entry.uy_manzili}
+F.I.SH: ${entry.fish || "Не указано"}
+Tug'ilgan sanasi: ${entry.tugilgan_sana || "Не указано"}
+Millati: ${entry.millati || "Не указано"}
+Ma'lumoti: ${entry.malumoti || "Не указано"}
+Kasbi: ${entry.kasbi || "Не указано"}
+Ish joyi: ${entry.ish_joyi || "Не указано"}
+Ish joyidagi vazifasi: ${entry.ish_vazifasi || "Не указано"}
+Uy manzili: ${entry.uy_manzili || "Не указано"}
 
 KELGAN VAQTDAGI SHIKOYATLARI:
-${entry.shikoyatlar}
+${entry.shikoyatlar || "Не указано"}
 
 BEMORNING ASOSIY TIZIMLI KASALLIKLARI:
-${entry.asosiy_kasalliklar}
+${entry.asosiy_kasalliklar || "Не указано"}
 
 NAFAS TIZIMIGA OID SHIKOYATLARI:
-Umumiy shikoyatlar: ${entry.nafas_tizimi}
-Yo'tal: ${entry.yotal}
-Balg'am: ${entry.balgam}
-Qon tuflash: ${entry.qon_tuflash}
-Ko'krak qafasidagi og'riq: ${entry.kokrak_ogriq}
-Nafas qisishi: ${entry.nafas_qisishi}
+Umumiy shikoyatlar: ${entry.nafas_tizimi || "Не указано"}
+Yo'tal: ${entry.yotal || "Не указано"}
+Balg'am: ${entry.balgam || "Не указано"}
+Qon tuflash: ${entry.qon_tuflash || "Не указано"}
+Ko'krak qafasidagi og'riq: ${entry.kokrak_ogriq || "Не указано"}
+Nafas qisishi: ${entry.nafas_qisishi || "Не указано"}
 
 YURAK QON AYLANISHI TIZIMI FAOLIYATIGA OID SHIKOYATLARI:
-Umumiy shikoyatlar: ${entry.yurak_qon_shikoyatlari}
-Yurak sohasidagi og'riq: ${entry.yurak_ogriq}
-Yurak urishining o'zgarishi: ${entry.yurak_urishi_ozgarishi}
-Yurak urishini bemor his qilishi: ${entry.yurak_urishi_sezish}
+Umumiy shikoyatlar: ${entry.yurak_qon_shikoyatlari || "Не указано"}
+Yurak sohasidagi og'riq: ${entry.yurak_ogriq || "Не указано"}
+Yurak urishining o'zgarishi: ${entry.yurak_urishi_ozgarishi || "Не указано"}
+Yurak urishini bemor his qilishi: ${entry.yurak_urishi_sezish || "Не указано"}
 
 HAZM TIZIMI FAOLIYATIGA OID SHIKOYATLARI:
-Umumiy shikoyatlar: ${entry.hazm_tizimi}
-Qusish: ${entry.qusish}
-Qorin og'riqi: ${entry.qorin_ogriq}
-To'sh osti va boshqa sohalarda og'riq: ${entry.qorin_shish}
-Ich kelishining o'zgarishi: ${entry.ich_ozgarishi}
-Anus sohasidagi simptomlar: ${entry.anus_shikoyatlar}
+Umumiy shikoyatlar: ${entry.hazm_tizimi || "Не указано"}
+Qusish: ${entry.qusish || "Не указано"}
+Qorin og'riqi: ${entry.qorin_ogriq || "Не указано"}
+To'sh osti va boshqa sohalarda og'riq: ${entry.qorin_shish || "Не указано"}
+Ich kelishining o'zgarishi: ${entry.ich_ozgarishi || "Не указано"}
+Anus sohasidagi simptomlar: ${entry.anus_shikoyatlar || "Не указано"}
 
 SIYDIK AJRATISH TIZIMI FAOLIYATIGA OID SHIKOYATLARI:
-${entry.siydik_tizimi}
+${entry.siydik_tizimi || "Не указано"}
 
 ENDOKRIN TIZIMI FAOLIYATIGA OID SHIKOYATLARI:
-${entry.endokrin_tizimi}
+${entry.endokrin_tizimi || "Не указано"}
 
 TAYANCH HARAKAT TIZIMI FAOLIYATIGA OID SHIKOYATLARI:
-${entry.tayanch_tizimi}
+${entry.tayanch_tizimi || "Не указано"}
 
 ASAB TIZIMI:
-${entry.asab_tizimi}
+${entry.asab_tizimi || "Не указано"}
 
 DOKTOR TAVSIYALARI:
-${entry.doktor_tavsiyalari}
+${entry.doktor_tavsiyalari || "Не указано"}
                   `.trim(),
                   documents: entry.asosiy_kasalliklar_hujjat
                     ? [entry.asosiy_kasalliklar_hujjat.split("/").pop() || ""]
@@ -543,8 +545,35 @@ ${entry.doktor_tavsiyalari}
   // Dialog handlers
   const openAddHistoryDialog = () => {
     console.log("Opening history dialog")
+    if (!selectedPatientId) {
+      alert("Iltimos, avval bemorni tanlang.")
+      return
+    }
+    
+    // Set default values for easier testing
+    const selectedPatient = patients.find(p => p.id === selectedPatientId);
+    if (selectedPatient) {
+      setMedicalHistory(prev => ({
+        ...prev,
+        fish: selectedPatient.name,
+        visitDate: new Date().toISOString().split('T')[0], // Today's date
+        mainComplaints: "Bosh og'riqi va halsizlik",
+        systemicDiseases: "Yuq",
+        respiratoryComplaints: "Yuq",
+        cardiovascularComplaints: "Yuq",
+        digestiveComplaints: "Yuq",
+        urinaryComplaints: "Yuq",
+        endocrineComplaints: "Yuq",
+        musculoskeletalComplaints: "Yuq",
+        nervousSystemComplaints: "Yuq",
+        doctorRecommendations: "Tekshiruv va kuzatish kerak"
+      }));
+    }
+    
     setShowAddHistoryDialog(true)
   }
+
+
 
   const closeAddHistoryDialog = () => {
     console.log("Closing history dialog")
@@ -736,129 +765,244 @@ ${entry.doktor_tavsiyalari}
     }))
   }
 
-  const addHistoryEntryHandler = () => {
-    if (!selectedPatientId || !medicalHistory.visitDate || !medicalHistory.mainComplaints) {
-      alert("Iltimos, tashrif sanasi va asosiy shikoyatlarni to'ldiring.")
+  const addHistoryEntryHandler = async () => {
+    console.log("addHistoryEntryHandler called");
+    console.log("selectedPatientId:", selectedPatientId);
+    console.log("medicalHistory:", medicalHistory);
+    
+    if (!selectedPatientId) {
+      console.log("Validation failed - no patient selected");
+      alert("Iltimos, avval bemorni tanlang.")
+      return
+    }
+    
+    // Verify patient exists
+    const selectedPatient = patients.find(p => p.id === selectedPatientId);
+    if (!selectedPatient) {
+      console.log("Validation failed - patient not found");
+      alert("Bemor topilmadi. Iltimos, qaytadan tanlang.")
+      return
+    }
+    
+    if (!medicalHistory.visitDate) {
+      console.log("Validation failed - no visit date");
+      alert("Iltimos, tashrif sanasini kiriting.")
+      return
+    }
+    
+    if (!medicalHistory.mainComplaints) {
+      console.log("Validation failed - no main complaints");
+      alert("Iltimos, asosiy shikoyatlarni kiriting.")
       return
     }
 
-    const comprehensiveNotes = `
+    try {
+      // Prepare data for API call
+      const medicalHistoryData = {
+        patient: selectedPatientId,
+        fish: medicalHistory.fish || selectedPatient.name,
+        tugilgan_sana: medicalHistory.birthDate || new Date().toISOString().split('T')[0],
+        millati: medicalHistory.nationality || "",
+        malumoti: medicalHistory.education || "",
+        kasbi: medicalHistory.profession || "",
+        ish_joyi: medicalHistory.workplace || "",
+        ish_vazifasi: medicalHistory.workPosition || "",
+        uy_manzili: medicalHistory.homeAddress || "",
+        kelgan_vaqti: medicalHistory.visitDate,
+        shikoyatlar: medicalHistory.mainComplaints,
+        asosiy_kasalliklar: medicalHistory.systemicDiseases || "",
+        nafas_tizimi: medicalHistory.respiratoryComplaints || "",
+        yotal: medicalHistory.cough || "",
+        balgam: medicalHistory.sputum || "",
+        qon_tuflash: medicalHistory.hemoptysis || "",
+        kokrak_ogriq: medicalHistory.chestPain || "",
+        nafas_qisishi: medicalHistory.dyspnea || "",
+        yurak_qon_shikoyatlari: medicalHistory.cardiovascularComplaints || "",
+        yurak_ogriq: medicalHistory.heartPain || "",
+        yurak_urishi_ozgarishi: medicalHistory.heartRhythm || "",
+        yurak_urishi_sezish: medicalHistory.palpitations || "",
+        hazm_tizimi: medicalHistory.digestiveComplaints || "",
+        qusish: medicalHistory.vomiting || "",
+        qorin_ogriq: medicalHistory.abdominalPain || "",
+        qorin_shish: medicalHistory.epigastricPain || "",
+        ich_ozgarishi: medicalHistory.bowelMovements || "",
+        anus_shikoyatlar: medicalHistory.analSymptoms || "",
+        siydik_tizimi: medicalHistory.urinaryComplaints || "",
+        endokrin_tizimi: medicalHistory.endocrineComplaints || "",
+        tayanch_tizimi: medicalHistory.musculoskeletalComplaints || "",
+        asab_tizimi: medicalHistory.nervousSystemComplaints || "",
+        doktor_tavsiyalari: medicalHistory.doctorRecommendations || "",
+      };
+
+      console.log("Sending medical history data to API:", medicalHistoryData);
+
+      // Get access token
+      const accessToken = localStorage.getItem("accessToken");
+      if (!accessToken) {
+        alert("Avtorizatsiya xatosi. Iltimos, qaytadan tizimga kiring.");
+        return;
+      }
+
+      // Make API call to save medical history
+      const response = await fetch('https://new.avishifo.uz/api/patients/kasallik-tarixi/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        mode: 'cors',
+        body: JSON.stringify(medicalHistoryData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("API Error:", errorData);
+        throw new Error(`API xatosi: ${response.status} - ${errorData.message || 'Noma\'lum xato'}`);
+      }
+
+      const result = await response.json();
+      console.log("API Response:", result);
+
+      // After successfully saving to backend, fetch the updated medical history
+      console.log("Fetching updated medical history from backend...");
+      try {
+        await fetchMedicalHistory(selectedPatientId);
+        console.log("Medical history refreshed from backend");
+      } catch (error) {
+        console.error("Error refreshing medical history:", error);
+        // Fallback: create local entry if refresh fails
+        const comprehensiveNotes = `
 ASOSIY MA'LUMOTLAR:
-F.I.SH: ${medicalHistory.fish}
-Tug'ilgan sanasi: ${medicalHistory.birthDate}
-Millati: ${medicalHistory.nationality}
-Ma'lumoti: ${medicalHistory.education}
-Kasbi: ${medicalHistory.profession}
-Ish joyi: ${medicalHistory.workplace}
-Ish joyidagi vazifasi: ${medicalHistory.workPosition}
-Uy manzili: ${medicalHistory.homeAddress}
+F.I.SH: ${medicalHistory.fish || selectedPatient.name}
+Tug'ilgan sanasi: ${medicalHistory.birthDate || "Kiritilmagan"}
+Millati: ${medicalHistory.nationality || "Kiritilmagan"}
+Ma'lumoti: ${medicalHistory.education || "Kiritilmagan"}
+Kasbi: ${medicalHistory.profession || "Kiritilmagan"}
+Ish joyi: ${medicalHistory.workplace || "Kiritilmagan"}
+Ish joyidagi vazifasi: ${medicalHistory.workPosition || "Kiritilmagan"}
+Uy manzili: ${medicalHistory.homeAddress || "Kiritilmagan"}
 
 KELGAN VAQTDAGI SHIKOYATLARI:
 ${medicalHistory.mainComplaints}
 
 BEMORNING ASOSIY TIZIMLI KASALLIKLARI:
-${medicalHistory.systemicDiseases}
+${medicalHistory.systemicDiseases || "Kiritilmagan"}
 
 NAFAS TIZIMIGA OID SHIKOYATLARI:
-Umumiy shikoyatlar: ${medicalHistory.respiratoryComplaints}
-Yo'tal: ${medicalHistory.cough}
-Balg'am: ${medicalHistory.sputum}
-Qon tuflash: ${medicalHistory.hemoptysis}
-Ko'krak qafasidagi og'riq: ${medicalHistory.chestPain}
-Nafas qisishi: ${medicalHistory.dyspnea}
+Umumiy shikoyatlar: ${medicalHistory.respiratoryComplaints || "Kiritilmagan"}
+Yo'tal: ${medicalHistory.cough || "Kiritilmagan"}
+Balg'am: ${medicalHistory.sputum || "Kiritilmagan"}
+Qon tuflash: ${medicalHistory.hemoptysis || "Kiritilmagan"}
+Ko'krak qafasidagi og'riq: ${medicalHistory.chestPain || "Kiritilmagan"}
+Nafas qisishi: ${medicalHistory.dyspnea || "Kiritilmagan"}
 
 YURAK QON AYLANISHI TIZIMI FAOLIYATIGA OID SHIKOYATLARI:
-Umumiy shikoyatlar: ${medicalHistory.cardiovascularComplaints}
-Yurak sohasidagi og'riq: ${medicalHistory.heartPain}
-Yurak urishining o'zgarishi: ${medicalHistory.heartRhythm}
-Yurak urishini bemor his qilishi: ${medicalHistory.palpitations}
+Umumiy shikoyatlar: ${medicalHistory.cardiovascularComplaints || "Kiritilmagan"}
+Yurak sohasidagi og'riq: ${medicalHistory.heartPain || "Kiritilmagan"}
+Yurak urishining o'zgarishi: ${medicalHistory.heartRhythm || "Kiritilmagan"}
+Yurak urishini bemor his qilishi: ${medicalHistory.palpitations || "Kiritilmagan"}
 
 HAZM TIZIMI FAOLIYATIGA OID SHIKOYATLARI:
-Umumiy shikoyatlar: ${medicalHistory.digestiveComplaints}
-Qusish: ${medicalHistory.vomiting}
-Qorin og'riqi: ${medicalHistory.abdominalPain}
-To'sh osti va boshqa sohalarda og'riq: ${medicalHistory.epigastricPain}
-Ich kelishining o'zgarishi: ${medicalHistory.bowelMovements}
-Anus sohasidagi simptomlar: ${medicalHistory.analSymptoms}
+Umumiy shikoyatlar: ${medicalHistory.digestiveComplaints || "Kiritilmagan"}
+Qusish: ${medicalHistory.vomiting || "Kiritilmagan"}
+Qorin og'riqi: ${medicalHistory.abdominalPain || "Kiritilmagan"}
+To'sh osti va boshqa sohalarda og'riq: ${medicalHistory.epigastricPain || "Kiritilmagan"}
+Ich kelishining o'zgarishi: ${medicalHistory.bowelMovements || "Kiritilmagan"}
+Anus sohasidagi simptomlar: ${medicalHistory.analSymptoms || "Kiritilmagan"}
 
 SIYDIK AJRATISH TIZIMI FAOLIYATIGA OID SHIKOYATLARI:
-${medicalHistory.urinaryComplaints}
+${medicalHistory.urinaryComplaints || "Kiritilmagan"}
 
 ENDOKRIN TIZIMI FAOLIYATIGA OID SHIKOYATLARI:
-${medicalHistory.endocrineComplaints}
+${medicalHistory.endocrineComplaints || "Kiritilmagan"}
 
 TAYANCH HARAKAT TIZIMI FAOLIYATIGA OID SHIKOYATLARI:
-${medicalHistory.musculoskeletalComplaints}
+${medicalHistory.musculoskeletalComplaints || "Kiritilmagan"}
 
 ASAB TIZIMI:
-${medicalHistory.nervousSystemComplaints}
+${medicalHistory.nervousSystemComplaints || "Kiritilmagan"}
 
 DOKTOR TAVSIYALARI:
-${medicalHistory.doctorRecommendations}
-    `.trim()
+${medicalHistory.doctorRecommendations || "Kiritilmagan"}
+        `.trim();
 
-    const newEntryWithId: HistoryEntry = {
-      id: `hist-${Date.now()}`,
-      date: medicalHistory.visitDate,
-      type: "Kasallik tarixi (Uzbek)",
-      doctor: "Joriy shifokor",
-      diagnosis: medicalHistory.mainComplaints.split("\n")[0] || "Kompleks tekshiruv",
-      notes: comprehensiveNotes,
-      documents: [],
+        const newEntryWithId: HistoryEntry = {
+          id: `hist-${Date.now()}`,
+          date: medicalHistory.visitDate,
+          type: "Kasallik tarixi (Uzbek)",
+          doctor: "Joriy shifokor",
+          diagnosis: medicalHistory.mainComplaints.split("\n")[0] || "Kompleks tekshiruv",
+          notes: comprehensiveNotes,
+          documents: [],
+        };
+
+        console.log("Fallback: Updating patients state with new history entry");
+        setPatients((prevPatients) => {
+          const updatedPatients = prevPatients.map((p) => 
+            p.id === selectedPatientId 
+              ? { ...p, history: [newEntryWithId, ...p.history] }
+              : p
+          );
+          console.log("Updated patients:", updatedPatients);
+          return updatedPatients;
+        });
+      }
+
+      // Reset form
+      setMedicalHistory({
+        fish: "",
+        birthDate: "",
+        nationality: "",
+        education: "",
+        profession: "",
+        workplace: "",
+        workPosition: "",
+        homeAddress: "",
+        visitDate: "",
+        mainComplaints: "",
+        systemicDiseases: "",
+        respiratoryComplaints: "",
+        cough: "",
+        sputum: "",
+        hemoptysis: "",
+        chestPain: "",
+        dyspnea: "",
+        cardiovascularComplaints: "",
+        heartPain: "",
+        heartRhythm: "",
+        palpitations: "",
+        digestiveComplaints: "",
+        vomiting: "",
+        abdominalPain: "",
+        epigastricPain: "",
+        bowelMovements: "",
+        analSymptoms: "",
+        urinaryComplaints: "",
+        endocrineComplaints: "",
+        musculoskeletalComplaints: "",
+        nervousSystemComplaints: "",
+        doctorRecommendations: "",
+      });
+
+      setExpandedSections({
+        basic: true,
+        respiratory: false,
+        cardiovascular: false,
+        digestive: false,
+        urinary: false,
+        endocrine: false,
+        musculoskeletal: false,
+        nervous: false,
+      });
+
+      closeAddHistoryDialog();
+      console.log("Medical history added successfully and refreshed from backend");
+      alert("Kasallik tarixi muvaffaqiyatli qo'shildi!");
+
+    } catch (error) {
+      console.error("Error saving medical history:", error);
+      alert(`Xatolik yuz berdi: ${error instanceof Error ? error.message : 'Noma\'lum xato'}`);
     }
-
-    setPatients((prevPatients) =>
-      prevPatients.map((p) => (p.id === selectedPatientId ? { ...p, history: [newEntryWithId, ...p.history] } : p)),
-    )
-
-    setMedicalHistory({
-      fish: "",
-      birthDate: "",
-      nationality: "",
-      education: "",
-      profession: "",
-      workplace: "",
-      workPosition: "",
-      homeAddress: "",
-      visitDate: "",
-      mainComplaints: "",
-      systemicDiseases: "",
-      respiratoryComplaints: "",
-      cough: "",
-      sputum: "",
-      hemoptysis: "",
-      chestPain: "",
-      dyspnea: "",
-      cardiovascularComplaints: "",
-      heartPain: "",
-      heartRhythm: "",
-      palpitations: "",
-      digestiveComplaints: "",
-      vomiting: "",
-      abdominalPain: "",
-      epigastricPain: "",
-      bowelMovements: "",
-      analSymptoms: "",
-      urinaryComplaints: "",
-      endocrineComplaints: "",
-      musculoskeletalComplaints: "",
-      nervousSystemComplaints: "",
-      doctorRecommendations: "",
-    })
-
-    setExpandedSections({
-      basic: true,
-      respiratory: false,
-      cardiovascular: false,
-      digestive: false,
-      urinary: false,
-      endocrine: false,
-      musculoskeletal: false,
-      nervous: false,
-    })
-
-    closeAddHistoryDialog()
-    alert("Kasallik tarixi muvaffaqiyatli qo'shildi!")
   }
 
   const addMedicationHandler = () => {
@@ -1014,6 +1158,8 @@ ${medicalHistory.doctorRecommendations}
       setIsLoading(false)
     }
   }
+
+
 
   const selectedPatient = patients.find((p) => p.id === selectedPatientId)
 
@@ -1756,7 +1902,11 @@ ${medicalHistory.doctorRecommendations}
             </DialogTitle>
           </DialogHeader>
           <ScrollArea className="max-h-[70vh] pr-4">
-            <div className="space-y-6 py-4">
+            <form onSubmit={(e) => { 
+              e.preventDefault(); 
+              console.log("Form submitted");
+              addHistoryEntryHandler(); 
+            }} className="space-y-6 py-4">
               {/* Основная информация */}
               <Collapsible open={expandedSections.basic} onOpenChange={() => toggleSection("basic")}>
                 <CollapsibleTrigger asChild>
@@ -2120,8 +2270,159 @@ ${medicalHistory.doctorRecommendations}
                 </CollapsibleContent>
               </Collapsible>
 
-              {/* Qolgan tizimlar (siydik, endokrin, tayanch, asab) va tavsiyalar shu usulda qo'shilishi mumkin, lekin uzoq bo'lib ketmaslik uchun faqat asosiy qismini ko'rsatdim */}
+              {/* Siydik ajratish tizimi */}
+              <Collapsible open={expandedSections.urinary} onOpenChange={() => toggleSection("urinary")}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+                    <h3 className="text-lg font-medium text-gray-700 flex items-center gap-2">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-blue-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4v16m8-8H4"
+                        />
+                      </svg>
+                      Siydik ajratish tizimi
+                    </h3>
+                    {expandedSections.urinary ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-4 mt-4">
+                  <div>
+                    <Label htmlFor="urinary-complaints">Siydik ajratish bilan bog'liq shikoyatlar</Label>
+                    <Textarea
+                      id="urinary-complaints"
+                      rows={3}
+                      value={medicalHistory.urinaryComplaints}
+                      onChange={(e) => setMedicalHistory({ ...medicalHistory, urinaryComplaints: e.target.value })}
+                      placeholder="Siydik ajratish, og'riq, yonish..."
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
 
+              {/* Endokrin tizimi */}
+              <Collapsible open={expandedSections.endocrine} onOpenChange={() => toggleSection("endocrine")}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+                    <h3 className="text-lg font-medium text-gray-700 flex items-center gap-2">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-blue-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4v16m8-8H4"
+                        />
+                      </svg>
+                      Endokrin tizimi
+                    </h3>
+                    {expandedSections.endocrine ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-4 mt-4">
+                  <div>
+                    <Label htmlFor="endocrine-complaints">Endokrin tizim bilan bog'liq shikoyatlar</Label>
+                    <Textarea
+                      id="endocrine-complaints"
+                      rows={3}
+                      value={medicalHistory.endocrineComplaints}
+                      onChange={(e) => setMedicalHistory({ ...medicalHistory, endocrineComplaints: e.target.value })}
+                      placeholder="Shakar diabeti, tiroid, boshqa endokrin kasalliklar..."
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Tayanch harakat tizimi */}
+              <Collapsible open={expandedSections.musculoskeletal} onOpenChange={() => toggleSection("musculoskeletal")}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+                    <h3 className="text-lg font-medium text-gray-700 flex items-center gap-2">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-blue-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4v16m8-8H4"
+                        />
+                      </svg>
+                      Tayanch harakat tizimi
+                    </h3>
+                    {expandedSections.musculoskeletal ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-4 mt-4">
+                  <div>
+                    <Label htmlFor="musculoskeletal-complaints">Tayanch harakat tizimi bilan bog'liq shikoyatlar</Label>
+                    <Textarea
+                      id="musculoskeletal-complaints"
+                      rows={3}
+                      value={medicalHistory.musculoskeletalComplaints}
+                      onChange={(e) => setMedicalHistory({ ...medicalHistory, musculoskeletalComplaints: e.target.value })}
+                      placeholder="Bog'lamlar, mushaklar, suyaklar bilan bog'liq muammolar..."
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Asab tizimi */}
+              <Collapsible open={expandedSections.nervous} onOpenChange={() => toggleSection("nervous")}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+                    <h3 className="text-lg font-medium text-gray-700 flex items-center gap-2">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-blue-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4v16m8-8H4"
+                        />
+                      </svg>
+                      Asab tizimi
+                    </h3>
+                    {expandedSections.nervous ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-4 mt-4">
+                  <div>
+                    <Label htmlFor="nervous-complaints">Asab tizimi bilan bog'liq shikoyatlar</Label>
+                    <Textarea
+                      id="nervous-complaints"
+                      rows={3}
+                      value={medicalHistory.nervousSystemComplaints}
+                      onChange={(e) => setMedicalHistory({ ...medicalHistory, nervousSystemComplaints: e.target.value })}
+                      placeholder="Bosh og'riqi, bosh aylanishi, uyqu muammolari..."
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Doktor tavsiyalari */}
               <div>
                 <Label htmlFor="doctor-recommendations">Doktor tavsiyalari</Label>
                 <Textarea
@@ -2132,13 +2433,13 @@ ${medicalHistory.doctorRecommendations}
                   placeholder="Doktorning qo'shimcha tavsiyalari..."
                 />
               </div>
-            </div>
+            </form>
           </ScrollArea>
           <DialogFooter>
             <Button variant="outline" onClick={closeAddHistoryDialog}>
               Bekor qilish
             </Button>
-            <Button onClick={addHistoryEntryHandler} className="bg-green-600 text-white hover:bg-green-700">
+            <Button type="submit" className="bg-green-600 text-white hover:bg-green-700">
               Saqlash
             </Button>
           </DialogFooter>

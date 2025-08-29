@@ -1,263 +1,92 @@
-"use client";
+"use client"
 
-import { useState, useRef } from "react";
-import { MedicalHistoryForm } from "../../types";
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+} from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+} from "@/components/ui/collapsible"
+import { FileAttachment } from "./FileAttachment"
+import { MedicalHistoryForm, HistoryEntry } from "../../types"
 import {
   User,
   Activity,
   ChevronUp,
   ChevronDown,
-  Plus,
   FileTextIcon,
-  Paperclip,
-  X,
-} from "lucide-react";
+} from "lucide-react"
 
-interface AddHistoryDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  medicalHistory: MedicalHistoryForm;
-  setMedicalHistory: (form: MedicalHistoryForm) => void;
-  patientId: number | undefined; // Allow undefined with a default or check
-  onSubmitSuccess?: () => void; // Optional callback for success
+
+interface EditHistoryDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  historyEntry: HistoryEntry | null
+  onSubmit: (updatedHistory: MedicalHistoryForm) => Promise<void>
 }
 
-import { FileAttachment } from "./FileAttachment";
-
-export function AddHistoryDialog({
+export function EditHistoryDialog({
   open,
   onOpenChange,
-  medicalHistory,
-  setMedicalHistory,
-  patientId,
-  onSubmitSuccess,
-}: AddHistoryDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  historyEntry,
+  onSubmit,
+}: EditHistoryDialogProps) {
+  const [medicalHistory, setMedicalHistory] = useState<MedicalHistoryForm>({
+    fish: "",
+    birthDate: "",
+    nationality: "",
+    education: "",
+    profession: "",
+    workplace: "",
+    workPosition: "",
+    homeAddress: "",
+    visitDate: "",
+    mainComplaints: "",
+    systemicDiseases: "",
+    respiratoryComplaints: "",
+    cough: "",
+    sputum: "",
+    hemoptysis: "",
+    chestPain: "",
+    dyspnea: "",
+    cardiovascularComplaints: "",
+    heartPain: "",
+    heartRhythm: "",
+    palpitations: "",
+    digestiveComplaints: "",
+    vomiting: "",
+    abdominalPain: "",
+    epigastricPain: "",
+    bowelMovements: "",
+    analSymptoms: "",
+    urinaryComplaints: "",
+    endocrineComplaints: "",
+    musculoskeletalComplaints: "",
+    nervousSystemComplaints: "",
+    doctorRecommendations: "",
+    respiratoryFiles: [],
+    cardiovascularFiles: [],
+    digestiveFiles: [],
+    urinaryFiles: [],
+    endocrineFiles: [],
+    musculoskeletalFiles: [],
+    nervousSystemFiles: [],
+  })
 
-  const toggleSection = (section: string) => {
-    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  const handleInputChange = (
-    field: keyof MedicalHistoryForm,
-    value: string
-  ) => {
-    setMedicalHistory({ ...medicalHistory, [field]: value });
-  };
-
-  const handleFileChange = (
-    field: keyof MedicalHistoryForm,
-    files: FileList | null
-  ) => {
-    if (files) {
-      const existingFiles = (medicalHistory[field] as File[] | undefined) || [];
-      const newFiles = Array.from(files);
-      setMedicalHistory({
-        ...medicalHistory,
-        [field]: [...existingFiles, ...newFiles],
-      });
-    }
-  };
-
-  const handleRemoveFile = (
-    field: keyof MedicalHistoryForm,
-    fileIndex: number
-  ) => {
-    const existingFiles = (medicalHistory[field] as File[] | undefined) || [];
-    const updatedFiles = existingFiles.filter(
-      (_, index) => index !== fileIndex
-    );
-    setMedicalHistory({ ...medicalHistory, [field]: updatedFiles });
-  };
-
-  const isSubmitDisabled =
-    !medicalHistory.visitDate || !medicalHistory.mainComplaints;
-
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    setError(null);
-
-    if (!patientId) {
-      setError("Patient ID is required to save medical history.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    const formData = new FormData();
-
-    // Add patient ID
-    formData.append("patient", patientId.toString());
-
-    // Map text fields
-    formData.append("fish", medicalHistory.fish || "");
-    formData.append("tugilgan_sana", medicalHistory.birthDate || "");
-    formData.append("millati", medicalHistory.nationality || "");
-    formData.append("malumoti", medicalHistory.education || "");
-    formData.append("kasbi", medicalHistory.profession || "");
-    formData.append("ish_joyi", medicalHistory.workplace || "");
-    formData.append("ish_vazifasi", medicalHistory.workPosition || "");
-    formData.append("uy_manzili", medicalHistory.homeAddress || "");
-    formData.append("kelgan_vaqti", medicalHistory.visitDate || "");
-    formData.append("shikoyatlar", medicalHistory.mainComplaints || "");
-    formData.append("asosiy_kasalliklar", medicalHistory.systemicDiseases || "");
-
-    // Respiratory system
-    formData.append("nafas_tizimi", medicalHistory.respiratoryComplaints || "");
-    (medicalHistory.respiratoryFiles || []).forEach((file, index) =>
-      formData.append("nafas_tizimi_hujjat", file)
-    );
-    formData.append("yotal", medicalHistory.cough || "");
-    (medicalHistory.respiratoryFiles || []).forEach((file, index) =>
-      formData.append("yotal_hujjat", file)
-    );
-    formData.append("balgam", medicalHistory.sputum || "");
-    (medicalHistory.respiratoryFiles || []).forEach((file, index) =>
-      formData.append("balgam_hujjat", file)
-    );
-    formData.append("qon_tuflash", medicalHistory.hemoptysis || "");
-    (medicalHistory.respiratoryFiles || []).forEach((file, index) =>
-      formData.append("qon_tuflash_hujjat", file)
-    );
-    formData.append("kokrak_ogriq", medicalHistory.chestPain || "");
-    (medicalHistory.respiratoryFiles || []).forEach((file, index) =>
-      formData.append("kokrak_ogriq_hujjat", file)
-    );
-    formData.append("nafas_qisishi", medicalHistory.dyspnea || "");
-    (medicalHistory.respiratoryFiles || []).forEach((file, index) =>
-      formData.append("nafas_qisishi_hujjat", file)
-    );
-
-    // Cardiovascular system
-    formData.append(
-      "yurak_qon_shikoyatlari",
-      medicalHistory.cardiovascularComplaints || ""
-    );
-    (medicalHistory.cardiovascularFiles || []).forEach((file, index) =>
-      formData.append("yurak_qon_shikoyatlari_hujjat", file)
-    );
-    formData.append("yurak_ogriq", medicalHistory.heartPain || "");
-    (medicalHistory.cardiovascularFiles || []).forEach((file, index) =>
-      formData.append("yurak_ogriq_hujjat", file)
-    );
-    formData.append("yurak_urishi_ozgarishi", medicalHistory.heartRhythm || "");
-    (medicalHistory.cardiovascularFiles || []).forEach((file, index) =>
-      formData.append("yurak_urishi_ozgarishi_hujjat", file)
-    );
-    formData.append("yurak_urishi_sezish", medicalHistory.palpitations || "");
-    (medicalHistory.cardiovascularFiles || []).forEach((file, index) =>
-      formData.append("yurak_urishi_sezish_hujjat", file)
-    );
-
-    // Digestive system
-    formData.append("hazm_tizimi", medicalHistory.digestiveComplaints || "");
-    (medicalHistory.digestiveFiles || []).forEach((file, index) =>
-      formData.append("hazm_tizimi_hujjat", file)
-    );
-    formData.append("qusish", medicalHistory.vomiting || "");
-    (medicalHistory.digestiveFiles || []).forEach((file, index) =>
-      formData.append("qusish_hujjat", file)
-    );
-    formData.append("qorin_ogriq", medicalHistory.abdominalPain || "");
-    (medicalHistory.digestiveFiles || []).forEach((file, index) =>
-      formData.append("qorin_ogriq_hujjat", file)
-    );
-    formData.append("qorin_shish", medicalHistory.epigastricPain || "");
-    (medicalHistory.digestiveFiles || []).forEach((file, index) =>
-      formData.append("qorin_shish_hujjat", file)
-    );
-    formData.append("ich_ozgarishi", medicalHistory.bowelMovements || "");
-    (medicalHistory.digestiveFiles || []).forEach((file, index) =>
-      formData.append("ich_ozgarishi_hujjat", file)
-    );
-    formData.append("anus_shikoyatlar", medicalHistory.analSymptoms || "");
-    (medicalHistory.digestiveFiles || []).forEach((file, index) =>
-      formData.append("anus_shikoyatlar_hujjat", file)
-    );
-
-    // Urinary system
-    formData.append("siydik_tizimi", medicalHistory.urinaryComplaints || "");
-    (medicalHistory.urinaryFiles || []).forEach((file, index) =>
-      formData.append("siydik_tizimi_hujjat", file)
-    );
-
-    // Endocrine system
-    formData.append("endokrin_tizimi", medicalHistory.endocrineComplaints || "");
-    (medicalHistory.endocrineFiles || []).forEach((file, index) =>
-      formData.append("endokrin_tizimi_hujjat", file)
-    );
-
-    // Musculoskeletal system
-    formData.append(
-      "tayanch_harakat",
-      medicalHistory.musculoskeletalComplaints || ""
-    );
-    (medicalHistory.musculoskeletalFiles || []).forEach((file, index) =>
-      formData.append("tayanch_harat_hujjat", file)
-    );
-
-    // Nervous system
-    formData.append(
-      "asab_tizimi",
-      medicalHistory.nervousSystemComplaints || ""
-    );
-    (medicalHistory.nervousSystemFiles || []).forEach((file, index) =>
-      formData.append("asab_tizimi_hujjat", file)
-    );
-
-    // Doctor recommendations
-    formData.append(
-      "doctor_recommendations",
-      medicalHistory.doctorRecommendations || ""
-    );
-
-    try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        throw new Error("No access token found. Please log in.");
-      }
-
-      const response = await fetch(
-        "https://new.avishifo.uz/api/patients/kasallik-tarixi/",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`, // Add authentication token
-          },
-          body: formData,
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to submit medical history");
-      }
-
-      onOpenChange(false); // Close dialog on success
-      if (onSubmitSuccess) onSubmitSuccess();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
@@ -270,14 +99,112 @@ export function AddHistoryDialog({
     endocrine: false,
     musculoskeletal: false,
     nervous: false,
-  });
+  })
 
-  return (
+  const toggleSection = (section: string) => {
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }))
+  }
+
+  // Parse existing history entry data when dialog opens
+  useEffect(() => {
+    if (historyEntry && open) {
+      // Parse the notes field to extract individual values
+      const notes = historyEntry.notes || ""
+      
+      // Extract values using regex patterns
+      const extractValue = (pattern: RegExp, defaultValue: string = "") => {
+        const match = notes.match(pattern)
+        return match ? match[1].trim() : defaultValue
+      }
+
+      setMedicalHistory({
+        fish: extractValue(/F\.I\.SH:\s*(.+?)(?:\n|$)/),
+        birthDate: extractValue(/Tug'ilgan sanasi:\s*(.+?)(?:\n|$)/),
+        nationality: extractValue(/Millati:\s*(.+?)(?:\n|$)/),
+        education: extractValue(/Ma'lumoti:\s*(.+?)(?:\n|$)/),
+        profession: extractValue(/Kasbi:\s*(.+?)(?:\n|$)/),
+        workplace: extractValue(/Ish joyi:\s*(.+?)(?:\n|$)/),
+        workPosition: extractValue(/Ish joyidagi vazifasi:\s*(.+?)(?:\n|$)/),
+        homeAddress: extractValue(/Uy manzili:\s*(.+?)(?:\n|$)/),
+        visitDate: new Date().toISOString().split('T')[0], // Current date for edited entry
+        mainComplaints: extractValue(/KELGAN VAQTDAGI SHIKOYATLARI:\s*(.+?)(?:\n|$)/),
+        systemicDiseases: extractValue(/BEMORNING ASOSIY TIZIMLI KASALLIKLARI:\s*(.+?)(?:\n|$)/),
+        respiratoryComplaints: extractValue(/Umumiy shikoyatlar:\s*(.+?)(?:\n|$)/),
+        cough: extractValue(/Yo'tal:\s*(.+?)(?:\n|$)/),
+        sputum: extractValue(/Balg'am:\s*(.+?)(?:\n|$)/),
+        hemoptysis: extractValue(/Qon tuflash:\s*(.+?)(?:\n|$)/),
+        chestPain: extractValue(/Ko'krak qafasidagi og'riq:\s*(.+?)(?:\n|$)/),
+        dyspnea: extractValue(/Nafas qisishi:\s*(.+?)(?:\n|$)/),
+        cardiovascularComplaints: extractValue(/YURAK QON AYLANISHI TIZIMI FAOLIYATIGA OID SHIKOYATLARI:\s*Umumiy shikoyatlar:\s*(.+?)(?:\n|$)/),
+        heartPain: extractValue(/Yurak sohasidagi og'riq:\s*(.+?)(?:\n|$)/),
+        heartRhythm: extractValue(/Yurak urishining o'zgarishi:\s*(.+?)(?:\n|$)/),
+        palpitations: extractValue(/Yurak urishini bemor his qilishi:\s*(.+?)(?:\n|$)/),
+        digestiveComplaints: extractValue(/HAZM TIZIMI FAOLIYATIGA OID SHIKOYATLARI:\s*Umumiy shikoyatlar:\s*(.+?)(?:\n|$)/),
+        vomiting: extractValue(/Qusish:\s*(.+?)(?:\n|$)/),
+        abdominalPain: extractValue(/Qorin og'riqi:\s*(.+?)(?:\n|$)/),
+        epigastricPain: extractValue(/To'sh osti va boshqa sohalarda og'riq:\s*(.+?)(?:\n|$)/),
+        bowelMovements: extractValue(/Ich kelishining o'zgarishi:\s*(.+?)(?:\n|$)/),
+        analSymptoms: extractValue(/Anus sohasidagi simptomlar:\s*(.+?)(?:\n|$)/),
+        urinaryComplaints: extractValue(/SIYDIK AJRATISH TIZIMI FAOLIYATIGA OID SHIKOYATLARI:\s*(.+?)(?:\n|$)/),
+        endocrineComplaints: extractValue(/ENDOKRIN TIZIMI FAOLIYATIGA OID SHIKOYATLARI:\s*(.+?)(?:\n|$)/),
+        musculoskeletalComplaints: extractValue(/TAYANCH HARAKAT TIZIMI FAOLIYATIGA OID SHIKOYATLARI:\s*(.+?)(?:\n|$)/),
+        nervousSystemComplaints: extractValue(/ASAB TIZIMI:\s*(.+?)(?:\n|$)/),
+        doctorRecommendations: extractValue(/DOKTOR TAVSIYALARI:\s*(.+?)(?:\n|$)/),
+        respiratoryFiles: [],
+        cardiovascularFiles: [],
+        digestiveFiles: [],
+        urinaryFiles: [],
+        endocrineFiles: [],
+        musculoskeletalFiles: [],
+        nervousSystemFiles: [],
+      })
+    }
+  }, [historyEntry, open])
+
+  const handleSubmit = async () => {
+    if (!medicalHistory.visitDate || !medicalHistory.mainComplaints) {
+      setError("Visit date and main complaints are required.")
+      return
+    }
+
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      await onSubmit(medicalHistory)
+      onOpenChange(false)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to update medical history")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleFileChange = (field: keyof Pick<MedicalHistoryForm, 'respiratoryFiles' | 'cardiovascularFiles' | 'digestiveFiles' | 'urinaryFiles' | 'endocrineFiles' | 'musculoskeletalFiles' | 'nervousSystemFiles'>, files: FileList | null) => {
+    if (files) {
+      const fileArray = Array.from(files)
+      setMedicalHistory(prev => ({
+        ...prev,
+        [field]: fileArray
+      }))
+    }
+  }
+
+  const handleRemoveFile = (field: keyof Pick<MedicalHistoryForm, 'respiratoryFiles' | 'cardiovascularFiles' | 'digestiveFiles' | 'urinaryFiles' | 'endocrineFiles' | 'musculoskeletalFiles' | 'nervousSystemFiles'>, index: number) => {
+    setMedicalHistory(prev => ({
+      ...prev,
+      [field]: prev[field].filter((_, i) => i !== index)
+    }))
+  }
+
+  if (!historyEntry) return null
+
+    return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-gray-800">
-            Kasallik tarixi (Подробная история болезни)
+            Tahrirlash: Kasallik tarixi (Подробная история болезни)
           </DialogTitle>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] pr-4">
@@ -309,9 +236,7 @@ export function AddHistoryDialog({
                     <Input
                       id="fish"
                       value={medicalHistory.fish}
-                      onChange={(e) =>
-                        handleInputChange("fish", e.target.value)
-                      }
+                      onChange={(e) => setMedicalHistory({ ...medicalHistory, fish: e.target.value })}
                     />
                   </div>
                   <div>
@@ -320,9 +245,7 @@ export function AddHistoryDialog({
                       id="birth-date"
                       type="date"
                       value={medicalHistory.birthDate}
-                      onChange={(e) =>
-                        handleInputChange("birthDate", e.target.value)
-                      }
+                      onChange={(e) => setMedicalHistory({ ...medicalHistory, birthDate: e.target.value })}
                     />
                   </div>
                   <div>
@@ -330,9 +253,7 @@ export function AddHistoryDialog({
                     <Input
                       id="nationality"
                       value={medicalHistory.nationality}
-                      onChange={(e) =>
-                        handleInputChange("nationality", e.target.value)
-                      }
+                      onChange={(e) => setMedicalHistory({ ...medicalHistory, nationality: e.target.value })}
                     />
                   </div>
                   <div>
@@ -340,9 +261,7 @@ export function AddHistoryDialog({
                     <Input
                       id="education"
                       value={medicalHistory.education}
-                      onChange={(e) =>
-                        handleInputChange("education", e.target.value)
-                      }
+                      onChange={(e) => setMedicalHistory({ ...medicalHistory, education: e.target.value })}
                     />
                   </div>
                   <div>
@@ -350,9 +269,7 @@ export function AddHistoryDialog({
                     <Input
                       id="profession"
                       value={medicalHistory.profession}
-                      onChange={(e) =>
-                        handleInputChange("profession", e.target.value)
-                      }
+                      onChange={(e) => setMedicalHistory({ ...medicalHistory, profession: e.target.value })}
                     />
                   </div>
                   <div>
@@ -360,9 +277,7 @@ export function AddHistoryDialog({
                     <Input
                       id="workplace"
                       value={medicalHistory.workplace}
-                      onChange={(e) =>
-                        handleInputChange("workplace", e.target.value)
-                      }
+                      onChange={(e) => setMedicalHistory({ ...medicalHistory, workplace: e.target.value })}
                     />
                   </div>
                   <div>
@@ -370,9 +285,7 @@ export function AddHistoryDialog({
                     <Input
                       id="work-position"
                       value={medicalHistory.workPosition}
-                      onChange={(e) =>
-                        handleInputChange("workPosition", e.target.value)
-                      }
+                      onChange={(e) => setMedicalHistory({ ...medicalHistory, workPosition: e.target.value })}
                     />
                   </div>
                   <div>
@@ -380,9 +293,7 @@ export function AddHistoryDialog({
                     <Input
                       id="home-address"
                       value={medicalHistory.homeAddress}
-                      onChange={(e) =>
-                        handleInputChange("homeAddress", e.target.value)
-                      }
+                      onChange={(e) => setMedicalHistory({ ...medicalHistory, homeAddress: e.target.value })}
                     />
                   </div>
                   <div>
@@ -393,9 +304,7 @@ export function AddHistoryDialog({
                       id="visit-date"
                       type="date"
                       value={medicalHistory.visitDate}
-                      onChange={(e) =>
-                        handleInputChange("visitDate", e.target.value)
-                      }
+                      onChange={(e) => setMedicalHistory({ ...medicalHistory, visitDate: e.target.value })}
                     />
                   </div>
                 </div>
@@ -408,9 +317,7 @@ export function AddHistoryDialog({
                     id="main-complaints"
                     rows={3}
                     value={medicalHistory.mainComplaints}
-                    onChange={(e) =>
-                      handleInputChange("mainComplaints", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, mainComplaints: e.target.value })}
                   />
                 </div>
                 <div>
@@ -421,9 +328,7 @@ export function AddHistoryDialog({
                     id="systemic-diseases"
                     rows={3}
                     value={medicalHistory.systemicDiseases}
-                    onChange={(e) =>
-                      handleInputChange("systemicDiseases", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, systemicDiseases: e.target.value })}
                   />
                 </div>
               </CollapsibleContent>
@@ -458,9 +363,7 @@ export function AddHistoryDialog({
                     id="respiratory-complaints"
                     rows={3}
                     value={medicalHistory.respiratoryComplaints}
-                    onChange={(e) =>
-                      handleInputChange("respiratoryComplaints", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, respiratoryComplaints: e.target.value })}
                   />
                 </div>
                 <div>
@@ -473,7 +376,7 @@ export function AddHistoryDialog({
                     id="cough"
                     rows={4}
                     value={medicalHistory.cough}
-                    onChange={(e) => handleInputChange("cough", e.target.value)}
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, cough: e.target.value })}
                   />
                 </div>
                 <div>
@@ -485,9 +388,7 @@ export function AddHistoryDialog({
                     id="sputum"
                     rows={3}
                     value={medicalHistory.sputum}
-                    onChange={(e) =>
-                      handleInputChange("sputum", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, sputum: e.target.value })}
                   />
                 </div>
                 <div>
@@ -499,9 +400,7 @@ export function AddHistoryDialog({
                     id="hemoptysis"
                     rows={2}
                     value={medicalHistory.hemoptysis}
-                    onChange={(e) =>
-                      handleInputChange("hemoptysis", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, hemoptysis: e.target.value })}
                   />
                 </div>
                 <div>
@@ -516,9 +415,7 @@ export function AddHistoryDialog({
                     id="chest-pain"
                     rows={3}
                     value={medicalHistory.chestPain}
-                    onChange={(e) =>
-                      handleInputChange("chestPain", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, chestPain: e.target.value })}
                   />
                 </div>
                 <div>
@@ -531,13 +428,11 @@ export function AddHistoryDialog({
                     id="dyspnea"
                     rows={4}
                     value={medicalHistory.dyspnea}
-                    onChange={(e) =>
-                      handleInputChange("dyspnea", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, dyspnea: e.target.value })}
                   />
                 </div>
                 <FileAttachment
-                  id="respiratory-files"
+                  id="respiratory-files-edit"
                   field="respiratoryFiles"
                   files={medicalHistory.respiratoryFiles}
                   onFileChange={handleFileChange}
@@ -577,12 +472,7 @@ export function AddHistoryDialog({
                     id="cardiovascular-complaints"
                     rows={3}
                     value={medicalHistory.cardiovascularComplaints}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "cardiovascularComplaints",
-                        e.target.value
-                      )
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, cardiovascularComplaints: e.target.value })}
                     placeholder="Oldingi punktdagi ma'lumotlar so'raladi..."
                   />
                 </div>
@@ -596,9 +486,7 @@ export function AddHistoryDialog({
                     id="heart-pain"
                     rows={4}
                     value={medicalHistory.heartPain}
-                    onChange={(e) =>
-                      handleInputChange("heartPain", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, heartPain: e.target.value })}
                   />
                 </div>
                 <div>
@@ -613,9 +501,7 @@ export function AddHistoryDialog({
                     id="heart-rhythm"
                     rows={3}
                     value={medicalHistory.heartRhythm}
-                    onChange={(e) =>
-                      handleInputChange("heartRhythm", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, heartRhythm: e.target.value })}
                   />
                 </div>
                 <div>
@@ -630,13 +516,11 @@ export function AddHistoryDialog({
                     id="palpitations"
                     rows={3}
                     value={medicalHistory.palpitations}
-                    onChange={(e) =>
-                      handleInputChange("palpitations", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, palpitations: e.target.value })}
                   />
                 </div>
                 <FileAttachment
-                  id="cardiovascular-files"
+                  id="cardiovascular-files-edit"
                   field="cardiovascularFiles"
                   files={medicalHistory.cardiovascularFiles}
                   onFileChange={handleFileChange}
@@ -674,9 +558,7 @@ export function AddHistoryDialog({
                     id="digestive-complaints"
                     rows={4}
                     value={medicalHistory.digestiveComplaints}
-                    onChange={(e) =>
-                      handleInputChange("digestiveComplaints", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, digestiveComplaints: e.target.value })}
                   />
                 </div>
                 <div>
@@ -689,9 +571,7 @@ export function AddHistoryDialog({
                     id="vomiting"
                     rows={3}
                     value={medicalHistory.vomiting}
-                    onChange={(e) =>
-                      handleInputChange("vomiting", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, vomiting: e.target.value })}
                   />
                 </div>
                 <div>
@@ -706,9 +586,7 @@ export function AddHistoryDialog({
                     id="abdominal-pain"
                     rows={4}
                     value={medicalHistory.abdominalPain}
-                    onChange={(e) =>
-                      handleInputChange("abdominalPain", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, abdominalPain: e.target.value })}
                   />
                 </div>
                 <div>
@@ -720,9 +598,7 @@ export function AddHistoryDialog({
                     id="epigastric-pain"
                     rows={2}
                     value={medicalHistory.epigastricPain}
-                    onChange={(e) =>
-                      handleInputChange("epigastricPain", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, epigastricPain: e.target.value })}
                   />
                 </div>
                 <div>
@@ -737,9 +613,7 @@ export function AddHistoryDialog({
                     id="bowel-movements"
                     rows={3}
                     value={medicalHistory.bowelMovements}
-                    onChange={(e) =>
-                      handleInputChange("bowelMovements", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, bowelMovements: e.target.value })}
                   />
                 </div>
                 <div>
@@ -753,13 +627,11 @@ export function AddHistoryDialog({
                     id="anal-symptoms"
                     rows={2}
                     value={medicalHistory.analSymptoms}
-                    onChange={(e) =>
-                      handleInputChange("analSymptoms", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, analSymptoms: e.target.value })}
                   />
                 </div>
                 <FileAttachment
-                  id="digestive-files"
+                  id="digestive-files-edit"
                   field="digestiveFiles"
                   files={medicalHistory.digestiveFiles}
                   onFileChange={handleFileChange}
@@ -798,13 +670,11 @@ export function AddHistoryDialog({
                     id="urinary-complaints"
                     rows={4}
                     value={medicalHistory.urinaryComplaints}
-                    onChange={(e) =>
-                      handleInputChange("urinaryComplaints", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, urinaryComplaints: e.target.value })}
                   />
                 </div>
                 <FileAttachment
-                  id="urinary-files"
+                  id="urinary-files-edit"
                   field="urinaryFiles"
                   files={medicalHistory.urinaryFiles}
                   onFileChange={handleFileChange}
@@ -843,13 +713,11 @@ export function AddHistoryDialog({
                     id="endocrine-complaints"
                     rows={4}
                     value={medicalHistory.endocrineComplaints}
-                    onChange={(e) =>
-                      handleInputChange("endocrineComplaints", e.target.value)
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, endocrineComplaints: e.target.value })}
                   />
                 </div>
                 <FileAttachment
-                  id="endocrine-files"
+                  id="endocrine-files-edit"
                   field="endocrineFiles"
                   files={medicalHistory.endocrineFiles}
                   onFileChange={handleFileChange}
@@ -892,16 +760,11 @@ export function AddHistoryDialog({
                     id="musculoskeletal-complaints"
                     rows={4}
                     value={medicalHistory.musculoskeletalComplaints}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "musculoskeletalComplaints",
-                        e.target.value
-                      )
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, musculoskeletalComplaints: e.target.value })}
                   />
                 </div>
                 <FileAttachment
-                  id="musculoskeletal-files"
+                  id="musculoskeletal-files-edit"
                   field="musculoskeletalFiles"
                   files={medicalHistory.musculoskeletalFiles}
                   onFileChange={handleFileChange}
@@ -937,16 +800,11 @@ export function AddHistoryDialog({
                     id="nervous-system-complaints"
                     rows={4}
                     value={medicalHistory.nervousSystemComplaints}
-                    onChange={(e) =>
-                      handleInputChange(
-                        "nervousSystemComplaints",
-                        e.target.value
-                      )
-                    }
+                    onChange={(e) => setMedicalHistory({ ...medicalHistory, nervousSystemComplaints: e.target.value })}
                   />
                 </div>
                 <FileAttachment
-                  id="nervous-system-files"
+                  id="nervous-system-files-edit"
                   field="nervousSystemFiles"
                   files={medicalHistory.nervousSystemFiles}
                   onFileChange={handleFileChange}
@@ -969,9 +827,7 @@ export function AddHistoryDialog({
                   id="doctor-recommendations"
                   rows={4}
                   value={medicalHistory.doctorRecommendations}
-                  onChange={(e) =>
-                    handleInputChange("doctorRecommendations", e.target.value)
-                  }
+                  onChange={(e) => setMedicalHistory({ ...medicalHistory, doctorRecommendations: e.target.value })}
                   placeholder="Shifokor tavsiyalari, tayinlanmalar, davolash rejasi..."
                 />
               </div>
@@ -979,25 +835,20 @@ export function AddHistoryDialog({
             {error && <p className="text-red-500 text-sm">{error}</p>}
           </div>
         </ScrollArea>
-        <DialogFooter className="flex gap-2">
+
+                <DialogFooter className="flex gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Bekor qilish
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isSubmitDisabled || isSubmitting}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 text-white"
+            disabled={isSubmitting}
+            className="bg-gradient-to-r from-blue-500 to-blue-600 text-white"
           >
-            {isSubmitting ? (
-              "Saqlanmoqda..."
-            ) : (
-              <>
-                <Plus className="w-4 h-4 mr-2" /> Kasallik tarixini saqlash
-              </>
-            )}
+            {isSubmitting ? "Saqlanmoqda..." : "Tahrirlash"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Test</h1>
+    
+    <div>
+        <h2>Test Patients API</h2>
+        <button onclick="testPatientsAPI()">Test Patients</button>
+        <div id="patients-result"></div>
+    </div>
+
+    <div>
+        <h2>Test Medical History API</h2>
+        <button onclick="testMedicalHistoryAPI()">Test Medical History</button>
+        <div id="history-result"></div>
+    </div>
+
+    <script>
+        async function testPatientsAPI() {
+            try {
+                const response = await fetch('https://new.avishifo.uz/api/patients/patientlar/', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    mode: 'cors',
+                });
+
+                const data = await response.json();
+                document.getElementById('patients-result').innerHTML = 
+                    `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                document.getElementById('patients-result').innerHTML = 
+                    `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+
+        async function testMedicalHistoryAPI() {
+            try {
+                const response = await fetch('https://new.avishifo.uz/api/patients/kasallik-tarixi/?patient_id=1', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    mode: 'cors',
+                });
+
+                const data = await response.json();
+                document.getElementById('history-result').innerHTML = 
+                    `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                document.getElementById('history-result').innerHTML = 
+                    `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

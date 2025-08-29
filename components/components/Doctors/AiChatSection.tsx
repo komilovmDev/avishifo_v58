@@ -104,35 +104,28 @@ interface ChatStats {
 
 // Компонент для рендеринга markdown контента
 function MarkdownContent({ content, isUserMessage = false }: { content: string; isUserMessage?: boolean }) {
-  // Простая функция для парсинга markdown
+  // Simple text display without markdown formatting - ChatGPT style
   const formatContent = (text: string) => {
-    const textColor = isUserMessage ? "text-white" : "text-gray-800"
-    const headingColor = isUserMessage ? "text-white" : "text-gray-800"
-    const codeBg = isUserMessage ? "bg-white/20" : "bg-gray-100"
-    const codeText = isUserMessage ? "text-white" : "text-gray-800"
-    
+    // Remove any markdown formatting and just display plain text
     return text
-      .replace(/\*\*(.*?)\*\*/g, `<strong class="${textColor}">$1</strong>`) // **текст** -> <strong>текст</strong>
-      .replace(/\*(.*?)\*/g, `<em class="${textColor}">$1</em>`) // *текст* -> <em>текст</em>
-      .replace(/`(.*?)`/g, `<code class="${codeBg} ${codeText} px-1 py-0.5 rounded text-sm">$1</code>`) // `код` -> <code>код</code>
-      .replace(/^### (.*$)/gm, `<h3 class="text-lg font-semibold mt-4 mb-2 ${headingColor}">$1</h3>`) // ### заголовок
-      .replace(/^## (.*$)/gm, `<h2 class="text-xl font-semibold mt-4 mb-2 ${headingColor}">$1</h2>`) // ## заголовок
-      .replace(/^# (.*$)/gm, `<h1 class="text-2xl font-bold mt-4 mb-2 ${headingColor}">$1</h1>`) // # заголовок
-      .replace(/^\d+\.\s(.*$)/gm, `<li class="ml-4 mb-1 ${textColor}">$1</li>`) // 1. пункт -> <li>пункт</li>
-      .replace(/^-\s(.*$)/gm, `<li class="ml-4 mb-1 list-disc ${textColor}">$1</li>`) // - пункт -> <li>пункт</li>
-      .replace(/\n\n/g, `</p><p class="mb-2 ${textColor}">`) // двойной перенос -> новый параграф
-      .replace(/\n/g, "<br>") // одинарный перенос -> <br>
+      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove **bold**
+      .replace(/\*(.*?)\*/g, '$1') // Remove *italic*
+      .replace(/`(.*?)`/g, '$1') // Remove `code`
+      .replace(/^### (.*$)/gm, '$1') // Remove ### headers
+      .replace(/^## (.*$)/gm, '$1') // Remove ## headers
+      .replace(/^# (.*$)/gm, '$1') // Remove # headers
+      .replace(/^\d+\.\s(.*$)/gm, '$1') // Remove numbered lists
+      .replace(/^-\s(.*$)/gm, '$1') // Remove bullet lists
+      .replace(/\n\n/g, '\n') // Remove double line breaks
+      .replace(/\n/g, '\n') // Keep single line breaks
   }
 
   const formattedContent = formatContent(content)
 
   return (
-    <div
-      className="prose prose-sm max-w-none"
-      dangerouslySetInnerHTML={{
-        __html: `<p class="mb-2 ${isUserMessage ? 'text-white' : 'text-gray-800'}">${formattedContent}</p>`,
-      }}
-    />
+    <div className="whitespace-pre-wrap text-base leading-relaxed">
+      {formattedContent}
+    </div>
   )
 }
 
@@ -777,35 +770,35 @@ export function AiChatSection() {
   }
 
   const generateFallbackResponse = (userMessage: string): string => {
-    return `**AviShifo в демо-режиме**
+    return `AviShifo в демо-режиме
 
 Доктор, я понимаю ваш запрос: "${userMessage}"
 
 В демо-режиме я могу предоставить только базовую структуру ответа:
 
-**1. Предварительный диагноз:**
+1. Предварительный диагноз:
 - Требуется анализ представленных симптомов
 - Дифференциальная диагностика будет доступна при полной активации
 
-**2. План обследования:**
+2. План обследования:
 - Стандартные лабораторные исследования
 - Инструментальная диагностика по показаниям
 - Консультации специалистов при необходимости
 
-**3. Тактика лечения:**
+3. Тактика лечения:
 - Консервативная терапия как первая линия
 - Хирургические методы при неэффективности консервативного лечения
 - Реабилитационные мероприятия
 
-**6. Группы препаратов:**
+4. Группы препаратов:
 - Симптоматическая терапия
 - Этиотропное лечение
 - Профилактические препараты
 
-**7. Заключение:**
+5. Заключение:
 Для получения полного анализа в стиле AviShifo необходима активация полной версии системы с подключением к backend API https://new.avishifo.uz/
 
-*Демо-режим ограничивает возможности детального медицинского анализа.*`
+Демо-режим ограничивает возможности детального медицинского анализа.`
   }
 
   const handlePromptClick = (promptText: string) => {
@@ -907,43 +900,30 @@ export function AiChatSection() {
       welcomeMessage = modelSwitched 
         ? `Здравствуйте! Я AviRadiolog. Переключился на новую модель и готов начать новый диалог. Чем могу помочь?`
         : `Уважаемый доктор!
+
 Для корректной работы AviRadiolog просим вносить данные пациента в следующем формате. Чем полнее и точнее будут данные, тем качественнее результат анализа.
 
 1. Общие сведения о пациенте
-
 - Возраст: ___ лет
-
 - Пол: Мужчина / Женщина
-
 - Рост / вес (опционально)
-
 - Анамнез (ключевые хронические болезни, курение, операции и т.д.)
 
 2. Клиническая картина
-
-- Жалобы (например: кашель, лихорадка 38.5 °C, боль в груди, одышка).
-
-- Давность симптомов (дни/недели).
-
-- Сопутствующие данные (например: повышение CRP, лейкоцитоз, сатурация).
+- Жалобы (например: кашель, лихорадка 38.5 °C, боль в груди, одышка)
+- Давность симптомов (дни/недели)
+- Сопутствующие данные (например: повышение CRP, лейкоцитоз, сатурация)
 
 3. Исследование
-
-- Вид исследования: Рентген / КТ / МРТ / УЗИ.
-
-- Область исследования: Грудная клетка / брюшная полость / другое.
-
-- Проекция (для рентгена): PA / AP / Латеральная.
-
-- Дата исследования.
-
-- Формат: желательно DICOM; допустимо PNG/JPEG (но с пометкой «не DICOM»).
+- Вид исследования: Рентген / КТ / МРТ / УЗИ
+- Область исследования: Грудная клетка / брюшная полость / другое
+- Проекция (для рентгена): PA / AP / Латеральная
+- Дата исследования
+- Формат: желательно DICOM; допустимо PNG/JPEG (но с пометкой «не DICOM»)
 
 4. Технические детали (по возможности)
-
-- Качество снимка: удовлетворительное / среднее / низкое (артефакты, движение).
-
-- Дополнительные замечания (например: послеоперационные изменения, наличие катетеров).`
+- Качество снимка: удовлетворительное / среднее / низкое (артефакты, движение)
+- Дополнительные замечания (например: послеоперационные изменения, наличие катетеров)`
     } else {
       welcomeMessage = modelSwitched 
         ? `Здравствуйте! Я ${aiModels.find(m => m.id === selectedModel)?.name}. Переключился на новую модель и готов начать новый диалог. Чем могу помочь?`
