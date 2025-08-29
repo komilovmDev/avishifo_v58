@@ -1893,7 +1893,7 @@ ${medicalHistory.doctorRecommendations || "Kiritilmagan"}
         </div>
       )}
 
-      {/* Comprehensive Medical History Dialog */}
+      {/* Comprehensive Medical History Dialog. */}
       <Dialog open={showAddHistoryDialog} onOpenChange={setShowAddHistoryDialog}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden">
           <DialogHeader>
