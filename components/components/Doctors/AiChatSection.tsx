@@ -243,7 +243,7 @@ export function AiChatSection() {
       name: "AviShifo AI",
       description: "Наш самый умный медицинский ассистент",
       icon: <Brain className="w-5 h-5" />,
-      isPremium: true,
+      isPremium: false,
       isSelected: selectedModel === "avishifo-ai",
       color: "from-blue-500 to-purple-600",
       bgColor: "bg-gradient-to-r from-blue-500 to-purple-600",
@@ -253,7 +253,7 @@ export function AiChatSection() {
       name: "AviRadiolog",
       description: "Специализированный анализ медицинских изображений",
       icon: <Stethoscope className="w-5 h-5" />,
-      isPremium: true,
+      isPremium: false,
       isSelected: selectedModel === "avishifo-radiolog",
       color: "from-green-500 to-teal-600",
       bgColor: "bg-gradient-to-r from-green-500 to-teal-600",
@@ -1212,7 +1212,7 @@ export function AiChatSection() {
               {/* Model Menu Dropdown */}
               {showModelMenu && (
                 <div className="absolute top-full right-0 mt-3 w-80 bg-white/95 backdrop-blur-sm rounded-2xl border border-gray-200/60 shadow-2xl z-50 overflow-hidden">
-                  <div className="p-3 bg-gradient-to-r from-gray-50/80 to-blue-50/80 border-b border-gray-200/60">
+                  <div className="p-3 bg-white/90 border-b border-gray-200/60">
                     <h3 className="text-base font-semibold text-gray-800 mb-1">Выберите AI модель</h3>
                     <p className="text-xs text-gray-600">Выберите наиболее подходящую модель для ваших задач</p>
                   </div>
@@ -1228,69 +1228,25 @@ export function AiChatSection() {
                         onClick={() => handleModelSwitch(model.id)}
                       >
                         <div className="flex items-start gap-3">
-                          <div className={`p-2 rounded-lg transition-all duration-300 ${
-                            model.isPremium 
-                              ? 'bg-gradient-to-r from-yellow-400 to-orange-500 shadow-md' 
-                              : model.bgColor
-                          } text-white`}>
+                          <div className={`p-2 rounded-lg transition-all duration-300 ${model.bgColor} text-white`}>
                             {model.icon}
-                          </div>
-                          <div className="grid md:grid-cols-3 gap-4">
-                            <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-                              <h4 className="font-semibold text-yellow-800 mb-2">Лабораторные исследования (обязательны нужно вести данные):</h4>
-                              <ul className="text-yellow-800 space-y-1 text-xs">
-                                <li>- Общий анализ крови (ОАК)</li>
-                                <li>- Биохимический анализ крови</li>
-                                <li>- С-реактивный белок (CRP)</li>
-                                <li>- Другие доступные показатели</li>
-                              </ul>
-                            </div>
-                            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                              <h4 className="font-semibold text-blue-800 mb-2">Инструментальные исследования (не обязательно, но желательно ввести данные):</h4>
-                              <ul className="text-blue-800 space-y-1 text-xs">
-                                <li>- ЭКГ</li>
-                                <li>- УЗИ</li>
-                                <li>- ЭхоКГ и другие доступные методы</li>
-                              </ul>
-                            </div>
-                            <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-200">
-                              <h4 className="font-semibold text-indigo-800 mb-2">Визуализация (не обязательно, но желательно ввести данные):</h4>
-                              <ul className="text-indigo-800 space-y-1 text-xs">
-                                <li>- Рентгенография</li>
-                                <li>- Компьютерная томография</li>
-                                <li>- Магнитно-резонансная томография</li>
-                              </ul>
-                            </div>
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-semibold text-gray-800 text-sm">{model.name}</span>
-                              {model.isPremium && (
-                                <div className="flex items-center gap-1">
-                                  <Crown className="w-3 h-3 text-yellow-500" />
-                                  <span className="text-xs text-yellow-600 font-medium">Premium</span>
-                                </div>
-                              )}
                             </div>
                             <p className="text-xs text-gray-600 mb-2">{model.description}</p>
                             <div className="flex items-center gap-2">
-                              {model.isPremium ? (
-                                <button className="px-3 py-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs font-medium rounded-md hover:from-yellow-600 hover:to-orange-600 transition-all duration-200 hover:shadow-md flex items-center gap-1">
-                                  <Star className="w-3 h-3" />
-                                  Upgrade
-                                </button>
+                              {model.isSelected ? (
+                                <div className="flex items-center gap-2 text-green-600">
+                                  <Check className="w-3 h-3" />
+                                  <span className="text-xs font-medium">Выбрано</span>
+                                </div>
                               ) : (
-                                model.isSelected ? (
-                                  <div className="flex items-center gap-2 text-green-600">
-                                    <Check className="w-3 h-3" />
-                                    <span className="text-xs font-medium">Выбрано</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1 text-blue-600">
-                                    <Plus className="w-3 h-3" />
-                                    <span className="text-xs font-medium">Новый чат</span>
-                                  </div>
-                                )
+                                <div className="flex items-center gap-1 text-blue-600">
+                                  <Plus className="w-3 h-3" />
+                                  <span className="text-xs font-medium">Новый чат</span>
+                                </div>
                               )}
                             </div>
                           </div>

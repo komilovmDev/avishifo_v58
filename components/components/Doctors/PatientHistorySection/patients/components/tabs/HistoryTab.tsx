@@ -5,7 +5,7 @@ import { Patient, HistoryEntry } from "../../types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { History, Plus, FileTextIcon, Edit } from "lucide-react"
+import { History, Plus, FileTextIcon, Edit, Download } from "lucide-react"
 
 interface HistoryTabProps {
   patient: Patient;
@@ -15,6 +15,132 @@ interface HistoryTabProps {
 }
 
 export function HistoryTab({ patient, onOpenAddHistoryDialog, onOpenEditHistoryDialog, onRefreshHistory }: HistoryTabProps) {
+  const handleDownloadDoc = () => {
+    if (!patient || !patient.history || patient.history.length === 0) {
+      alert("История болезни отсутствует для экспорта.")
+      return
+    }
+
+    const escapeHtml = (str: string) =>
+      (str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;")
+
+    const now = new Date()
+    const fileName = `istorija-${patient.name.replace(/\s+/g, '_')}-${now.toISOString().slice(0,10)}.doc`
+
+    // Build simple Word-compatible HTML
+    const htmlHeader = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>История болезни</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.4; }
+        h1 { font-size: 20px; margin: 0 0 8px; }
+        h2 { font-size: 16px; margin: 16px 0 8px; }
+        .meta { color: #333; font-size: 12px; margin-bottom: 12px; }
+        .entry { border: 1px solid #ccc; padding: 10px; margin: 8px 0; }
+        .label { font-weight: bold; }
+        .notes { white-space: pre-wrap; }
+        ul { margin: 6px 0 0 18px; }
+      </style>
+    </head><body>`
+
+    const headerBlock = `
+      <h1>История болезни</h1>
+      <div class="meta">
+        <div><span class="label">Пациент:</span> ${escapeHtml(patient.name)}</div>
+        <div><span class="label">ID:</span> ${escapeHtml(patient.id)}</div>
+        <div><span class="label">Дата выгрузки:</span> ${now.toLocaleString('ru-RU')}</div>
+      </div>
+    `
+
+    const entries = patient.history.map((e) => {
+      const docs = (e.documents || []).map((d) => `<li>${escapeHtml(d)}</li>`).join('')
+      return `
+        <div class="entry">
+          <div><span class="label">Дата:</span> ${escapeHtml(e.date)}</div>
+          <div><span class="label">Тип:</span> ${escapeHtml(e.type)}</div>
+          <div><span class="label">Врач:</span> ${escapeHtml(e.doctor)}</div>
+          <div><span class="label">Диагноз:</span> ${escapeHtml(e.diagnosis)}</div>
+          ${e.notes ? `<div class="label" style="margin-top:6px;">Заметки:</div><div class="notes">${escapeHtml(e.notes)}</div>` : ''}
+          ${docs ? `<div class="label" style="margin-top:6px;">Файлы:</div><ul>${docs}</ul>` : ''}
+        </div>
+      `
+    }).join('\n')
+
+    const htmlFooter = `</body></html>`
+    const html = `${htmlHeader}${headerBlock}${entries}${htmlFooter}`
+
+    const blob = new Blob([html], { type: "application/msword" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleDownloadSingle = (entry: HistoryEntry) => {
+    const escapeHtml = (str: string) =>
+      (str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;")
+
+    const now = new Date()
+    const fileName = `istorija-${patient.name.replace(/\s+/g, '_')}-${entry.date}.doc`
+
+    const htmlHeader = `<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>История болезни</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.4; }
+        h1 { font-size: 20px; margin: 0 0 8px; }
+        .meta { color: #333; font-size: 12px; margin-bottom: 12px; }
+        .entry { border: 1px solid #ccc; padding: 10px; margin: 8px 0; }
+        .label { font-weight: bold; }
+        .notes { white-space: pre-wrap; }
+        ul { margin: 6px 0 0 18px; }
+      </style>
+    </head><body>`
+
+    const headerBlock = `
+      <h1>История болезни (запись)</h1>
+      <div class=\"meta\">
+        <div><span class=\"label\">Пациент:</span> ${escapeHtml(patient.name)}</div>
+        <div><span class=\"label\">ID:</span> ${escapeHtml(patient.id)}</div>
+        <div><span class=\"label\">Дата выгрузки:</span> ${now.toLocaleString('ru-RU')}</div>
+      </div>
+    `
+
+    const docs = (entry.documents || []).map((d) => `<li>${escapeHtml(d)}</li>`).join('')
+    const entryBlock = `
+      <div class=\"entry\">
+        <div><span class=\"label\">Дата:</span> ${escapeHtml(entry.date)}</div>
+        <div><span class=\"label\">Тип:</span> ${escapeHtml(entry.type)}</div>
+        <div><span class=\"label\">Врач:</span> ${escapeHtml(entry.doctor)}</div>
+        <div><span class=\"label\">Диагноз:</span> ${escapeHtml(entry.diagnosis)}</div>
+        ${entry.notes ? `<div class=\"label\" style=\"margin-top:6px;\">Заметки:</div><div class=\"notes\">${escapeHtml(entry.notes)}</div>` : ''}
+        ${docs ? `<div class=\"label\" style=\"margin-top:6px;\">Файлы:</div><ul>${docs}</ul>` : ''}
+      </div>
+    `
+
+    const html = `${htmlHeader}${headerBlock}${entryBlock}</body></html>`
+
+    const blob = new Blob([html], { type: "application/msword" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <Card className="bg-white shadow-sm rounded-lg border">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -22,6 +148,14 @@ export function HistoryTab({ patient, onOpenAddHistoryDialog, onOpenEditHistoryD
           <History className="h-5 w-5 text-green-500" /> История болезни
         </CardTitle>
         <div className="flex gap-2">
+          <Button 
+            onClick={handleDownloadDoc}
+            variant="outline"
+            className="border-gray-300 hover:bg-gray-50"
+            title="Скачать историю болезни (.doc)"
+          >
+            <Download className="w-4 h-4 mr-2" /> Скачать DOC
+          </Button>
           <Button 
             onClick={onRefreshHistory} 
             variant="outline" 
@@ -59,6 +193,15 @@ export function HistoryTab({ patient, onOpenAddHistoryDialog, onOpenEditHistoryD
                       <Badge className="mt-1 sm:mt-0 bg-green-100 text-green-800 self-start sm:self-auto px-2.5 py-1">
                         {entry.diagnosis}
                       </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDownloadSingle(entry)}
+                        className="h-8 w-8 p-0 text-gray-500 hover:text-green-600 hover:bg-green-50"
+                        title="Скачать запись (.doc)"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"

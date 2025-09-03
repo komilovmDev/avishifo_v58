@@ -220,8 +220,26 @@ export default function PatientsPage() {
           chronicConditions: [],
           lastDiagnosis: "Первичный осмотр",
           nextAppointment: "Не назначено",
-          medications: [],
-          vitals: [],
+          medications: (() => {
+            try {
+              const raw = localStorage.getItem("avishifo_patient_meds")
+              const map = raw ? JSON.parse(raw) : {}
+              const list = Array.isArray(map[String(patient.id)]) ? map[String(patient.id)] : []
+              return list
+            } catch {
+              return []
+            }
+          })(),
+          vitals: (() => {
+            try {
+              const raw = localStorage.getItem("avishifo_patient_vitals")
+              const map = raw ? JSON.parse(raw) : {}
+              const list = Array.isArray(map[String(patient.id)]) ? map[String(patient.id)] : []
+              return list
+            } catch {
+              return []
+            }
+          })(),
           history: [],
         })
       );
@@ -269,9 +287,58 @@ export default function PatientsPage() {
 
   // --- Обработчики ---
   const createPatientHandler = async () => {
-    // Логика создания пациента
-    setShowCreatePatientDialog(false);
-    await fetchPatients(); // Обновляем список после создания
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) throw new Error("No access token found. Please log in.");
+
+      // Map UI values to backend expected fields
+      const mapGender = (g: string) => (g === "Женский" ? "female" : g === "Мужской" ? "male" : null);
+      const mapBloodGroup = (b: string) => {
+        switch (b) {
+          case "A(II) Rh+": return "A+";
+          case "A(II) Rh-": return "A-";
+          case "B(III) Rh+": return "B+";
+          case "B(III) Rh-": return "B-";
+          case "AB(IV) Rh+": return "AB+";
+          case "AB(IV) Rh-": return "AB-";
+          case "O(I) Rh+": return "O+";
+          case "O(I) Rh-": return "O-";
+          default: return null;
+        }
+      };
+
+      const payload = {
+        full_name: newPatient.fish,
+        passport_series: newPatient.passportSeries,
+        passport_number: newPatient.passportNumber,
+        phone: newPatient.phone || null,
+        birth_date: newPatient.birthDate || null,
+        gender: mapGender(newPatient.gender),
+        blood_group: mapBloodGroup(newPatient.bloodType),
+        address: newPatient.address || null,
+      } as any;
+
+      const response = await fetch("https://new.avishifo.uz/api/patients/create/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Failed to create patient: ${response.status} ${text}`);
+      }
+
+      // Close dialog and refresh list
+      setShowCreatePatientDialog(false);
+      await fetchPatients();
+    } catch (error) {
+      console.error("Error creating patient:", error);
+      alert(`Ошибка создания пациента: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
   };
 
   const addHistoryEntryHandler = async () => {
@@ -556,15 +623,53 @@ export default function PatientsPage() {
   };
 
   const addMedicationHandler = async () => {
-    // Логика добавления медикаментов
-    setShowAddMedicationDialog(false);
-    await fetchPatients();
+    // UI-level storage because backend requires medical_record_id
+    if (!selectedPatientId) {
+      alert("Сначала выберите пациента.")
+      return
+    }
+
+    // Update UI state
+    setPatients((prev) => prev.map((p) => (
+      p.id === selectedPatientId
+        ? { ...p, medications: [...p.medications, { ...newMedication }] }
+        : p
+    )))
+
+    // Persist to localStorage per patient
+    const storageKey = "avishifo_patient_meds"
+    const raw = localStorage.getItem(storageKey)
+    const map = raw ? JSON.parse(raw) : {}
+    const list = Array.isArray(map[selectedPatientId]) ? map[selectedPatientId] : []
+    map[selectedPatientId] = [...list, { ...newMedication }]
+    localStorage.setItem(storageKey, JSON.stringify(map))
+
+    setShowAddMedicationDialog(false)
   };
 
   const addVitalsHandler = async () => {
-    // Логика добавления витальных показателей
-    setShowAddVitalsDialog(false);
-    await fetchPatients();
+    // UI-level add vitals (persist per patient in localStorage)
+    if (!selectedPatientId) {
+      alert("Сначала выберите пациента.")
+      return
+    }
+
+    // Update UI state
+    setPatients((prev) => prev.map((p) => (
+      p.id === selectedPatientId
+        ? { ...p, vitals: [...p.vitals, { ...newVitals }] }
+        : p
+    )))
+
+    // Persist to localStorage per patient
+    const storageKey = "avishifo_patient_vitals"
+    const raw = localStorage.getItem(storageKey)
+    const map = raw ? JSON.parse(raw) : {}
+    const list = Array.isArray(map[selectedPatientId]) ? map[selectedPatientId] : []
+    map[selectedPatientId] = [...list, { ...newVitals }]
+    localStorage.setItem(storageKey, JSON.stringify(map))
+
+    setShowAddVitalsDialog(false)
   };
 
   const fetchMedicalHistory = async (patientId: string) => {
@@ -787,9 +892,50 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
   };
 
   const addDocumentHandler = async () => {
-    // Логика добавления документа
-    setShowAddDocumentDialog(false);
-    await fetchPatients();
+    // UI-level add document with persistent data URL in localStorage + immediate UI update
+    if (!selectedPatientId) {
+      alert("Сначала выберите пациента.")
+      return
+    }
+
+    const file = newDocument.file
+    const fileName = newDocument.name || (file ? file.name : "Документ")
+    const fileType = newDocument.type || (file ? file.type : "")
+    const dateStr = new Date().toLocaleDateString('ru-RU')
+
+    let dataUrl: string | null = null
+    if (file) {
+      dataUrl = await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader()
+        fr.onload = () => resolve(String(fr.result || ''))
+        fr.onerror = () => reject(new Error('Failed to read file'))
+        fr.readAsDataURL(file)
+      }).catch(() => null) as string | null
+    }
+
+    // Immediate UI update: attach the document name to latest history entry
+    setPatients((prev) => prev.map((p) => {
+      if (p.id !== selectedPatientId) return p
+      let history = [...p.history]
+      if (history.length === 0) {
+        history = [{ id: `hist-temp-${Date.now()}`, date: dateStr, type: 'Документ', doctor: '—', diagnosis: '—', notes: '', documents: [] }]
+      }
+      history[history.length - 1] = {
+        ...history[history.length - 1],
+        documents: [...history[history.length - 1].documents, fileName]
+      }
+      return { ...p, history }
+    }))
+
+    // Persist full document (name, type, date, dataUrl) per patient
+    const storageKey = "avishifo_patient_docs"
+    const raw = localStorage.getItem(storageKey)
+    const map = raw ? JSON.parse(raw) : {}
+    const list = Array.isArray(map[selectedPatientId]) ? map[selectedPatientId] : []
+    map[selectedPatientId] = [...list, { name: fileName, type: fileType, date: dateStr, url: dataUrl }]
+    localStorage.setItem(storageKey, JSON.stringify(map))
+
+    setShowAddDocumentDialog(false)
   };
 
   // Фильтрация и выборка данных
