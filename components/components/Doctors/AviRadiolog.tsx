@@ -1167,7 +1167,7 @@ export function AiRadiologSection() {
                   </Button>
                 </div>
                 <p className="text-xs text-gray-500 mt-3 text-center">
-                  <span className="text-green-600 font-medium">✓ Подключен к new.aviradiolog.uz</span> • Анализ
+                  <span className="text-green-600 font-medium">✓ Подключен </span> • Анализ
                   изображений напрямую от backend API • Поддержка рентгенов и МРТ • История синхронизируется
                   автоматически
                 </p>

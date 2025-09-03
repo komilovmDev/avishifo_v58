@@ -1850,7 +1850,7 @@ AviShifo — это клинический ассистент, который п
                </div>
               
               <p className="text-xs text-gray-600 mt-3 text-center">
-                <span className="text-green-600 font-medium">✓ Подключен к {API_BASE_URL}</span> • 
+                <span className="text-green-600 font-medium">✓ Подключен </span> • 
                 Получайте ответы от {aiModels.find(m => m.id === selectedModel)?.name} • 
                 Поддержка изображений и файлов
               </p>
