@@ -211,8 +211,8 @@ export default function PatientsPage() {
           lastVisit: patient.created_at
             ? new Date(patient.created_at).toLocaleDateString("ru-RU")
             : "Неизвестно",
-          status: "Наблюдение",
-          statusColor: "amber",
+          status: patient.status === 'archived' ? 'Архив' : patient.status === 'active' ? 'Активный' : 'Наблюдение',
+          statusColor: patient.status === 'archived' ? 'gray' : patient.status === 'active' ? 'green' : 'amber',
           insurance: `ОМС №${patient.passport_series || ""}${
             patient.passport_number || ""
           }`,
@@ -1018,7 +1018,10 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Update patient in local state
+      const result = await response.json();
+      console.log("Archive response:", result);
+
+      // Update patient in local state using backend response
       setPatients(prev => 
         prev.map(p => 
           p.id === patientId 
@@ -1030,6 +1033,49 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
       console.log("Patient archived successfully");
     } catch (error) {
       console.error("Error archiving patient:", error);
+      // You might want to show a toast notification here
+    }
+  };
+
+  const handleUnarchivePatient = async (patientId: string) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) throw new Error("No access token found");
+
+      console.log("Unarchiving patient with ID:", patientId);
+
+      // Update patient status to active
+      const response = await fetch(
+        API_CONFIG.ENDPOINTS.PATIENT_ARCHIVE(patientId),
+        {
+          method: "PATCH",
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ status: 'active' })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Unarchive response:", result);
+
+      // Update patient in local state
+      setPatients(prevPatients => 
+        prevPatients.map(patient => 
+          patient.id === patientId 
+            ? { ...patient, status: 'Активный', statusColor: 'green' }
+            : patient
+        )
+      );
+
+      console.log("Patient unarchived successfully");
+    } catch (error) {
+      console.error("Error unarchiving patient:", error);
       // You might want to show a toast notification here
     }
   };
@@ -1081,6 +1127,7 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
           onRefresh={fetchPatients}
           onDeletePatient={handleDeletePatient}
           onArchivePatient={handleArchivePatient}
+          onUnarchivePatient={handleUnarchivePatient}
         />
       )}
 

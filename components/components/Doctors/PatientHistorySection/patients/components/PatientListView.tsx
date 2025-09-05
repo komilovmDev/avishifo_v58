@@ -19,6 +19,7 @@ interface PatientListViewProps {
   onRefresh: () => void;
   onDeletePatient?: (id: string) => void;
   onArchivePatient?: (id: string) => void;
+  onUnarchivePatient?: (id: string) => void;
 }
 
 const colorStyles: { [key: string]: { active: string, inactive: string } } = {
@@ -39,7 +40,8 @@ export function PatientListView({
   onOpenCreateDialog,
   onRefresh,
   onDeletePatient,
-  onArchivePatient
+  onArchivePatient,
+  onUnarchivePatient
 }: PatientListViewProps) {
 
   const uniqueStatuses = Array.from(new Set(allPatients.map((p) => p.status)));
@@ -105,6 +107,7 @@ export function PatientListView({
               onSelect={onSelectPatient}
               onDelete={onDeletePatient}
               onArchive={onArchivePatient}
+              onUnarchive={onUnarchivePatient}
             />
           ))}
         </div>

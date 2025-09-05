@@ -5,7 +5,7 @@ import { Patient } from "../types"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { ChevronRight, Trash2, Archive, MoreVertical } from "lucide-react"
+import { ChevronRight, Trash2, Archive, MoreVertical, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -30,6 +30,8 @@ interface PatientCardProps {
   onSelect: (id: string) => void
   onDelete?: (id: string) => void
   onArchive?: (id: string) => void
+  onUnarchive?: (id: string) => void
+  showActions?: boolean
 }
 
 // Карта для безопасной работы с динамическими классами Tailwind CSS
@@ -40,10 +42,11 @@ const colorStyles: { [key: string]: { bg: string, text: string, border: string, 
   gray: { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-200', gradientFrom: 'from-gray-400', gradientTo: 'to-gray-600' },
 };
 
-export function PatientCard({ patient, onSelect, onDelete, onArchive }: PatientCardProps) {
+export function PatientCard({ patient, onSelect, onDelete, onArchive, onUnarchive, showActions = true }: PatientCardProps) {
   const color = colorStyles[patient.statusColor] || colorStyles.gray;
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const [showUnarchiveDialog, setShowUnarchiveDialog] = useState(false);
 
   const handleDelete = () => {
     if (onDelete) {
@@ -59,9 +62,19 @@ export function PatientCard({ patient, onSelect, onDelete, onArchive }: PatientC
     setShowArchiveDialog(false);
   };
 
+  const handleUnarchive = () => {
+    if (onUnarchive) {
+      onUnarchive(patient.id);
+    }
+    setShowUnarchiveDialog(false);
+  };
+
   return (
     <>
-      <Card className="bg-white rounded-xl border border-gray-200 shadow-md hover:shadow-lg transition-all overflow-hidden group">
+      <Card 
+        className="bg-white rounded-xl border border-gray-200 shadow-md hover:shadow-lg transition-all overflow-hidden group cursor-pointer"
+        onClick={() => onSelect(patient.id)}
+      >
         <div className={`h-1.5 bg-gradient-to-r ${color.gradientFrom} ${color.gradientTo} group-hover:from-blue-500 group-hover:to-cyan-500 transition-all`}></div>
         <CardContent className="p-5">
           <div className="flex items-center gap-4 mb-3">
@@ -105,29 +118,44 @@ export function PatientCard({ patient, onSelect, onDelete, onArchive }: PatientC
                     }}
                     className="cursor-pointer"
                   >
-                    <ChevronRight className="mr-2 h-4 w-4" />
+                    <Eye className="mr-2 h-4 w-4" />
                     Просмотреть детали
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowArchiveDialog(true);
-                    }}
-                    className="cursor-pointer text-orange-600 focus:text-orange-600"
-                  >
-                    <Archive className="mr-2 h-4 w-4" />
-                    Архивировать
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowDeleteDialog(true);
-                    }}
-                    className="cursor-pointer text-red-600 focus:text-red-600"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Удалить
-                  </DropdownMenuItem>
+                  {patient.status === 'Архив' || patient.status === 'archived' ? (
+                    <DropdownMenuItem 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowUnarchiveDialog(true);
+                      }}
+                      className="cursor-pointer text-green-600 focus:text-green-600"
+                    >
+                      <Archive className="mr-2 h-4 w-4" />
+                      Из архива
+                    </DropdownMenuItem>
+                  ) : (
+                    <>
+                      <DropdownMenuItem 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowArchiveDialog(true);
+                        }}
+                        className="cursor-pointer text-orange-600 focus:text-orange-600"
+                      >
+                        <Archive className="mr-2 h-4 w-4" />
+                        Архивировать
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDeleteDialog(true);
+                        }}
+                        className="cursor-pointer text-red-600 focus:text-red-600"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Удалить
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -148,6 +176,7 @@ export function PatientCard({ patient, onSelect, onDelete, onArchive }: PatientC
               <span className="font-medium text-gray-700">{patient.nextAppointment}</span>
             </div>
           </div>
+          
         </CardContent>
       </Card>
 
@@ -190,6 +219,28 @@ export function PatientCard({ patient, onSelect, onDelete, onArchive }: PatientC
               className="bg-orange-600 hover:bg-orange-700 text-white"
             >
               Архивировать
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Unarchive Confirmation Dialog */}
+      <AlertDialog open={showUnarchiveDialog} onOpenChange={setShowUnarchiveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Восстановить пациента?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите восстановить пациента <strong>{patient.name}</strong> из архива? 
+              Пациент будет возвращен в активный список.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleUnarchive}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              Восстановить
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
