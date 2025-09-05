@@ -50,7 +50,7 @@ try {
 - Updates patient's history in local state
 - Comprehensive error handling
 
-**API Endpoint**: `https://new.avishifo.uz/api/patients/kasallik-tarixi/?patient_id=${patientId}`
+**API Endpoint**: `https://localhost:8000/api/patients/kasallik-tarixi/?patient_id=${patientId}`
 
 ### 3. Automatic Refresh on Patient Selection
 
@@ -166,8 +166,8 @@ useEffect(() => {
 ## Technical Details
 
 ### API Endpoints Used
-- **POST**: `https://new.avishifo.uz/api/patients/kasallik-tarixi/` (Save medical history)
-- **GET**: `https://new.avishifo.uz/api/patients/kasallik-tarixi/?patient_id=${patientId}` (Fetch medical history)
+- **POST**: `https://localhost:8000/api/patients/kasallik-tarixi/` (Save medical history)
+- **GET**: `https://localhost:8000/api/patients/kasallik-tarixi/?patient_id=${patientId}` (Fetch medical history)
 
 ### Data Flow
 1. **Save**: Form → Frontend → Backend API → Database

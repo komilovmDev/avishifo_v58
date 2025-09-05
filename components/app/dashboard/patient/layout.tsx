@@ -6,7 +6,9 @@ import { Activity, LogOut, HelpCircle, ChevronRight, User, CalendarIcon, Message
 import { Button } from "@/components/ui/button"
 import axios from "axios"
 
-const API_BASE_URL = "https://new.avishifo.uz"
+import { API_CONFIG } from "../../../config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 interface SidebarItem {
   id: string
@@ -102,7 +104,7 @@ export default function PatientLayout({
       }
 
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/accounts/profile/`, {
+        const response = await axios.get(API_CONFIG.ENDPOINTS.PROFILE, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation"
 import SuperAdminDashboard from "@/components/Super-admin/SuperAdminDashboard"
 import axios from "axios"
 
-const API_BASE_URL = "https://new.avishifo.uz"
+import { API_CONFIG } from "../../../../config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 export default function SuperAdminDashboardPage() {
   const router = useRouter()
@@ -24,7 +26,7 @@ export default function SuperAdminDashboardPage() {
 
       try {
         // Verify token and get user data
-        const response = await axios.get(`${API_BASE_URL}/api/accounts/profile/`, {
+        const response = await axios.get(API_CONFIG.ENDPOINTS.PROFILE, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

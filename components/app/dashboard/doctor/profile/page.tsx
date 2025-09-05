@@ -18,8 +18,9 @@ import {
 } from "lucide-react"
 
 // API Configuration - Updated with correct endpoints
-// const API_BASE_URL = "http://localhost:8000" // Development server
-const API_BASE_URL = "https://new.avishifo.uz" // Production server
+import { API_CONFIG } from "../../../../config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 // Updated API endpoints based on backend structure
 const DOCTOR_PROFILE_API = `${API_BASE_URL}/api/doctors/profile/`
@@ -529,7 +530,7 @@ export default function DoctorProfilePage() {
                         userProfile.profile_picture 
                           ? userProfile.profile_picture.startsWith('http') 
                             ? userProfile.profile_picture 
-                            : `https://new.avishifo.uz${userProfile.profile_picture}`
+                                                          : `${API_CONFIG.BASE_URL}${userProfile.profile_picture}`
                           : "/placeholder.svg"
                       } 
                       alt="Profile Picture"

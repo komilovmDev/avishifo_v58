@@ -8,7 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Badge } from "@/components/ui/badge"
 import { Pill, Calendar, Clock, CheckCircle, MoreHorizontal, Plus, Check } from "lucide-react"
 
-const API_BASE_URL = "https://new.avishifo.uz"
+import { API_CONFIG } from "../../../../config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 export default function PatientMedicationsPage() {
   const router = useRouter()
@@ -24,7 +26,7 @@ export default function PatientMedicationsPage() {
       }
 
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/accounts/profile/`, {
+        const response = await axios.get(API_CONFIG.ENDPOINTS.PROFILE, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

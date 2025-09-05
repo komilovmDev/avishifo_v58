@@ -114,7 +114,9 @@ interface DoctorProfile {
   medical_identifier?: string | null;
 }
 
-const API_BASE_URL = "https://new.avishifo.uz";
+import { API_CONFIG } from "../../config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 const InfoItem = ({ icon: Icon, label, children, htmlFor, tooltip }: {
   icon: React.ElementType;
@@ -221,7 +223,7 @@ export function ProfileSection() {
           },
         });
 
-      const profileResponse = await fetchWithAuth(`${API_BASE_URL}/api/doctors/doctor/profile/`);
+      const profileResponse = await fetchWithAuth(`${API_CONFIG.BASE_URL}/api/doctors/doctor/profile/`);
       if (!profileResponse.ok) throw new Error("Не удалось загрузить профиль пользователя");
 
       const profileData = await profileResponse.json();
@@ -340,7 +342,7 @@ export function ProfileSection() {
         bio: editForm.bio
       };
 
-      const response = await fetchWithAuth(`${API_BASE_URL}/api/doctors/doctor/profile/`, {
+      const response = await fetchWithAuth(`${API_CONFIG.BASE_URL}/api/doctors/doctor/profile/`, {
         body: JSON.stringify(updateData),
       });
 
@@ -462,7 +464,7 @@ export function ProfileSection() {
           <div className="flex flex-col md:flex-row items-center md:items-end gap-6">
             <Avatar className="w-36 h-36 md:w-44 md:h-44 rounded-xl border-4 border-white shadow-xl">
               <AvatarImage
-                src={`${API_BASE_URL}${profile.user.profile_picture || "/placeholder.svg?height=176&width=176&query=doctor%20portrait"}`}
+                src={`${API_CONFIG.BASE_URL}${profile.user.profile_picture || "/placeholder.svg?height=176&width=176&query=doctor%20portrait"}`}
                 alt={profile.user.first_name + " " + profile.user.last_name}
               />
               <AvatarFallback className="text-4xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">

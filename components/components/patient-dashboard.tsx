@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
+import { API_CONFIG } from "../config/api"
 import {
   Heart,
   MessageCircle,
@@ -83,7 +84,7 @@ export default function PatientDashboard({ onLogout, userData = {} }: PatientDas
         return
       }
 
-      const response = await fetch("https://new.avishifo.uz/api/accounts/profile/", {
+      const response = await fetch(API_CONFIG.ENDPOINTS.PROFILE, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",

@@ -28,7 +28,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import axios from "axios"
 
-const API_BASE_URL = "https://new.avishifo.uz"
+import { API_CONFIG } from "../../config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 interface AppointmentType {
   id: number

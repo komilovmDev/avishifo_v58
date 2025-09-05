@@ -10,7 +10,9 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { FileText, Shield, Plus } from "lucide-react"
 
-const API_BASE_URL = "https://new.avishifo.uz"
+import { API_CONFIG } from "../../../../config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 export default function PatientProfilePage() {
   const router = useRouter()
@@ -36,7 +38,7 @@ export default function PatientProfilePage() {
       }
 
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/accounts/profile/`, {
+        const response = await axios.get(API_CONFIG.ENDPOINTS.PROFILE, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -119,7 +121,7 @@ export default function PatientProfilePage() {
         return
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/accounts/profile/`, {
+      const response = await fetch(API_CONFIG.ENDPOINTS.PROFILE, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,

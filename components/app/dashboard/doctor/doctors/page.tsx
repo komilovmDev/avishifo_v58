@@ -17,7 +17,9 @@ import axios from "axios"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
-const API_BASE_URL = "https://new.avishifo.uz"
+import { API_CONFIG } from "../../../../config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 // Type definitions
 interface Doctor {
@@ -208,7 +210,7 @@ export default function DoctorsPage() {
       if (typeof window !== 'undefined') {
         const token = localStorage.getItem("accessToken")
         if (token) {
-          const response = await axios.get(`${API_BASE_URL}/api/doctors/`, {
+          const response = await axios.get(`${API_CONFIG.BASE_URL}/api/doctors/`, {
             headers: { Authorization: `Bearer ${token}` }
           })
           // Group doctors by specialization

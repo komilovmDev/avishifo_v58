@@ -9,7 +9,9 @@ import axios from "axios"
 import LoginPage from "@/components/login-page"
 
 // Define API base URL
-const API_BASE_URL = "https://new.avishifo.uz"
+import { API_CONFIG } from "../config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 // ... (ваши типы UserData, UserRole, CurrentUserState) ...
 interface BaseUserData {
@@ -59,7 +61,7 @@ export default function Home() {
       if (token) {
         try {
           // Verify token and get user data
-          const response = await axios.get(`${API_BASE_URL}/api/accounts/profile/`, {
+          const response = await axios.get(API_CONFIG.ENDPOINTS.PROFILE, {
             headers: {
               Authorization: `Bearer ${token}`,
             },

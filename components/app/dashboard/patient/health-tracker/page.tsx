@@ -9,7 +9,9 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Heart, Activity, Target, Zap, BarChart3, Plus } from "lucide-react"
 
-const API_BASE_URL = "https://new.avishifo.uz"
+import { API_CONFIG } from "../../../../config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 export default function PatientHealthTrackerPage() {
   const router = useRouter()
@@ -25,7 +27,7 @@ export default function PatientHealthTrackerPage() {
       }
 
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/accounts/profile/`, {
+        const response = await axios.get(API_CONFIG.ENDPOINTS.PROFILE, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

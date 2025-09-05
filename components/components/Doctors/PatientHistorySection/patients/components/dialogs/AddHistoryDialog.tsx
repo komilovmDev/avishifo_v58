@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { MedicalHistoryForm } from "../../types";
+import { API_CONFIG } from "../../../../../../config/api";
 import {
   Dialog,
   DialogContent,
@@ -235,7 +236,7 @@ export function AddHistoryDialog({
       }
 
       const response = await fetch(
-        "https://new.avishifo.uz/api/patients/kasallik-tarixi/",
+        `${API_CONFIG.BASE_URL}/api/patients/kasallik-tarixi/`,
         {
           method: "POST",
           headers: {

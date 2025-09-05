@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { API_CONFIG } from "../../../config/api"
 
 export default function TestMedicalHistoryAPI() {
   const [patients, setPatients] = useState<any[]>([])
@@ -61,7 +62,7 @@ export default function TestMedicalHistoryAPI() {
         return
       }
 
-      const response = await fetch('https://new.avishifo.uz/api/patients/patientlar/', {
+      const response = await fetch(API_CONFIG.ENDPOINTS.PATIENTS, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -111,10 +112,11 @@ export default function TestMedicalHistoryAPI() {
         birth_date: "1990-01-01",
         gender: "male",
         blood_group: "A+",
-        address: "Test Address"
+        address: "Test Address",
+        status: "active"
       }
 
-      const response = await fetch('https://new.avishifo.uz/api/patients/create/', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/patients/create/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -156,7 +158,7 @@ export default function TestMedicalHistoryAPI() {
 
       console.log("Testing API with data:", testData)
 
-      const response = await fetch('https://new.avishifo.uz/api/patients/kasallik-tarixi/', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/patients/kasallik-tarixi/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -194,7 +196,7 @@ export default function TestMedicalHistoryAPI() {
         return
       }
 
-      const response = await fetch('https://new.avishifo.uz/api/patients/kasallik-tarixi/', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/patients/kasallik-tarixi/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

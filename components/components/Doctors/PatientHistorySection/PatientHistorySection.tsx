@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { API_CONFIG } from "../../../config/api"
 import {
   Search,
   ChevronRight,
@@ -339,7 +340,7 @@ export function PatientHistorySection() {
         throw new Error("No access token found. Please log in.");
       }
 
-      const response = await fetch("https://new.avishifo.uz/api/patients/patientlar/", {
+      const response = await fetch(API_CONFIG.ENDPOINTS.PATIENTS, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -431,7 +432,7 @@ export function PatientHistorySection() {
       const token = localStorage.getItem("accessToken");
       if (!token) throw new Error("No access token found.");
 
-      const response = await fetch(`https://new.avishifo.uz/api/patients/kasallik-tarixi/?patient_id=${patientId}`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/patients/kasallik-tarixi/?patient_id=${patientId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -844,7 +845,7 @@ ${entry.doktor_tavsiyalari || "Не указано"}
       }
 
       // Make API call to save medical history
-      const response = await fetch('https://new.avishifo.uz/api/patients/kasallik-tarixi/', {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/patients/kasallik-tarixi/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1083,10 +1084,11 @@ ${medicalHistory.doctorRecommendations || "Kiritilmagan"}
       phone: newPatient.phone || null,
       secondary_phone: null,
       address: newPatient.address || null,
+      status: 'active',
     }
 
     try {
-      const response = await fetch("https://new.avishifo.uz/api/patients/create/", {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/patients/create/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

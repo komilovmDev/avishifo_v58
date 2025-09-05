@@ -13,7 +13,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 
 // Define the API base URL
-const API_BASE_URL = "https://new.avishifo.uz"
+import { API_CONFIG } from "../config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 type UserType = "doctor" | "patient" | "super-admin"
 
@@ -55,7 +57,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     try {
       // Make API call to login endpoint
-      const response = await axios.post(`${API_BASE_URL}/api/auth/login/`, {
+      const response = await axios.post(API_CONFIG.ENDPOINTS.LOGIN, {
         username: username, // Using email as username
         password: password,
       })
@@ -68,7 +70,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       localStorage.setItem("refreshToken", refresh)
 
       // Get user profile data
-      const userResponse = await axios.get(`${API_BASE_URL}/api/accounts/profile/`, {
+      const userResponse = await axios.get(API_CONFIG.ENDPOINTS.PROFILE, {
         headers: {
           Authorization: `Bearer ${access}`,
         },

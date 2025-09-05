@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { API_CONFIG } from "../../../config/api"
 
 export default function APITestComponent() {
   const [patientsResult, setPatientsResult] = useState<string>("")
@@ -15,7 +16,7 @@ export default function APITestComponent() {
   const testPatientsAPI = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch('https://new.avishifo.uz/api/patients/patientlar/', {
+      const response = await fetch(API_CONFIG.ENDPOINTS.PATIENTS, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -36,7 +37,7 @@ export default function APITestComponent() {
   const testMedicalHistoryAPI = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch(`https://new.avishifo.uz/api/patients/kasallik-tarixi/?patient_id=${patientId}`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/patients/kasallik-tarixi/?patient_id=${patientId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -124,19 +125,19 @@ export default function APITestComponent() {
             <div>
               <strong>Patients API:</strong> 
               <code className="ml-2 bg-gray-100 px-2 py-1 rounded">
-                GET https://new.avishifo.uz/api/patients/patientlar/
+                GET {API_CONFIG.ENDPOINTS.PATIENTS}
               </code>
             </div>
             <div>
               <strong>Medical History API:</strong> 
               <code className="ml-2 bg-gray-100 px-2 py-1 rounded">
-                GET https://new.avishifo.uz/api/patients/kasallik-tarixi/?patient_id={id}
+                GET {API_CONFIG.BASE_URL}/api/patients/kasallik-tarixi/?patient_id={id}
               </code>
             </div>
             <div>
               <strong>Create Patient API:</strong> 
               <code className="ml-2 bg-gray-100 px-2 py-1 rounded">
-                POST https://new.avishifo.uz/api/patients/create/
+                POST {API_CONFIG.BASE_URL}/api/patients/create/
               </code>
             </div>
           </div>

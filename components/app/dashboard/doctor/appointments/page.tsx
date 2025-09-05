@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation"
 import { AppointmentsManagementSection } from "@/components/Doctors/appointments-management"
 import axios from "axios"
 
-const API_BASE_URL = "https://new.avishifo.uz"
+import { API_CONFIG } from "../../../../config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 export default function DoctorAppointmentsPage() {
   const router = useRouter()
@@ -21,7 +23,7 @@ export default function DoctorAppointmentsPage() {
       }
 
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/accounts/profile/`, {
+        const response = await axios.get(API_CONFIG.ENDPOINTS.PROFILE, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

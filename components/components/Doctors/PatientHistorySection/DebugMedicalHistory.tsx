@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { API_CONFIG } from "../../../config/api"
 
 export default function DebugMedicalHistory() {
   const [results, setResults] = useState<string[]>([])
@@ -52,7 +53,7 @@ export default function DebugMedicalHistory() {
 
       addResult("Making GET request to patients API...")
       
-      const response = await fetch('https://new.avishifo.uz/api/patients/patientlar/', {
+      const response = await fetch(API_CONFIG.ENDPOINTS.PATIENTS, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -93,7 +94,7 @@ export default function DebugMedicalHistory() {
       }
 
       // First get a patient ID
-      const patientsResponse = await fetch('https://new.avishifo.uz/api/patients/patientlar/', {
+      const patientsResponse = await fetch(API_CONFIG.ENDPOINTS.PATIENTS, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -119,7 +120,7 @@ export default function DebugMedicalHistory() {
 
       // Test GET medical history
       addResult("Testing GET medical history...")
-      const getResponse = await fetch(`https://new.avishifo.uz/api/patients/kasallik-tarixi/?patient_id=${testPatientId}`, {
+      const getResponse = await fetch(`${API_CONFIG.BASE_URL}/api/patients/kasallik-tarixi/?patient_id=${testPatientId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -156,7 +157,7 @@ export default function DebugMedicalHistory() {
       }
 
       // First get a patient ID
-      const patientsResponse = await fetch('https://new.avishifo.uz/api/patients/patientlar/', {
+      const patientsResponse = await fetch(API_CONFIG.ENDPOINTS.PATIENTS, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -213,7 +214,7 @@ export default function DebugMedicalHistory() {
 
       addResult(`Sending test data: ${JSON.stringify(testData, null, 2)}`)
 
-      const postResponse = await fetch('https://new.avishifo.uz/api/patients/kasallik-tarixi/', {
+      const postResponse = await fetch(`${API_CONFIG.BASE_URL}/api/patients/kasallik-tarixi/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -21,9 +21,10 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
 
+import { API_CONFIG } from "../../config/api";
+
 // API Base URL
-// const API_BASE_URL = "http://localhost:8000"
-const API_BASE_URL = "https://new.avishifo.uz"
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 // Chat sessiyalari uchun standart sarlavhalarni yaratish
 const generateDefaultTitle = (sessionId: string) => {
@@ -102,8 +103,8 @@ function MarkdownContent({ content, isUserMessage = false }: { content: string; 
             const textContent = node?.children[0]?.type === 'text' ? node.children[0].value : ''
             const style = headerStyles[textContent.trim()]
             if (style) {
-              return (
-                <div
+  return (
+    <div
                   className={`bg-gradient-to-r ${style.gradient} text-white px-6 py-4 rounded-xl shadow-lg my-6`}
                 >
                   <h2 className="text-xl font-bold flex items-center gap-3 text-white my-0">
@@ -380,7 +381,7 @@ export function AiChatSection() {
         return null
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/`, {
+      const response = await fetch(API_CONFIG.ENDPOINTS.CHAT_SESSIONS, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -422,7 +423,7 @@ export function AiChatSection() {
       }
 
       // Try to fetch from backend API
-      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/`, {
+      const response = await fetch(API_CONFIG.ENDPOINTS.CHAT_SESSIONS, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -486,7 +487,7 @@ export function AiChatSection() {
       }
 
       // Try to fetch stats from backend
-      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/stats/`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/chat/gpt/stats/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -670,7 +671,7 @@ export function AiChatSection() {
           formData.append("text", textMessage)
           formData.append("model", selectedModel)
 
-          const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_combined_image_and_text/`, {
+          const response = await fetch(`${API_CONFIG.BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_combined_image_and_text/`, {
             method: "POST",
             headers: {
               Authorization: `Bearer ${token}`,
@@ -726,7 +727,7 @@ export function AiChatSection() {
 
       const messageStartTime = Date.now() // Define start time locally
 
-      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_message/`, {
+      const response = await fetch(API_CONFIG.ENDPOINTS.CHAT_SEND_MESSAGE(currentSessionId), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -772,7 +773,7 @@ export function AiChatSection() {
       const formData = new FormData()
       formData.append("image", imageFile)
 
-      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_image/`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/chat/gpt/chats/${currentSessionId}/send_image/`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -844,7 +845,7 @@ export function AiChatSection() {
 - Профилактические препараты
 
 5. Заключение:
-Для получения полного анализа в стиле AviShifo необходима активация полной версии системы с подключением к backend API https://new.avishifo.uz/
+Для получения полного анализа в стиле AviShifo необходима активация полной версии системы с подключением к backend API ${API_CONFIG.BASE_URL}/
 
 Демо-режим ограничивает возможности детального медицинского анализа.`
   }
@@ -895,7 +896,7 @@ export function AiChatSection() {
       }
 
       // Try to load from backend API
-      const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${session.id}/`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/chat/gpt/chats/${session.id}/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -978,7 +979,7 @@ export function AiChatSection() {
       const token = getAuthToken()
       if (token && !sessionId.startsWith("local-")) {
         // Try to delete via backend API
-        const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/${sessionId}/`, {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/api/chat/gpt/chats/${sessionId}/`, {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -1028,7 +1029,7 @@ export function AiChatSection() {
       const token = getAuthToken()
       if (token) {
         // Try to search via backend API
-        const response = await fetch(`${API_BASE_URL}/api/chat/gpt/chats/?search=${encodeURIComponent(query)}`, {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/api/chat/gpt/chats/?search=${encodeURIComponent(query)}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -1152,7 +1153,7 @@ export function AiChatSection() {
   const getConnectionText = () => {
     switch (connectionStatus) {
       case "connected":
-        return "Подключен к new.avishifo.uz"
+        return `Подключен к ${API_CONFIG.BASE_URL}`
       case "disconnected":
         return "Нет подключения"
       case "demo":
@@ -1238,15 +1239,15 @@ export function AiChatSection() {
                             <p className="text-xs text-gray-600 mb-2">{model.description}</p>
                             <div className="flex items-center gap-2">
                               {model.isSelected ? (
-                                <div className="flex items-center gap-2 text-green-600">
-                                  <Check className="w-3 h-3" />
-                                  <span className="text-xs font-medium">Выбрано</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1 text-blue-600">
-                                  <Plus className="w-3 h-3" />
-                                  <span className="text-xs font-medium">Новый чат</span>
-                                </div>
+                                  <div className="flex items-center gap-2 text-green-600">
+                                    <Check className="w-3 h-3" />
+                                    <span className="text-xs font-medium">Выбрано</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1 text-blue-600">
+                                    <Plus className="w-3 h-3" />
+                                    <span className="text-xs font-medium">Новый чат</span>
+                                  </div>
                               )}
                             </div>
                           </div>
@@ -1307,7 +1308,7 @@ export function AiChatSection() {
                           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                             <p className="font-medium text-blue-800 mb-2">Уважаемый доктор!</p>
                             <p className="text-blue-700">Для корректной работы AviRadiolog просим вносить данные пациента в следующем формате. Чем полнее и точнее будут данные, тем качественнее результат анализа.</p>
-                          </div>
+                  </div>
                           
                           <div className="grid md:grid-cols-2 gap-4">
                             <div className="bg-green-50 p-3 rounded-lg border border-green-200">
@@ -1318,7 +1319,7 @@ export function AiChatSection() {
                                 <li>• Рост / вес (опционально)</li>
                                 <li>• Анамнез (хронические болезни, курение, операции)</li>
                               </ul>
-                            </div>
+                </div>
                             
                             <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
                               <h4 className="font-semibold text-purple-800 mb-2">2. Клиническая картина</h4>
@@ -1415,15 +1416,15 @@ AviRadiolog — это ассистент для анализа медицинс
 - Все результаты должны интерпретироваться вместе с клиническими данными.
 - Если AviRadiolog указывает на «ограничения» — это сигнал, что нужно добавить больше данных или переснять исследование.`}
                               />
-                            </div>
-                          )}
-                        </div>
+                    </div>
+                  )}
+                  </div>
                       ) : selectedModel === "avishifo-ai" ? (
                         <div className="text-sm leading-relaxed space-y-4">
                           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                             <p className="font-medium text-blue-800 mb-2">Уважаемый доктор,</p>
                             <p className="text-blue-700">AviShifo — ваш клинический ассистент. Платформа анализирует введённые данные пациента и формирует диагностические и лечебные рекомендации. Для корректной работы важно вводить данные максимально полно и структурированно.</p>
-                          </div>
+                </div>
                           <div className="grid md:grid-cols-2 gap-4">
                             <div className="bg-green-50 p-3 rounded-lg border border-green-200">
                               <h4 className="font-semibold text-green-800 mb-2">Субъективные данные (обязательны нужно вести данные):</h4>
@@ -1433,7 +1434,7 @@ AviRadiolog — это ассистент для анализа медицинс
                                 <li>- Характеристика симптомов (локализация, интенсивность, частота и т. д.)</li>
                                 <li>- История заболевания (анамнез настоящего заболевания)</li>
                               </ul>
-                            </div>
+              </div>
                             <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
                               <div className="grid md:grid-cols-3 gap-3">
                                 <div>
@@ -1444,7 +1445,7 @@ AviRadiolog — это ассистент для анализа медицинс
                                     <li>- С-реактивный белок (CRP)</li>
                                     <li>- Другие доступные показатели</li>
                                   </ul>
-                                </div>
+            </div>
                                 <div>
                                   <h4 className="font-semibold text-purple-800 mb-2">Инструментальные исследования (не обязательно, но желательно ввести данные):</h4>
                                   <ul className="text-purple-700 space-y-1 text-xs">
@@ -1541,7 +1542,7 @@ AviShifo — это клинический ассистент, который п
 - Если AviShifo указывает на «ограничения» — это не ошибка, а подсказка, что нужно добавить данные.
 - Используйте ответы как структурированный план, который можно дополнить своим опытом и протоколами.`}
                               />
-                            </div>
+                  </div>
                           )}
                         </div>
                       ) : (
@@ -1616,16 +1617,16 @@ AviShifo — это клинический ассистент, который п
                              ? "text-blue-100" 
                              : "text-gray-600"
                          }`}>
-                           <span>{msg.timestamp}</span>
-                           {msg.response_time_ms && (
-                             <>
-                               <span>•</span>
-                               <span>{msg.response_time_ms}ms</span>
-                             </>
-                           )}
+                          <span>{msg.timestamp}</span>
+                          {msg.response_time_ms && (
+                            <>
+                              <span>•</span>
+                              <span>{msg.response_time_ms}ms</span>
+                            </>
+                          )}
                            {msg.role === "user" && (
-                             <>
-                               <span>•</span>
+                            <>
+                              <span>•</span>
                                <Button
                                  size="sm"
                                  variant="ghost"
@@ -1657,11 +1658,11 @@ AviShifo — это клинический ассистент, который п
                                   <Edit className="w-3 h-3 mr-1" />
                                   Edit
                                 </Button>
-                             </>
-                           )}
+                            </>
+                          )}
                            {msg.role === "assistant" && (
-                              <>
-                                <span>•</span>
+                            <>
+                              <span>•</span>
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -1678,9 +1679,9 @@ AviShifo — это клинический ассистент, который п
                                   <Copy className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
                                   <span className="group-hover:text-blue-600 transition-colors duration-200">Copy</span>
                                 </Button>
-                              </>
-                            )}
-                         </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1760,43 +1761,43 @@ AviShifo — это клинический ассистент, который п
               )}
               
                              <div className="flex gap-4 bg-gradient-to-r from-white via-gray-50/80 to-blue-50/80 rounded-3xl border border-gray-200/60 p-6 shadow-2xl items-end backdrop-blur-md">
-                 <input
-                   type="file"
-                   ref={fileInputRef}
-                   onChange={handleFileSelect}
-                   className="hidden"
-                   multiple
-                   accept="image/*,.pdf,.doc,.docx,.txt"
-                 />
-                 <Button
-                   size="icon"
-                   variant="ghost"
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  multiple
+                  accept="image/*,.pdf,.doc,.docx,.txt"
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
                    className="text-gray-500 hover:text-blue-600 hover:bg-blue-50/80 rounded-xl shrink-0 transition-all duration-300 hover:scale-110 hover:shadow-lg"
-                   onClick={() => fileInputRef.current?.click()}
-                   disabled={isLoading}
-                 >
-                   <Paperclip className="w-5 h-5" />
-                 </Button>
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading}
+                >
+                  <Paperclip className="w-5 h-5" />
+                </Button>
                                    <div className="flex-1 relative">
-                    <Textarea
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      placeholder={`Задайте медицинский вопрос - ${aiModels.find(m => m.id === selectedModel)?.name} готов к анализу...`}
+                <Textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder={`Задайте медицинский вопрос - ${aiModels.find(m => m.id === selectedModel)?.name} готов к анализу...`}
                       className="w-full bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 text-gray-800 placeholder:text-gray-500 resize-none min-h-[24px] max-h-[120px] overflow-y-auto text-base pr-24 font-medium"
-                      disabled={isLoading}
-                      rows={1}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault()
-                          sendMessage()
-                        }
-                      }}
-                      onInput={(e) => {
-                        const target = e.target as HTMLTextAreaElement
-                        target.style.height = "auto"
-                        target.style.height = Math.min(target.scrollHeight, 120) + "px"
-                      }}
-                    />
+                  disabled={isLoading}
+                  rows={1}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault()
+                      sendMessage()
+                    }
+                  }}
+                  onInput={(e) => {
+                    const target = e.target as HTMLTextAreaElement
+                    target.style.height = "auto"
+                    target.style.height = Math.min(target.scrollHeight, 120) + "px"
+                  }}
+                />
                     <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
                       {message.trim() && (
                         <>
@@ -1831,23 +1832,23 @@ AviShifo — это клинический ассистент, который п
                       )}
                     </div>
                   </div>
-                 <Button
-                   size="icon"
-                   variant="ghost"
+                <Button
+                  size="icon"
+                  variant="ghost"
                    className="text-gray-500 hover:text-green-600 hover:bg-green-50/80 rounded-xl shrink-0 transition-all duration-300 hover:scale-110 hover:shadow-lg"
-                   disabled={isLoading}
-                 >
-                   <Mic className="w-5 h-5" />
-                 </Button>
-                 <Button
-                   size="icon"
+                  disabled={isLoading}
+                >
+                  <Mic className="w-5 h-5" />
+                </Button>
+                <Button
+                  size="icon"
                    className={`rounded-2xl ${aiModels.find(m => m.id === selectedModel)?.bgColor} hover:opacity-90 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 disabled:opacity-50 ring-4 ring-white/20 hover:ring-white/40`}
-                   onClick={sendMessage}
-                   disabled={(!message.trim() && attachments.length === 0) || isLoading}
-                 >
+                  onClick={sendMessage}
+                  disabled={(!message.trim() && attachments.length === 0) || isLoading}
+                >
                    <ArrowUp className="w-6 h-6" />
-                 </Button>
-               </div>
+                </Button>
+              </div>
               
               <p className="text-xs text-gray-600 mt-3 text-center">
                 <span className="text-green-600 font-medium">✓ Подключен </span> • 

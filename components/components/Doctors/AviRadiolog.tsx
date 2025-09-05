@@ -35,8 +35,9 @@ import { useEffect, useRef, useState } from "react"
 import { Textarea } from "@/components/ui/textarea"
 
 // API Base URL
-const API_BASE_URL = "https://new.avishifo.uz" // Yangi API uchun o'zgartirildi
-// const API_BASE_URL = "http://localhost:8000"
+import { API_CONFIG } from "../../config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 interface AiMessage {
   id?: string

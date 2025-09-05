@@ -10,7 +10,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Calendar, Clock, MapPin, Phone, Video, MessageCircle, Plus, Search, Filter, Stethoscope, CheckCircle, XCircle, AlertCircle } from "lucide-react"
 
-const API_BASE_URL = "https://new.avishifo.uz"
+import { API_CONFIG } from "../../../../config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 export default function PatientAppointmentsPage() {
   const router = useRouter()
@@ -27,7 +29,7 @@ export default function PatientAppointmentsPage() {
       }
 
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/accounts/profile/`, {
+        const response = await axios.get(API_CONFIG.ENDPOINTS.PROFILE, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

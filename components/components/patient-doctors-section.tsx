@@ -41,7 +41,9 @@ import { Send } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 
-const API_BASE_URL = "https://new.avishifo.uz"
+import { API_CONFIG } from "../config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 // Интерфейсы для API
 interface DoctorApiType {

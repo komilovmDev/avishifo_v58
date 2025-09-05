@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { API_CONFIG } from "../../../../config/api";
 
 // Импортируем все типы из нашего центрального файла
 import {
@@ -174,7 +175,7 @@ export default function PatientsPage() {
       if (!token) throw new Error("No access token found. Please log in.");
 
       const response = await fetch(
-        "https://new.avishifo.uz/api/patients/patientlar/",
+        API_CONFIG.ENDPOINTS.PATIENTS,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -316,9 +317,10 @@ export default function PatientsPage() {
         gender: mapGender(newPatient.gender),
         blood_group: mapBloodGroup(newPatient.bloodType),
         address: newPatient.address || null,
+        status: 'active',
       } as any;
 
-      const response = await fetch("https://new.avishifo.uz/api/patients/create/", {
+              const response = await fetch(`${API_CONFIG.BASE_URL}/api/patients/create/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -405,9 +407,9 @@ export default function PatientsPage() {
         shikoyatlar: medicalHistory.mainComplaints
       });
       
-      const response = await fetch(
-        "https://new.avishifo.uz/api/patients/kasallik-tarixi/",
-        {
+              const response = await fetch(
+          `${API_CONFIG.BASE_URL}/api/patients/kasallik-tarixi/`,
+          {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
           body: formData,
@@ -493,9 +495,9 @@ export default function PatientsPage() {
         shikoyatlar: updatedHistory.mainComplaints
       });
       
-      const response = await fetch(
-        "https://new.avishifo.uz/api/patients/kasallik-tarixi/",
-        {
+              const response = await fetch(
+          `${API_CONFIG.BASE_URL}/api/patients/kasallik-tarixi/`,
+          {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
           body: formData,
@@ -677,7 +679,7 @@ export default function PatientsPage() {
       const token = localStorage.getItem("accessToken");
       if (!token) throw new Error("No access token found.");
 
-      const response = await fetch(`https://new.avishifo.uz/api/patients/kasallik-tarixi/?patient_id=${patientId}`, {
+              const response = await fetch(`${API_CONFIG.BASE_URL}/api/patients/kasallik-tarixi/?patient_id=${patientId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -951,6 +953,87 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
 
   const selectedPatient = patients.find((p) => p.id === selectedPatientId);
 
+  // --- Delete and Archive Handlers ---
+  const handleDeletePatient = async (patientId: string) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) throw new Error("No access token found");
+
+      console.log("Deleting patient with ID:", patientId);
+      console.log("Delete URL:", API_CONFIG.ENDPOINTS.PATIENT_DELETE(patientId));
+      console.log("Patient ID type:", typeof patientId);
+
+      const response = await fetch(
+        API_CONFIG.ENDPOINTS.PATIENT_DELETE(patientId),
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Remove patient from local state
+      setPatients(prev => prev.filter(p => p.id !== patientId));
+      
+      // If deleted patient was selected, clear selection
+      if (selectedPatientId === patientId) {
+        setSelectedPatientId(null);
+        const url = new URL(window.location.href);
+        url.searchParams.delete('patient');
+        router.replace(url.pathname + url.search, { scroll: false });
+      }
+
+      console.log("Patient deleted successfully");
+    } catch (error) {
+      console.error("Error deleting patient:", error);
+      // You might want to show a toast notification here
+    }
+  };
+
+  const handleArchivePatient = async (patientId: string) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) throw new Error("No access token found");
+
+      console.log("Archiving patient with ID:", patientId);
+      console.log("Archive URL:", API_CONFIG.ENDPOINTS.PATIENT_ARCHIVE(patientId));
+      console.log("Patient ID type:", typeof patientId);
+
+      // Update patient status to archived
+      const response = await fetch(
+        API_CONFIG.ENDPOINTS.PATIENT_ARCHIVE(patientId),
+        {
+          method: "PATCH",
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Update patient in local state
+      setPatients(prev => 
+        prev.map(p => 
+          p.id === patientId 
+            ? { ...p, status: "Архив", statusColor: "gray" }
+            : p
+        )
+      );
+
+      console.log("Patient archived successfully");
+    } catch (error) {
+      console.error("Error archiving patient:", error);
+      // You might want to show a toast notification here
+    }
+  };
+
   // --- Рендеринг ---
   if (isLoading) {
     return (
@@ -996,6 +1079,8 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
           }}
           onOpenCreateDialog={() => setShowCreatePatientDialog(true)}
           onRefresh={fetchPatients}
+          onDeletePatient={handleDeletePatient}
+          onArchivePatient={handleArchivePatient}
         />
       )}
 

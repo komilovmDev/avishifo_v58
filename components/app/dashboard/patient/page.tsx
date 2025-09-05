@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation"
 import PatientDashboard from "@/components/patient-dashboard"
 import axios from "axios"
 
-const API_BASE_URL = "https://new.avishifo.uz"
+import { API_CONFIG } from "../../../../config/api";
+
+const API_BASE_URL = API_CONFIG.BASE_URL
 
 export default function PatientDashboardPage() {
   const router = useRouter()
@@ -23,7 +25,7 @@ export default function PatientDashboardPage() {
 
       try {
         // Verify token and get user data
-        const response = await axios.get(`${API_BASE_URL}/api/accounts/profile/`, {
+        const response = await axios.get(API_CONFIG.ENDPOINTS.PROFILE, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
