@@ -83,6 +83,7 @@ export default function PatientsPage() {
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(
     null
   );
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
@@ -274,6 +275,20 @@ export default function PatientsPage() {
       setSelectedPatientId(patientIdFromUrl);
     }
   }, []);
+
+  // Update selectedPatient when selectedPatientId changes
+  useEffect(() => {
+    if (selectedPatientId) {
+      console.log("Looking for patient with ID:", selectedPatientId, "Type:", typeof selectedPatientId);
+      console.log("Available patients:", patients.map(p => ({ id: p.id, type: typeof p.id, name: p.name })));
+      
+      const patient = patients.find((p) => String(p.id) === String(selectedPatientId));
+      console.log("Found patient:", patient);
+      setSelectedPatient(patient || null);
+    } else {
+      setSelectedPatient(null);
+    }
+  }, [selectedPatientId, patients]);
 
   // Fetch medical history when a patient is selected
   useEffect(() => {
@@ -951,7 +966,6 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
     return matchesSearch && matchesFilter;
   });
 
-  const selectedPatient = patients.find((p) => p.id === selectedPatientId);
 
   // --- Delete and Archive Handlers ---
   const handleDeletePatient = async (patientId: string) => {
@@ -1080,6 +1094,228 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
     }
   };
 
+  const handleAddMedication = async (medicationData: any) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) throw new Error("No access token found");
+
+      console.log("Adding medication to backend:", medicationData);
+      console.log("Selected patient:", selectedPatient);
+
+      // Find or create medical record for this patient
+      let medicalRecord = selectedPatient?.medicalRecords?.[0];
+      
+      if (!medicalRecord) {
+        console.log("No medical record found, creating one...");
+        console.log("Patient ID:", selectedPatient?.id, "Type:", typeof selectedPatient?.id);
+        
+        // First, let's check if patient exists in backend
+        const patientCheckResponse = await fetch(API_CONFIG.ENDPOINTS.PATIENT_DETAIL(selectedPatient?.id), {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (!patientCheckResponse.ok) {
+          throw new Error(`Patient with ID ${selectedPatient?.id} not found in backend`);
+        }
+        
+        const patientData = await patientCheckResponse.json();
+        console.log("Patient data from backend:", patientData);
+        
+        // Use the actual patient ID from backend
+        const actualPatientId = patientData.id || selectedPatient?.id;
+        
+        // Create a medical record for this patient
+        const createRecordResponse = await fetch(API_CONFIG.ENDPOINTS.MEDICAL_RECORDS, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            patient_id: actualPatientId,
+            chief_complaint: "Общий осмотр",
+            diagnosis: "Общий осмотр",
+            notes: "Медицинская карта создана автоматически"
+          })
+        });
+
+        if (!createRecordResponse.ok) {
+          throw new Error(`Failed to create medical record: ${createRecordResponse.status}`);
+        }
+
+        medicalRecord = await createRecordResponse.json();
+        console.log("Created medical record:", medicalRecord);
+        
+        // Update selectedPatient with the new medical record
+        setSelectedPatient(prev => 
+          prev ? { 
+            ...prev, 
+            medicalRecords: [medicalRecord]
+          } : null
+        );
+      }
+
+      // Prepare data for backend
+      const backendData = {
+        medical_record_id: medicalRecord.id,
+        medication_name: medicationData.name,
+        dosage: medicationData.dosage,
+        frequency: medicationData.frequency,
+        start_date: medicationData.time,
+        end_date: medicationData.refill || null,
+        instructions: medicationData.instructions || ""
+      };
+      
+      console.log("Backend data for medication creation:", backendData);
+      console.log("Medical record ID:", medicalRecord.id, "Type:", typeof medicalRecord.id);
+
+      // Create medication in backend
+      console.log("Sending request to:", API_CONFIG.ENDPOINTS.MEDICATION_CREATE);
+      const response = await fetch(API_CONFIG.ENDPOINTS.MEDICATION_CREATE, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(backendData)
+      });
+
+      console.log("Response status:", response.status);
+      console.log("Response headers:", response.headers);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Backend error response:", errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+
+      const newMedication = await response.json();
+      console.log("Medication created successfully:", newMedication);
+
+      // Update local state - add medication to selectedPatient
+      setSelectedPatient(prev => 
+        prev ? { 
+          ...prev, 
+          medications: [...prev.medications, {
+            id: newMedication.id,
+            name: newMedication.medication_name,
+            dosage: newMedication.dosage,
+            frequency: newMedication.frequency,
+            time: newMedication.start_date,
+            refill: newMedication.end_date || 'Не указано'
+          }]
+        } : null
+      );
+      
+      // Update in patients list as well
+      setPatients(prevPatients => 
+        prevPatients.map(patient => 
+          patient.id === selectedPatient?.id 
+            ? { 
+                ...patient, 
+                medications: [...patient.medications, {
+                  id: newMedication.id,
+                  name: newMedication.medication_name,
+                  dosage: newMedication.dosage,
+                  frequency: newMedication.frequency,
+                  time: newMedication.start_date,
+                  refill: newMedication.end_date || 'Не указано'
+                }]
+              }
+            : patient
+        )
+      );
+
+      console.log("Medication added successfully to backend");
+    } catch (error) {
+      console.error("Error adding medication:", error);
+      // You might want to show a toast notification here
+    }
+  };
+
+  const handleDeleteMedication = async (medicationId: string | number) => {
+    try {
+      const id = String(medicationId);
+      console.log("Deleting medication with ID:", id);
+
+      // Check if this is a local medication (starts with 'local-')
+      if (id.startsWith('local-')) {
+        // Handle local medication deletion
+        console.log("Deleting local medication");
+        
+        // Update local state - remove medication from selectedPatient
+        setSelectedPatient(prev => 
+          prev ? { 
+            ...prev, 
+            medications: prev.medications.filter(med => String(med.id) !== id) 
+          } : null
+        );
+        
+        // Update in patients list as well
+        setPatients(prevPatients => 
+          prevPatients.map(patient => 
+            patient.id === selectedPatient?.id 
+              ? { 
+                  ...patient, 
+                  medications: patient.medications.filter(med => String(med.id) !== id) 
+                }
+              : patient
+          )
+        );
+
+        console.log("Local medication deleted successfully");
+        return;
+      }
+
+      // Handle backend medication deletion
+      const token = localStorage.getItem("accessToken");
+      if (!token) throw new Error("No access token found");
+
+      console.log("Deleting backend medication");
+
+      // Delete medication from backend
+      const response = await fetch(
+        API_CONFIG.ENDPOINTS.MEDICATION_DELETE(id),
+        {
+          method: "DELETE",
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Update local state - remove medication from selectedPatient
+      setSelectedPatient(prev => 
+        prev ? { 
+          ...prev, 
+          medications: prev.medications.filter(med => String(med.id) !== id) 
+        } : null
+      );
+      
+      // Update in patients list as well
+      setPatients(prevPatients => 
+        prevPatients.map(patient => 
+          patient.id === selectedPatient?.id 
+            ? { 
+                ...patient, 
+                medications: patient.medications.filter(med => String(med.id) !== id) 
+              }
+            : patient
+        )
+      );
+
+      console.log("Backend medication deleted successfully");
+    } catch (error) {
+      console.error("Error deleting medication:", error);
+      // You might want to show a toast notification here
+    }
+  };
+
   // --- Рендеринг ---
   if (isLoading) {
     return (
@@ -1107,6 +1343,8 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
           onOpenAddVitalsDialog={() => setShowAddVitalsDialog(true)}
           onOpenAddDocumentDialog={() => setShowAddDocumentDialog(true)}
           onRefreshHistory={() => fetchMedicalHistory(selectedPatientId)}
+          onAddMedication={handleAddMedication}
+          onDeleteMedication={handleDeleteMedication}
         />
       ) : (
         <PatientListView

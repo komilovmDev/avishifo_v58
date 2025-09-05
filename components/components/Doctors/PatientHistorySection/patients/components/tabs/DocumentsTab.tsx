@@ -40,7 +40,14 @@ export function DocumentsTab({ patient, onOpenAddDocumentDialog }: DocumentsTabP
     }
   } catch {}
 
-  const allDocuments = [...fromLocal, ...fromHistory]
+  // Remove duplicates by name and date
+  const allDocuments = [...fromLocal, ...fromHistory].reduce((acc, doc) => {
+    const exists = acc.find(d => d.name === doc.name && d.date === doc.date);
+    if (!exists) {
+      acc.push(doc);
+    }
+    return acc;
+  }, [] as typeof fromLocal)
 
   return (
     <Card className="bg-white shadow-sm rounded-lg border">

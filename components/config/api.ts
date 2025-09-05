@@ -15,6 +15,15 @@ export const API_CONFIG = {
     PATIENT_DELETE: (id: string) => `${API_BASE_URL}/api/patients/patientlar/${id}/delete/`,
     PATIENT_ARCHIVE: (id: string) => `${API_BASE_URL}/api/patients/patientlar/${id}/archive/`,
     
+    // Medical Records
+    MEDICAL_RECORDS: `${API_BASE_URL}/api/patients/medical-records/`,
+    
+    // Medications
+    MEDICATIONS: `${API_BASE_URL}/api/patients/prescriptions/`,
+    MEDICATION_CREATE: `${API_BASE_URL}/api/patients/prescriptions/`,
+    MEDICATION_UPDATE: (id: string) => `${API_BASE_URL}/api/patients/prescriptions/${id}/`,
+    MEDICATION_DELETE: (id: string) => `${API_BASE_URL}/api/patients/prescriptions/${id}/`,
+    
     // Chat
     CHAT_SESSIONS: `${API_BASE_URL}/api/chat/gpt/chats/`,
     CHAT_SEND_MESSAGE: (id: string) => `${API_BASE_URL}/api/chat/gpt/chats/${id}/send_message/`,
