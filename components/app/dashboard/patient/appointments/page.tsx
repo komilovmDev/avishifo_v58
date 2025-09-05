@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Calendar, Clock, MapPin, Phone, Video, MessageCircle, Plus, Search, Filter, Stethoscope, CheckCircle, XCircle, AlertCircle } from "lucide-react"
 
-import { API_CONFIG } from "../../../../config/api";
+import { API_CONFIG } from "@/config/api";
 
 const API_BASE_URL = API_CONFIG.BASE_URL
 

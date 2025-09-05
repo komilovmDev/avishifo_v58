@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { API_CONFIG } from "../../../../config/api";
+import { API_CONFIG } from "@/config/api";
 
 // Импортируем все типы из нашего центрального файла
 import {

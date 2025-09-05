@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { MedicalHistoryForm } from "../../types";
-import { API_CONFIG } from "../../../../../../config/api";
+import { API_CONFIG } from "@/config/api";
 import {
   Dialog,
   DialogContent,

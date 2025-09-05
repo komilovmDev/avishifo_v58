@@ -18,7 +18,7 @@ import {
 } from "lucide-react"
 
 // API Configuration - Updated with correct endpoints
-import { API_CONFIG } from "../../../../config/api";
+import { API_CONFIG } from "@/config/api";
 
 const API_BASE_URL = API_CONFIG.BASE_URL
 

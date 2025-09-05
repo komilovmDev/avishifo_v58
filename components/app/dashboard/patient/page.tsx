@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import PatientDashboard from "@/components/patient-dashboard"
 import axios from "axios"
 
-import { API_CONFIG } from "../../../../config/api";
+import { API_CONFIG } from "@/config/api";
 
 const API_BASE_URL = API_CONFIG.BASE_URL
 

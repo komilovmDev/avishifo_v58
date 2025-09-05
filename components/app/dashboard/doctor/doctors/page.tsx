@@ -17,7 +17,7 @@ import axios from "axios"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
-import { API_CONFIG } from "../../../../config/api";
+import { API_CONFIG } from "@/config/api";
 
 const API_BASE_URL = API_CONFIG.BASE_URL
 
