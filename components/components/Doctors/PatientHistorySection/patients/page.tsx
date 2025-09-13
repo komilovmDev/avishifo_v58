@@ -1110,7 +1110,7 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
         console.log("Patient ID:", selectedPatient?.id, "Type:", typeof selectedPatient?.id);
         
         // First, let's check if patient exists in backend
-        const patientCheckResponse = await fetch(API_CONFIG.ENDPOINTS.PATIENT_DETAIL(selectedPatient?.id), {
+        const patientCheckResponse = await fetch(API_CONFIG.ENDPOINTS.PATIENT_DETAIL(selectedPatient?.id || ''), {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -1140,7 +1140,9 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
         });
 
         if (!createRecordResponse.ok) {
-          throw new Error(`Failed to create medical record: ${createRecordResponse.status}`);
+          const errorText = await createRecordResponse.text();
+          console.error("Medical record creation error:", errorText);
+          throw new Error(`Failed to create medical record: ${createRecordResponse.status} - ${errorText}`);
         }
 
         medicalRecord = await createRecordResponse.json();
@@ -1192,44 +1194,72 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
       const newMedication = await response.json();
       console.log("Medication created successfully:", newMedication);
 
-      // Update local state - add medication to selectedPatient
-      setSelectedPatient(prev => 
-        prev ? { 
-          ...prev, 
-          medications: [...prev.medications, {
-            id: newMedication.id,
-            name: newMedication.medication_name,
-            dosage: newMedication.dosage,
-            frequency: newMedication.frequency,
-            time: newMedication.start_date,
-            refill: newMedication.end_date || 'Не указано'
-          }]
-        } : null
-      );
-      
-      // Update in patients list as well
-      setPatients(prevPatients => 
-        prevPatients.map(patient => 
-          patient.id === selectedPatient?.id 
-            ? { 
-                ...patient, 
-                medications: [...patient.medications, {
-                  id: newMedication.id,
-                  name: newMedication.medication_name,
-                  dosage: newMedication.dosage,
-                  frequency: newMedication.frequency,
-                  time: newMedication.start_date,
-                  refill: newMedication.end_date || 'Не указано'
-                }]
-              }
-            : patient
-        )
-      );
+      // Refresh medications from backend instead of adding to local state
+      await refreshMedications();
 
       console.log("Medication added successfully to backend");
+      alert("Лекарство успешно добавлено!");
     } catch (error) {
       console.error("Error adding medication:", error);
-      // You might want to show a toast notification here
+      alert(`Ошибка при добавлении лекарства: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // Function to refresh medications for the selected patient
+  const refreshMedications = async () => {
+    if (!selectedPatient) return;
+    
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return;
+
+      // Fetch medications filtered by patient ID
+      const response = await fetch(`${API_CONFIG.ENDPOINTS.MEDICATIONS}?patient_id=${selectedPatient.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Refreshed medications from backend for patient:", selectedPatient.id, data);
+        
+        let medications = [];
+        if (data.results && Array.isArray(data.results)) {
+          medications = data.results;
+        } else if (Array.isArray(data)) {
+          medications = data;
+        } else {
+          return;
+        }
+        
+        // Update the selected patient with refreshed medications
+        const updatedMedications = medications.map((med: any) => ({
+          id: med.id,
+          name: med.medication_name,
+          dosage: med.dosage,
+          frequency: med.frequency,
+          time: med.start_date,
+          refill: med.end_date || 'Не указано'
+        }));
+        
+        setSelectedPatient(prev => 
+          prev ? { ...prev, medications: updatedMedications } : null
+        );
+        
+        // Update in patients list as well
+        setPatients(prevPatients => 
+          prevPatients.map(patient => 
+            patient.id === selectedPatient?.id 
+              ? { ...patient, medications: updatedMedications }
+              : patient
+          )
+        );
+        
+        console.log("Medications refreshed successfully");
+      } else {
+        console.error("Failed to refresh medications:", response.status);
+      }
+    } catch (error) {
+      console.error("Error refreshing medications:", error);
     }
   };
 
@@ -1238,34 +1268,7 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
       const id = String(medicationId);
       console.log("Deleting medication with ID:", id);
 
-      // Check if this is a local medication (starts with 'local-')
-      if (id.startsWith('local-')) {
-        // Handle local medication deletion
-        console.log("Deleting local medication");
-        
-        // Update local state - remove medication from selectedPatient
-        setSelectedPatient(prev => 
-          prev ? { 
-            ...prev, 
-            medications: prev.medications.filter(med => String(med.id) !== id) 
-          } : null
-        );
-        
-        // Update in patients list as well
-        setPatients(prevPatients => 
-          prevPatients.map(patient => 
-            patient.id === selectedPatient?.id 
-              ? { 
-                  ...patient, 
-                  medications: patient.medications.filter(med => String(med.id) !== id) 
-                }
-              : patient
-          )
-        );
-
-        console.log("Local medication deleted successfully");
-        return;
-      }
+      // All medications are now from backend, no local medications
 
       // Handle backend medication deletion
       const token = localStorage.getItem("accessToken");
@@ -1289,25 +1292,8 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Update local state - remove medication from selectedPatient
-      setSelectedPatient(prev => 
-        prev ? { 
-          ...prev, 
-          medications: prev.medications.filter(med => String(med.id) !== id) 
-        } : null
-      );
-      
-      // Update in patients list as well
-      setPatients(prevPatients => 
-        prevPatients.map(patient => 
-          patient.id === selectedPatient?.id 
-            ? { 
-                ...patient, 
-                medications: patient.medications.filter(med => String(med.id) !== id) 
-              }
-            : patient
-        )
-      );
+      // Refresh medications from backend instead of updating local state
+      await refreshMedications();
 
       console.log("Backend medication deleted successfully");
     } catch (error) {
@@ -1342,9 +1328,10 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
           onOpenAddMedicationDialog={() => setShowAddMedicationDialog(true)}
           onOpenAddVitalsDialog={() => setShowAddVitalsDialog(true)}
           onOpenAddDocumentDialog={() => setShowAddDocumentDialog(true)}
-          onRefreshHistory={() => fetchMedicalHistory(selectedPatientId)}
+          onRefreshHistory={() => fetchMedicalHistory(selectedPatientId || '')}
           onAddMedication={handleAddMedication}
           onDeleteMedication={handleDeleteMedication}
+          onRefreshMedications={refreshMedications}
         />
       ) : (
         <PatientListView
@@ -1386,8 +1373,8 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
         }}
         medicalHistory={medicalHistory}
         setMedicalHistory={setMedicalHistory}
-        patientId={selectedPatientId} // Pass the selected patient ID
-        onSubmit={addHistoryEntryHandler}
+        patientId={selectedPatientId ? parseInt(selectedPatientId) : undefined} // Pass the selected patient ID
+        onSubmitSuccess={addHistoryEntryHandler}
       />
       <EditHistoryDialog
         open={showEditHistoryDialog}
@@ -1401,11 +1388,9 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
         onSubmit={editHistoryEntryHandler}
       />
       <AddMedicationDialog
-        open={showAddMedicationDialog}
-        onOpenChange={setShowAddMedicationDialog}
-        newMedication={newMedication}
-        setNewMedication={setNewMedication}
-        onSubmit={addMedicationHandler}
+        isOpen={showAddMedicationDialog}
+        onClose={() => setShowAddMedicationDialog(false)}
+        onAddMedication={handleAddMedication}
       />
       <AddVitalsDialog
         open={showAddVitalsDialog}

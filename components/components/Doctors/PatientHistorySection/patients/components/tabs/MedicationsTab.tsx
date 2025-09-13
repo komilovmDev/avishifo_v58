@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Pill, Plus, Trash2 } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { API_CONFIG } from "@/config/api"
 import { AddMedicationDialog } from "../dialogs/AddMedicationDialog"
 
@@ -15,6 +15,7 @@ interface MedicationsTabProps {
   onOpenAddMedicationDialog: () => void;
   onAddMedication?: (medicationData: any) => void;
   onDeleteMedication?: (medicationId: string) => void;
+  onRefreshMedications?: () => void;
 }
 
 interface BackendMedication {
@@ -27,7 +28,7 @@ interface BackendMedication {
   instructions?: string;
 }
 
-export function MedicationsTab({ patient, onOpenAddMedicationDialog, onAddMedication, onDeleteMedication }: MedicationsTabProps) {
+export function MedicationsTab({ patient, onOpenAddMedicationDialog, onAddMedication, onDeleteMedication, onRefreshMedications }: MedicationsTabProps) {
   const [backendMedications, setBackendMedications] = useState<BackendMedication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -39,13 +40,14 @@ export function MedicationsTab({ patient, onOpenAddMedicationDialog, onAddMedica
         const token = localStorage.getItem("accessToken");
         if (!token) return;
 
-        const response = await fetch(API_CONFIG.ENDPOINTS.MEDICATIONS, {
+        // Fetch medications filtered by patient ID
+        const response = await fetch(`${API_CONFIG.ENDPOINTS.MEDICATIONS}?patient_id=${patient.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
         if (response.ok) {
           const data = await response.json();
-          console.log("Backend medications response:", data);
+          console.log("Backend medications response for patient:", patient.id, data);
           
           // Handle Django REST Framework pagination format
           let medications = [];
@@ -61,36 +63,12 @@ export function MedicationsTab({ patient, onOpenAddMedicationDialog, onAddMedica
             return;
           }
           
-          // Filter medications for this patient
-          console.log("All medications from backend:", medications);
-          console.log("Patient ID:", patient.id, "Type:", typeof patient.id);
-          
-          // Get patient's medical record ID
-          const patientMedicalRecordId = patient.medicalRecords?.[0]?.id;
-          console.log("Patient medical record ID:", patientMedicalRecordId);
-          
-          const patientMedications = medications.filter((med: any) => {
-            const medRecordId = med.medical_record;
-            const currentPatientId = parseInt(patient.id);
-            
-            console.log(`Medication ${med.id}:`, {
-              medRecordId,
-              currentPatientId,
-              patientMedicalRecordId,
-              medicalRecord: med.medical_record
-            });
-            
-            // Check by medical_record_id - only show if patient has medical record
-            if (patientMedicalRecordId && medRecordId) {
-              return medRecordId === patientMedicalRecordId;
-            }
-            
-            // If patient has no medical record, show no medications
-            return false;
-          });
-          
-          console.log("Filtered medications for patient:", patientMedications);
-          setBackendMedications(patientMedications);
+          console.log("Medications for patient:", patient.id, medications);
+          setBackendMedications(medications);
+        } else if (response.status === 404) {
+          // Patient has no medical records or medications
+          console.log("No medications found for patient:", patient.id);
+          setBackendMedications([]);
         } else {
           console.error("Failed to fetch medications:", response.status);
           setBackendMedications([]);
@@ -104,88 +82,64 @@ export function MedicationsTab({ patient, onOpenAddMedicationDialog, onAddMedica
     };
 
     fetchMedications();
-  }, [patient.id]);
-
-  // Combine patient medications with backend medications
-  const allMedications = [
-    ...patient.medications.map(med => ({ ...med, id: med.id || `local-${med.name}` })),
-    ...backendMedications.map(med => ({
-      id: med.id,
-      name: med.medication_name,
-      dosage: med.dosage,
-      frequency: med.frequency,
-      time: med.start_date,
-      refill: med.end_date || 'Не указано'
-    }))
-  ];
+  }, [patient.id, patient.medicalRecords]);
 
   // Function to refresh medications from backend
-  const refreshMedications = async () => {
+  const refreshMedications = useCallback(async () => {
     try {
       const token = localStorage.getItem("accessToken");
       if (!token) return;
 
-      const response = await fetch(API_CONFIG.ENDPOINTS.MEDICATIONS, {
+      // Fetch medications filtered by patient ID
+      const response = await fetch(`${API_CONFIG.ENDPOINTS.MEDICATIONS}?patient_id=${patient.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Refresh medications response:", data);
+        console.log("Refreshed medications from backend for patient:", patient.id, data);
         
-        // Handle Django REST Framework pagination format
         let medications = [];
         if (data.results && Array.isArray(data.results)) {
-          // Paginated response
           medications = data.results;
         } else if (Array.isArray(data)) {
-          // Direct array response
           medications = data;
         } else {
-          console.warn("Unexpected refresh medications data format:", data);
           setBackendMedications([]);
           return;
         }
         
-        // Filter medications for this patient
-        console.log("Refresh - All medications from backend:", medications);
-        console.log("Refresh - Patient ID:", patient.id, "Type:", typeof patient.id);
-        
-        // Get patient's medical record ID
-        const patientMedicalRecordId = patient.medicalRecords?.[0]?.id;
-        console.log("Refresh - Patient medical record ID:", patientMedicalRecordId);
-        
-        const patientMedications = medications.filter((med: any) => {
-          const medRecordId = med.medical_record;
-          const currentPatientId = parseInt(patient.id);
-          
-          console.log(`Refresh - Medication ${med.id}:`, {
-            medRecordId,
-            currentPatientId,
-            patientMedicalRecordId,
-            medicalRecord: med.medical_record
-          });
-          
-          // Check by medical_record_id - only show if patient has medical record
-          if (patientMedicalRecordId && medRecordId) {
-            return medRecordId === patientMedicalRecordId;
-          }
-          
-          // If patient has no medical record, show no medications
-          return false;
-        });
-        
-        console.log("Refresh - Filtered medications for patient:", patientMedications);
-        setBackendMedications(patientMedications);
+        console.log("Refreshed patient medications:", medications);
+        setBackendMedications(medications);
+      } else if (response.status === 404) {
+        // Patient has no medical records or medications
+        console.log("No medications found for patient during refresh:", patient.id);
+        setBackendMedications([]);
       } else {
         console.error("Failed to refresh medications:", response.status);
-        setBackendMedications([]);
       }
     } catch (error) {
       console.error("Error refreshing medications:", error);
-      setBackendMedications([]);
     }
-  };
+  }, [patient.id]);
+
+  // Refresh medications when patient medical records change
+  useEffect(() => {
+    if (patient.medicalRecords && patient.medicalRecords.length > 0) {
+      refreshMedications();
+    }
+  }, [patient.medicalRecords, refreshMedications]);
+
+  // Use only backend medications (no local data)
+  const allMedications = backendMedications.map(med => ({
+    id: med.id,
+    name: med.medication_name,
+    dosage: med.dosage,
+    frequency: med.frequency,
+    time: med.start_date,
+    refill: med.end_date || 'Не указано'
+  }));
+
 
   // Handle adding medication
   const handleAddMedication = async (medicationData: any) => {
@@ -228,9 +182,7 @@ export function MedicationsTab({ patient, onOpenAddMedicationDialog, onAddMedica
                         const medicationId = String(med.id);
                         await onDeleteMedication(medicationId);
                         // Refresh medications from backend after deletion
-                        if (!medicationId.startsWith('local-')) {
-                          await refreshMedications();
-                        }
+                        await refreshMedications();
                       }}
                       className="h-8 w-8 p-0 text-white hover:bg-white/20 hover:text-white"
                     >

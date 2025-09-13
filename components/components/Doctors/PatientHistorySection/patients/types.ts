@@ -14,11 +14,13 @@ export interface PatientResponse {
   gender: string | null;
   blood_group: string | null;
   address: string | null;
+  status?: string;
   created_at?: string | null;
 }
 
 // --- Типы для сущностей в UI ---
 export interface Medication {
+  id?: string | number;
   name: string;
   dosage: string;
   frequency: string;
@@ -66,6 +68,7 @@ export interface Patient {
   medications: Medication[];
   vitals: VitalSign[];
   history: HistoryEntry[];
+  medicalRecords?: any[];
 }
 
 // --- Типы для форм ---
