@@ -11,7 +11,6 @@ import {
   NewPatientForm,
   MedicalHistoryForm,
   NewMedicationForm,
-  NewVitalsForm,
   NewDocumentForm,
   HistoryEntry,
   Medication,
@@ -154,13 +153,6 @@ export default function PatientsPage() {
     frequency: "",
     time: "",
     refill: "",
-  });
-  const [newVitals, setNewVitals] = useState<NewVitalsForm>({
-    date: "",
-    bp: "",
-    pulse: "",
-    temp: "",
-    weight: "",
   });
   const [newDocument, setNewDocument] = useState<NewDocumentForm>({
     name: "",
@@ -664,30 +656,6 @@ export default function PatientsPage() {
     setShowAddMedicationDialog(false)
   };
 
-  const addVitalsHandler = async () => {
-    // UI-level add vitals (persist per patient in localStorage)
-    if (!selectedPatientId) {
-      alert("Сначала выберите пациента.")
-      return
-    }
-
-    // Update UI state
-    setPatients((prev) => prev.map((p) => (
-      p.id === selectedPatientId
-        ? { ...p, vitals: [...p.vitals, { ...newVitals }] }
-        : p
-    )))
-
-    // Persist to localStorage per patient
-    const storageKey = "avishifo_patient_vitals"
-    const raw = localStorage.getItem(storageKey)
-    const map = raw ? JSON.parse(raw) : {}
-    const list = Array.isArray(map[selectedPatientId]) ? map[selectedPatientId] : []
-    map[selectedPatientId] = [...list, { ...newVitals }]
-    localStorage.setItem(storageKey, JSON.stringify(map))
-
-    setShowAddVitalsDialog(false)
-  };
 
   const fetchMedicalHistory = async (patientId: string) => {
     try {
@@ -1303,6 +1271,215 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
     }
   };
 
+  // Function to add vital signs
+  const handleAddVitalSign = async (vitalSignData: any) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) throw new Error("No access token found");
+
+      console.log("Adding vital sign to backend:", vitalSignData);
+      console.log("Selected patient:", selectedPatient);
+
+      // Find or create medical record for this patient
+      let medicalRecord = selectedPatient?.medicalRecords?.[0];
+      
+      if (!medicalRecord) {
+        console.log("No medical record found, creating one...");
+        console.log("Patient ID:", selectedPatient?.id, "Type:", typeof selectedPatient?.id);
+        
+        // First, let's check if patient exists in backend
+        const patientCheckResponse = await fetch(API_CONFIG.ENDPOINTS.PATIENT_DETAIL(selectedPatient?.id || ''), {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (!patientCheckResponse.ok) {
+          throw new Error(`Patient with ID ${selectedPatient?.id} not found in backend`);
+        }
+        
+        const patientData = await patientCheckResponse.json();
+        console.log("Patient data from backend:", patientData);
+        
+        // Use the actual patient ID from backend
+        const actualPatientId = patientData.id || selectedPatient?.id;
+        
+        // Create a medical record for this patient
+        const createRecordResponse = await fetch(API_CONFIG.ENDPOINTS.MEDICAL_RECORDS, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            patient_id: actualPatientId,
+            chief_complaint: "Общий осмотр",
+            diagnosis: "Общий осмотр",
+            notes: "Медицинская карта создана автоматически"
+          })
+        });
+
+        if (!createRecordResponse.ok) {
+          const errorText = await createRecordResponse.text();
+          console.error("Medical record creation error:", errorText);
+          throw new Error(`Failed to create medical record: ${createRecordResponse.status} - ${errorText}`);
+        }
+
+        const newMedicalRecord = await createRecordResponse.json();
+        console.log("Medical record created:", newMedicalRecord);
+        medicalRecord = { id: newMedicalRecord.id };
+      }
+
+      // Create vital sign
+      const response = await fetch(API_CONFIG.ENDPOINTS.VITAL_SIGN_CREATE, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          medical_record_id: medicalRecord.id,
+          blood_pressure_systolic: vitalSignData.bp_systolic ? parseInt(vitalSignData.bp_systolic) : null,
+          blood_pressure_diastolic: vitalSignData.bp_diastolic ? parseInt(vitalSignData.bp_diastolic) : null,
+          heart_rate: vitalSignData.pulse ? parseInt(vitalSignData.pulse) : null,
+          temperature_celsius: vitalSignData.temp ? parseFloat(vitalSignData.temp) : null,
+          weight_kg: vitalSignData.weight ? parseFloat(vitalSignData.weight) : null,
+          height_cm: vitalSignData.height ? parseInt(vitalSignData.height) : null,
+          respiratory_rate: vitalSignData.respiratory_rate ? parseInt(vitalSignData.respiratory_rate) : null,
+          oxygen_saturation: vitalSignData.oxygen_saturation ? parseInt(vitalSignData.oxygen_saturation) : null,
+          notes: vitalSignData.notes || '',
+          measurement_time: vitalSignData.dateTime || (vitalSignData.date + 'T12:00:00Z') // Use combined dateTime or fallback
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Backend error response:", errorText);
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      }
+
+      const newVitalSign = await response.json();
+      console.log("Vital sign created successfully:", newVitalSign);
+
+      // Refresh vital signs from backend
+      await refreshVitalSigns();
+
+      console.log("Vital sign added successfully to backend");
+      alert("Показатели здоровья успешно добавлены!");
+    } catch (error) {
+      console.error("Error adding vital sign:", error);
+      alert(`Ошибка при добавлении показателей: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // Function to refresh vital signs from backend
+  const refreshVitalSigns = async () => {
+    if (!selectedPatient) return;
+    
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return;
+
+      // Fetch vital signs filtered by patient ID
+      const response = await fetch(`${API_CONFIG.ENDPOINTS.VITAL_SIGNS}?patient_id=${selectedPatient.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Refreshed vital signs from backend for patient:", selectedPatient.id, data);
+        
+        let vitalSigns = [];
+        if (data.results && Array.isArray(data.results)) {
+          vitalSigns = data.results;
+        } else if (Array.isArray(data)) {
+          vitalSigns = data;
+        } else {
+          return;
+        }
+        
+        // Update the selected patient with refreshed vital signs
+        const updatedVitalSigns = vitalSigns.map((vs: any) => {
+          const measurementTime = new Date(vs.measurement_time);
+          const date = measurementTime.toISOString().split('T')[0]; // Extract date part
+          const time = measurementTime.toTimeString().slice(0, 5); // Extract time part (HH:MM)
+          
+          return {
+            id: vs.id,
+            date: date,
+            time: time,
+            bp: vs.blood_pressure_systolic && vs.blood_pressure_diastolic
+              ? `${vs.blood_pressure_systolic}/${vs.blood_pressure_diastolic}`
+              : '',
+            pulse: vs.heart_rate?.toString() || '',
+            temp: vs.temperature_celsius?.toString() || '',
+            weight: vs.weight_kg?.toString() || '',
+            height: vs.height_cm?.toString() || '',
+            respiratory_rate: vs.respiratory_rate?.toString() || '',
+            oxygen_saturation: vs.oxygen_saturation?.toString() || '',
+            notes: vs.notes || ''
+          };
+        });
+        
+        setSelectedPatient(prev => 
+          prev ? { ...prev, vitals: updatedVitalSigns } : null
+        );
+        
+        // Update in patients list as well
+        setPatients(prevPatients => 
+          prevPatients.map(patient => 
+            patient.id === selectedPatient?.id 
+              ? { ...patient, vitals: updatedVitalSigns }
+              : patient
+          )
+        );
+        
+        console.log("Vital signs refreshed successfully");
+      } else {
+        console.error("Failed to refresh vital signs:", response.status);
+      }
+    } catch (error) {
+      console.error("Error refreshing vital signs:", error);
+    }
+  };
+
+  // Function to delete vital signs
+  const handleDeleteVitalSign = async (vitalSignId: string | number) => {
+    try {
+      const id = String(vitalSignId);
+      console.log("Deleting vital sign with ID:", id);
+
+      const token = localStorage.getItem("accessToken");
+      if (!token) throw new Error("No access token found");
+
+      console.log("Deleting backend vital sign");
+
+      // Delete vital sign from backend
+      const response = await fetch(
+        API_CONFIG.ENDPOINTS.VITAL_SIGN_DELETE(id),
+        {
+          method: "DELETE",
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      console.log("Backend vital sign deleted successfully");
+      
+      // Refresh vital signs from backend
+      await refreshVitalSigns();
+      
+      alert("Показатели здоровья успешно удалены!");
+    } catch (error) {
+      console.error("Error deleting vital sign:", error);
+      alert(`Ошибка при удалении показателей: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
   // --- Рендеринг ---
   if (isLoading) {
     return (
@@ -1333,6 +1510,8 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
           onAddMedication={handleAddMedication}
           onDeleteMedication={handleDeleteMedication}
           onRefreshMedications={refreshMedications}
+          onAddVitalSign={handleAddVitalSign}
+          onDeleteVitalSign={handleDeleteVitalSign}
         />
       ) : (
         <PatientListView
@@ -1396,9 +1575,7 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
       <AddVitalsDialog
         open={showAddVitalsDialog}
         onOpenChange={setShowAddVitalsDialog}
-        newVitals={newVitals}
-        setNewVitals={setNewVitals}
-        onSubmit={addVitalsHandler}
+        onAddVitalSign={handleAddVitalSign}
       />
       <AddDocumentDialog
         open={showAddDocumentDialog}

@@ -1,20 +1,170 @@
 // /app/patients/components/tabs/VitalsTab.tsx
 "use client"
 
+import { useState, useEffect, useCallback } from "react"
 import { Patient } from "../../types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Activity, Plus } from "lucide-react"
+import { API_CONFIG } from "@/config/api"
+
+interface BackendVitalSign {
+  id: number;
+  measurement_time: string;
+  blood_pressure_systolic?: number;
+  blood_pressure_diastolic?: number;
+  heart_rate?: number;
+  temperature_celsius?: number;
+  respiratory_rate?: number;
+  oxygen_saturation?: number;
+  height_cm?: number;
+  weight_kg?: number;
+  notes?: string;
+  created_at: string;
+  medical_record: number;
+}
 
 interface VitalsTabProps {
   patient: Patient;
   onOpenAddVitalsDialog: () => void;
+  onAddVitalSign?: (vitalSignData: any) => Promise<void>;
+  onDeleteVitalSign?: (vitalSignId: string) => Promise<void>;
 }
 
-export function VitalsTab({ patient, onOpenAddVitalsDialog }: VitalsTabProps) {
+export function VitalsTab({ patient, onOpenAddVitalsDialog, onAddVitalSign, onDeleteVitalSign }: VitalsTabProps) {
+  const [backendVitalSigns, setBackendVitalSigns] = useState<BackendVitalSign[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load vital signs from backend
+  useEffect(() => {
+    const fetchVitalSigns = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        if (!token) return;
+
+        // Fetch vital signs filtered by patient ID
+        const response = await fetch(`${API_CONFIG.ENDPOINTS.VITAL_SIGNS}?patient_id=${patient.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Backend vital signs response for patient:", patient.id, data);
+          
+          // Handle Django REST Framework pagination format
+          let vitalSigns = [];
+          if (data.results && Array.isArray(data.results)) {
+            // Paginated response
+            vitalSigns = data.results;
+          } else if (Array.isArray(data)) {
+            // Direct array response
+            vitalSigns = data;
+          } else {
+            console.warn("Unexpected vital signs data format:", data);
+            setBackendVitalSigns([]);
+            return;
+          }
+          
+          console.log("Vital signs for patient:", patient.id, vitalSigns);
+          setBackendVitalSigns(vitalSigns);
+        } else if (response.status === 404) {
+          // Patient has no medical records or vital signs
+          console.log("No vital signs found for patient:", patient.id);
+          setBackendVitalSigns([]);
+        } else {
+          console.error("Failed to fetch vital signs:", response.status);
+          setBackendVitalSigns([]);
+        }
+      } catch (error) {
+        console.error("Error loading vital signs from backend:", error);
+        setBackendVitalSigns([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchVitalSigns();
+  }, [patient.id]);
+
+  // Function to refresh vital signs from backend
+  const refreshVitalSigns = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return;
+
+      // Fetch vital signs filtered by patient ID
+      const response = await fetch(`${API_CONFIG.ENDPOINTS.VITAL_SIGNS}?patient_id=${patient.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Refreshed vital signs from backend for patient:", patient.id, data);
+        
+        let vitalSigns = [];
+        if (data.results && Array.isArray(data.results)) {
+          vitalSigns = data.results;
+        } else if (Array.isArray(data)) {
+          vitalSigns = data;
+        } else {
+          setBackendVitalSigns([]);
+          return;
+        }
+        
+        console.log("Refreshed patient vital signs:", vitalSigns);
+        setBackendVitalSigns(vitalSigns);
+      } else if (response.status === 404) {
+        // Patient has no medical records or vital signs
+        console.log("No vital signs found for patient during refresh:", patient.id);
+        setBackendVitalSigns([]);
+      } else {
+        console.error("Failed to refresh vital signs:", response.status);
+      }
+    } catch (error) {
+      console.error("Error refreshing vital signs:", error);
+    }
+  }, [patient.id]);
+
+  // Use only backend vital signs (no local data)
+  const allVitalSigns = backendVitalSigns.map(vs => {
+    const measurementTime = new Date(vs.measurement_time);
+    const date = measurementTime.toISOString().split('T')[0]; // Extract date part
+    const time = measurementTime.toTimeString().slice(0, 5); // Extract time part (HH:MM)
+    
+    return {
+      id: vs.id,
+      date: date,
+      time: time,
+      bp: vs.blood_pressure_systolic && vs.blood_pressure_diastolic 
+        ? `${vs.blood_pressure_systolic}/${vs.blood_pressure_diastolic}` 
+        : '',
+      pulse: vs.heart_rate?.toString() || '',
+      temp: vs.temperature_celsius?.toString() || '',
+      weight: vs.weight_kg?.toString() || '',
+      height: vs.height_cm?.toString() || '',
+      respiratory_rate: vs.respiratory_rate?.toString() || '',
+      oxygen_saturation: vs.oxygen_saturation?.toString() || '',
+      notes: vs.notes || ''
+    };
+  });
+
+  // Handle adding vital sign
+  const handleAddVitalSign = async (vitalSignData: any) => {
+    console.log("VitalsTab: handleAddVitalSign called with:", vitalSignData);
+    if (onAddVitalSign) {
+      console.log("VitalsTab: Calling onAddVitalSign...");
+      await onAddVitalSign(vitalSignData);
+      console.log("VitalsTab: onAddVitalSign completed, refreshing...");
+      // Refresh vital signs from backend after adding
+      await refreshVitalSigns();
+      console.log("VitalsTab: refreshVitalSigns completed");
+    } else {
+      console.log("VitalsTab: onAddVitalSign is not provided");
+    }
+  };
   const renderDynamics = () => {
     // Prepare and sort data by date ASC
-    const vitals = [...patient.vitals].sort((a, b) => {
+    const vitals = [...allVitalSigns].sort((a, b) => {
       const da = new Date(a.date).getTime()
       const db = new Date(b.date).getTime()
       return da - db
@@ -153,27 +303,51 @@ export function VitalsTab({ patient, onOpenAddVitalsDialog }: VitalsTabProps) {
         </Button>
       </CardHeader>
       <CardContent>
-        {patient.vitals.length > 0 ? (
+        {isLoading ? (
+          <p className="text-center text-gray-500 py-8">Загрузка показателей...</p>
+        ) : allVitalSigns.length > 0 ? (
           <>
             <div className="overflow-x-auto mb-6">
               <table className="w-full min-w-[600px] text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50">
                     <th className="py-2 px-3 text-left font-medium text-gray-500">Дата</th>
+                    <th className="py-2 px-3 text-left font-medium text-gray-500">Время</th>
                     <th className="py-2 px-3 text-left font-medium text-gray-500">Давление</th>
                     <th className="py-2 px-3 text-left font-medium text-gray-500">Пульс</th>
                     <th className="py-2 px-3 text-left font-medium text-gray-500">Темп.</th>
                     <th className="py-2 px-3 text-left font-medium text-gray-500">Вес</th>
+                    <th className="py-2 px-3 text-left font-medium text-gray-500">Рост</th>
+                    <th className="py-2 px-3 text-left font-medium text-gray-500">Действия</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {patient.vitals.map((v, i) => (
+                  {allVitalSigns.map((v, i) => (
                     <tr key={`${v.date}-${i}`} className="border-b last:border-b-0 hover:bg-gray-50">
                       <td className="py-2.5 px-3 font-medium">{v.date}</td>
-                      <td className="py-2.5 px-3">{v.bp}</td>
-                      <td className="py-2.5 px-3">{v.pulse} уд/мин</td>
-                      <td className="py-2.5 px-3">{v.temp}°C</td>
-                      <td className="py-2.5 px-3">{v.weight} кг</td>
+                      <td className="py-2.5 px-3 text-gray-600">{v.time}</td>
+                      <td className="py-2.5 px-3">{v.bp || '-'}</td>
+                      <td className="py-2.5 px-3">{v.pulse ? `${v.pulse} уд/мин` : '-'}</td>
+                      <td className="py-2.5 px-3">{v.temp ? `${v.temp}°C` : '-'}</td>
+                      <td className="py-2.5 px-3">{v.weight ? `${v.weight} кг` : '-'}</td>
+                      <td className="py-2.5 px-3">{v.height ? `${v.height} см` : '-'}</td>
+                      <td className="py-2.5 px-3">
+                        {onDeleteVitalSign && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              const vitalSignId = String(v.id);
+                              await onDeleteVitalSign(vitalSignId);
+                              // Refresh vital signs from backend after deletion
+                              await refreshVitalSigns();
+                            }}
+                            className="h-8 w-8 p-0 text-red-500 hover:bg-red-50"
+                          >
+                            🗑️
+                          </Button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

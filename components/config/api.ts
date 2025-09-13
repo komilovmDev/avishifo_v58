@@ -24,6 +24,12 @@ export const API_CONFIG = {
     MEDICATION_UPDATE: (id: string) => `${API_BASE_URL}/api/patients/prescriptions/${id}/`,
     MEDICATION_DELETE: (id: string) => `${API_BASE_URL}/api/patients/prescriptions/${id}/`,
     
+    // Vital Signs
+    VITAL_SIGNS: `${API_BASE_URL}/api/patients/vital-signs/`,
+    VITAL_SIGN_CREATE: `${API_BASE_URL}/api/patients/vital-signs/`,
+    VITAL_SIGN_UPDATE: (id: string) => `${API_BASE_URL}/api/patients/vital-signs/${id}/`,
+    VITAL_SIGN_DELETE: (id: string) => `${API_BASE_URL}/api/patients/vital-signs/${id}/`,
+    
     // Chat
     CHAT_SESSIONS: `${API_BASE_URL}/api/chat/gpt/chats/`,
     CHAT_SEND_MESSAGE: (id: string) => `${API_BASE_URL}/api/chat/gpt/chats/${id}/send_message/`,

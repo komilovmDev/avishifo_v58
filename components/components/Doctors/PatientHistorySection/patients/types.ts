@@ -101,13 +101,6 @@ export interface NewMedicationForm {
   refill: string;
 }
 
-export interface NewVitalsForm {
-  date: string;
-  bp: string;
-  pulse: string;
-  temp: string;
-  weight: string;
-}
 
 export interface NewDocumentForm {
   name: string;
