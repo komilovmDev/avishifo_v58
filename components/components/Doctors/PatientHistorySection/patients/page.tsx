@@ -1238,7 +1238,8 @@ ${entry.doktor_tavsiyalari || "Kiritilmagan"}
           dosage: med.dosage,
           frequency: med.frequency,
           time: med.start_date,
-          refill: med.end_date || 'Не указано'
+          refill: med.end_date || 'Не указано',
+          instructions: med.instructions || ''
         }));
         
         setSelectedPatient(prev => 

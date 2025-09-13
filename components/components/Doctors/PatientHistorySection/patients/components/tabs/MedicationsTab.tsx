@@ -137,7 +137,8 @@ export function MedicationsTab({ patient, onOpenAddMedicationDialog, onAddMedica
     dosage: med.dosage,
     frequency: med.frequency,
     time: med.start_date,
-    refill: med.end_date || 'Не указано'
+    refill: med.end_date || 'Не указано',
+    instructions: med.instructions || ''
   }));
 
 
@@ -197,6 +198,12 @@ export function MedicationsTab({ patient, onOpenAddMedicationDialog, onAddMedica
                   </div>
                   <div><p className="text-xs text-gray-500">Время приема</p><p className="font-medium">{med.time}</p></div>
                   <div><p className="text-xs text-gray-500">Рецепт до</p><Badge variant="outline" className="mt-0.5">{med.refill}</Badge></div>
+                  {med.instructions && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <p className="text-xs text-gray-500 mb-1">Инструкции</p>
+                      <p className="text-sm text-gray-700 leading-relaxed">{med.instructions}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
