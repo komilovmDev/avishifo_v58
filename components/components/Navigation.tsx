@@ -43,7 +43,7 @@ export function Navigation({ userType, onLogout }: NavigationProps) {
   }
 
   const navigationItems = getNavigationItems()
-// 
+
   return (
     <nav className="bg-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
