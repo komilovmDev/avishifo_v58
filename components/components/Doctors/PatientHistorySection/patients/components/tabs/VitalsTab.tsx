@@ -308,7 +308,7 @@ export function VitalsTab({ patient, onOpenAddVitalsDialog, onAddVitalSign, onDe
         ) : allVitalSigns.length > 0 ? (
           <>
             <div className="overflow-x-auto mb-6">
-              <table className="w-full min-w-[600px] text-sm">
+              <table className="w-full min-w-[800px] text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50">
                     <th className="py-2 px-3 text-left font-medium text-gray-500">Дата</th>
@@ -318,6 +318,7 @@ export function VitalsTab({ patient, onOpenAddVitalsDialog, onAddVitalSign, onDe
                     <th className="py-2 px-3 text-left font-medium text-gray-500">Темп.</th>
                     <th className="py-2 px-3 text-left font-medium text-gray-500">Вес</th>
                     <th className="py-2 px-3 text-left font-medium text-gray-500">Рост</th>
+                    <th className="py-2 px-3 text-left font-medium text-gray-500">Примечания</th>
                     <th className="py-2 px-3 text-left font-medium text-gray-500">Действия</th>
                   </tr>
                 </thead>
@@ -331,6 +332,11 @@ export function VitalsTab({ patient, onOpenAddVitalsDialog, onAddVitalSign, onDe
                       <td className="py-2.5 px-3">{v.temp ? `${v.temp}°C` : '-'}</td>
                       <td className="py-2.5 px-3">{v.weight ? `${v.weight} кг` : '-'}</td>
                       <td className="py-2.5 px-3">{v.height ? `${v.height} см` : '-'}</td>
+                      <td className="py-2.5 px-3 max-w-xs">
+                        <div className="truncate" title={v.notes || ''}>
+                          {v.notes || '-'}
+                        </div>
+                      </td>
                       <td className="py-2.5 px-3">
                         {onDeleteVitalSign && (
                           <Button
