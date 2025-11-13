@@ -44,6 +44,10 @@ export function Navigation({ userType, onLogout }: NavigationProps) {
 
   const navigationItems = getNavigationItems()
 
+  // Разрешаем только "Профиль" и "AI Авишифо"
+  const isEnabledItem = (label: string) =>
+    label === "Профиль" || label === "AI Авишифо"
+
   return (
     <nav className="bg-white shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -56,20 +60,31 @@ export function Navigation({ userType, onLogout }: NavigationProps) {
               <span className="ml-2 text-xl font-bold text-gray-900">AviShifo</span>
             </div>
             <div className="hidden md:ml-6 md:flex md:space-x-8">
-              {navigationItems.map((item) => (
-                <Button
-                  key={item.href}
-                  variant={pathname === item.href ? "default" : "ghost"}
-                  className={`${
-                    pathname === item.href
-                      ? "bg-blue-600 text-white"
-                      : "text-gray-500 hover:text-gray-900"
-                  }`}
-                  onClick={() => router.push(item.href)}
-                >
-                  {item.label}
-                </Button>
-              ))}
+              {navigationItems.map((item) => {
+                const enabled = isEnabledItem(item.label)
+                const isActive = enabled && pathname === item.href
+
+                return (
+                  <Button
+                    key={item.href}
+                    variant={isActive ? "default" : "ghost"}
+                    className={
+                      isActive
+                        ? "bg-blue-600 text-white"
+                        : "text-gray-500 hover:text-gray-900"
+                    }
+                    onClick={() => {
+                      if (enabled) {
+                        router.push(item.href)
+                      } else {
+                        router.push("/404") // 🔗 всё остальное ведёт на 404
+                      }
+                    }}
+                  >
+                    {item.label}
+                  </Button>
+                )
+              })}
             </div>
           </div>
           <div className="flex items-center space-x-4">

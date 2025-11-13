@@ -24,51 +24,52 @@ const sidebarItems: SidebarItem[] = [
     label: "Профиль",
     icon: User,
     color: "from-indigo-500 to-purple-500",
-    href: "/dashboard/doctor/profile"
-  },
-  { 
-    id: "doctors", 
-    label: "Врачи", 
-    icon: Stethoscope, 
-    color: "from-emerald-500 to-teal-500",
-    href: "/dashboard/doctor/doctors"
+    href: "/dashboard/doctor/profile",
   },
   {
     id: "ai-chat",
     label: "AI",
     icon: Brain,
     color: "from-blue-500 to-purple-500",
-    href: "/dashboard/doctor/ai-chat"
+    href: "/dashboard/doctor/ai-chat",
+  },
+  {
+    id: "doctors",
+    label: "Врачи",
+    icon: Stethoscope,
+    color: "from-emerald-500 to-teal-500",
+    href: "/under-construction",
   },
   {
     id: "appointments",
     label: "Записи пациентов",
     icon: CalendarIcon,
     color: "from-teal-500 to-cyan-500",
-    href: "/dashboard/doctor/appointments"
+    href: "/under-construction",
   },
   {
     id: "patients",
     label: "История Пациентов",
     icon: History,
     color: "from-green-500 to-emerald-500",
-    href: "/dashboard/doctor/patients"
+    href: "/under-construction",
   },
   {
     id: "chat",
     label: "Чат",
     icon: MessageCircle,
     color: "from-orange-500 to-red-500",
-    href: "/dashboard/doctor/chat"
+    href: "/under-construction",
   },
   {
     id: "who-standards",
     label: "Стандарты ВОЗ",
     icon: FileText,
     color: "from-blue-500 to-cyan-500",
-    href: "/dashboard/doctor/who-standards"
+    href: "/under-construction",
   },
 ]
+
 
 export default function DoctorLayout({
   children,
@@ -158,11 +159,10 @@ export default function DoctorLayout({
                 <Button
                   key={item.id}
                   variant={activeSection === item.id ? "default" : "ghost"}
-                  className={`w-full justify-start h-12 text-sm font-medium ${
-                    activeSection === item.id
-                      ? `bg-gradient-to-r ${item.color} text-white shadow-lg hover:opacity-95`
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/70"
-                  } transition-all duration-200 rounded-xl group`}
+                  className={`w-full justify-start h-12 text-sm font-medium ${activeSection === item.id
+                    ? `bg-gradient-to-r ${item.color} text-white shadow-lg hover:opacity-95`
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/70"
+                    } transition-all duration-200 rounded-xl group`}
                   onClick={() => handleNavigation(item.href)}
                 >
                   <item.icon
