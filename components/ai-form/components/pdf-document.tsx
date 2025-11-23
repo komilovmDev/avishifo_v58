@@ -4,12 +4,12 @@ import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer"
 import { MedicalFormData } from "@/ai-form/lib/validation"
 
 const styles = StyleSheet.create({
-  page: { padding: 40, fontSize: 11, fontFamily: "Helvetica", backgroundColor: "#ffffff" },
-  title: { fontSize: 20, fontWeight: "bold", marginBottom: 20, textAlign: "center", color: "#1e40af" },
+  page: { padding: 40, fontSize: 11, fontFamily: "Times-Roman", backgroundColor: "#ffffff" },
+  title: { fontSize: 20, fontFamily: "Times-Bold", marginBottom: 20, textAlign: "center", color: "#1e40af" },
   section: { marginBottom: 20, padding: 15, backgroundColor: "#f8fafc", borderRadius: 5 },
-  sectionTitle: { fontSize: 14, fontWeight: "bold", marginBottom: 10, color: "#1e40af", borderBottomWidth: 1, borderBottomColor: "#cbd5e1", paddingBottom: 5 },
+  sectionTitle: { fontSize: 14, fontFamily: "Times-Bold", marginBottom: 10, color: "#1e40af", borderBottomWidth: 1, borderBottomColor: "#cbd5e1", paddingBottom: 5 },
   field: { marginBottom: 10 },
-  label: { fontSize: 10, fontWeight: "bold", color: "#475569", marginBottom: 3 },
+  label: { fontSize: 10, fontFamily: "Times-Bold", color: "#475569", marginBottom: 3 },
   value: { fontSize: 10, color: "#1e293b", lineHeight: 1.5 },
   empty: { fontSize: 10, color: "#94a3b8", fontStyle: "italic" },
   row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },

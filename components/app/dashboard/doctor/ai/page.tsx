@@ -32,15 +32,35 @@ import {
   ArrowRight,
   TestTube,
   Scan,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  RefreshCw,
+  AlertCircle,
+  History,
 } from "lucide-react"
 import { TestResultsTable } from "@/ai-form/components/test-results-table"
 import { SerologicalTestTable } from "@/ai-form/components/serological-test-table"
 import { Step6InstrumentalResearch } from "@/ai-form/components/instrumental-research"
 import { PDFDocument } from "@/ai-form/components/pdf-document"
+import { AnalysisPDFDocument } from "@/ai-form/components/analysis-pdf-document"
 import { pdf } from "@react-pdf/renderer"
 import { useState, useRef, useMemo, useEffect } from "react"
 import { cn } from "@/ai-form/lib/utils"
 import { I18nProvider, useI18n } from "@/ai-form/lib/i18n"
+import { API_CONFIG } from "@/config/api"
+import axios from "axios"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { useToast } from "@/hooks/use-toast"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Badge } from "@/components/ui/badge"
 
 export default function DoctorAIFormPage() {
   return (
@@ -52,6 +72,7 @@ export default function DoctorAIFormPage() {
 
 function AIFormInner() {
   const { t, language } = useI18n()
+  const { toast } = useToast()
 
   const STEPS = useMemo(() => [
     { id: 1, title: t.steps.step1.title, description: t.steps.step1.description, icon: User },
@@ -63,7 +84,24 @@ function AIFormInner() {
   ], [t])
   const [currentStep, setCurrentStep] = useState(1)
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle')
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null)
+  const [showAnalysisDialog, setShowAnalysisDialog] = useState(false)
+  const [formDataForSave, setFormDataForSave] = useState<MedicalFormData | null>(null)
+  const [medicalHistory, setMedicalHistory] = useState<any[]>([])
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null)
+  const [selectedHistoryEntry, setSelectedHistoryEntry] = useState<any | null>(null)
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false)
+  const [isGeneratingAnalysisPDF, setIsGeneratingAnalysisPDF] = useState(false)
+  const [isGeneratingHistoryPDF, setIsGeneratingHistoryPDF] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
+  
+  // Logo URL - можно настроить через переменную окружения или использовать дефолтный путь
+  const LOGO_URL = process.env.NEXT_PUBLIC_LOGO_URL || "/logologin.png"
 
   const defaultValues = useMemo(() => ({
     fullName: "",
@@ -253,12 +291,487 @@ function AIFormInner() {
     }
   }
 
+  // Function to find or create patient based on personal data
+  const findOrCreatePatient = async (formData: MedicalFormData, token: string): Promise<number> => {
+    try {
+      // Parse passport (assuming format like "AA1234567" or "AA 1234567" or "AA123456")
+      const passport = formData.passport?.replace(/\s+/g, '').toUpperCase() || ''
+      
+      // Try different passport formats
+      let passportSeries = ''
+      let passportNumber = ''
+      
+      // Format 1: AA1234567 (2 letters + 7 digits)
+      if (passport.length >= 9) {
+        passportSeries = passport.substring(0, 2)
+        passportNumber = passport.substring(2)
+      }
+      // Format 2: AA123456 (2 letters + 6 digits)
+      else if (passport.length >= 8) {
+        passportSeries = passport.substring(0, 2)
+        passportNumber = passport.substring(2)
+      }
+      // Format 3: Try to split by any non-alphanumeric character
+      else {
+        const match = passport.match(/^([A-Z]{2})(\d+)$/)
+        if (match) {
+          passportSeries = match[1]
+          passportNumber = match[2]
+        } else {
+          // Last resort: split at first digit
+          const splitIndex = passport.search(/\d/)
+          if (splitIndex > 0) {
+            passportSeries = passport.substring(0, splitIndex)
+            passportNumber = passport.substring(splitIndex)
+          }
+        }
+      }
+
+      if (!passportSeries || !passportNumber) {
+        console.error("Passport parsing failed. Original:", formData.passport, "Parsed:", { passportSeries, passportNumber })
+        throw new Error("Паспортные данные неполные или неверный формат")
+      }
+
+      // Try to find existing patient by passport
+      try {
+        const searchResponse = await axios.get(
+          `${API_CONFIG.ENDPOINTS.PATIENTS_SEARCH}?passport_series=${encodeURIComponent(passportSeries)}&passport_number=${encodeURIComponent(passportNumber)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
+
+        // Handle different response formats
+        let patients = []
+        if (Array.isArray(searchResponse.data)) {
+          patients = searchResponse.data
+        } else if (searchResponse.data?.results) {
+          patients = searchResponse.data.results
+        } else if (searchResponse.data?.data) {
+          patients = Array.isArray(searchResponse.data.data) ? searchResponse.data.data : [searchResponse.data.data]
+        }
+
+        if (patients && patients.length > 0) {
+          // Patient exists, return ID
+          const patientId = patients[0].id || patients[0].pk
+          if (patientId) {
+            console.log("Found existing patient:", patientId)
+            return patientId
+          }
+        }
+      } catch (searchError: any) {
+        // If search fails (404 or other), continue to create new patient
+        // Only log if it's not a 404 (not found is expected)
+        if (searchError.response?.status !== 404) {
+          console.warn("Patient search failed, will try to create new:", searchError.response?.data || searchError.message)
+        }
+      }
+
+      // Patient doesn't exist, create new one
+      // Determine gender - check both Russian and English translations
+      let genderValue: string | null = null
+      const genderText = formData.gender || ''
+      if (genderText.toLowerCase().includes('male') || genderText.toLowerCase().includes('муж') || genderText === 'Мужской') {
+        genderValue = 'male'
+      } else if (genderText.toLowerCase().includes('female') || genderText.toLowerCase().includes('жен') || genderText === 'Женский') {
+        genderValue = 'female'
+      }
+
+      // Prepare patient data - only required fields and valid optional fields
+      const newPatientData: any = {
+        full_name: (formData.fullName || '').trim(),
+        passport_series: passportSeries.trim(),
+        passport_number: passportNumber.trim(),
+      }
+
+      // Validate required fields
+      if (!newPatientData.full_name) {
+        throw new Error("ФИО обязательно для заполнения")
+      }
+      if (!newPatientData.passport_series || !newPatientData.passport_number) {
+        throw new Error("Паспортные данные обязательны")
+      }
+
+      // Add optional fields only if they have values
+      if (formData.birthDate && formData.birthDate.trim()) {
+        newPatientData.birth_date = formData.birthDate.trim()
+      }
+      if (genderValue) {
+        newPatientData.gender = genderValue
+      }
+      if (formData.address && formData.address.trim()) {
+        newPatientData.address = formData.address.trim()
+      }
+
+      console.log("Creating patient with data:", newPatientData)
+
+      const createResponse = await axios.post(
+        API_CONFIG.ENDPOINTS.PATIENT_CREATE,
+        newPatientData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      )
+
+      console.log("Patient creation response:", createResponse.data)
+
+      // Handle different response formats
+      let patientId = null
+      if (createResponse.data?.data?.id) {
+        patientId = createResponse.data.data.id
+      } else if (createResponse.data?.id) {
+        patientId = createResponse.data.id
+      } else if (createResponse.data?.pk) {
+        patientId = createResponse.data.pk
+      } else if (typeof createResponse.data === 'number') {
+        patientId = createResponse.data
+      }
+
+      if (!patientId) {
+        console.error("Could not extract patient ID from response:", createResponse.data)
+        throw new Error("Не удалось получить ID созданного пациента из ответа сервера")
+      }
+      
+      return patientId
+    } catch (error: any) {
+      console.error("Error finding/creating patient:", error)
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        formData: {
+          fullName: formData.fullName,
+          passport: formData.passport,
+          birthDate: formData.birthDate,
+          gender: formData.gender,
+        }
+      })
+      
+      // Extract error message from different possible formats
+      let errorMessage = ''
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message
+        } else if (Array.isArray(error.response.data)) {
+          errorMessage = error.response.data.map((err: any) => 
+            typeof err === 'string' ? err : (err.message || JSON.stringify(err))
+          ).join(', ')
+        } else if (typeof error.response.data === 'object') {
+          // Try to extract field errors
+          const fieldErrors = Object.entries(error.response.data)
+            .map(([field, errors]: [string, any]) => {
+              if (Array.isArray(errors)) {
+                return `${field}: ${errors.join(', ')}`
+              }
+              return `${field}: ${errors}`
+            })
+            .join('; ')
+          if (fieldErrors) {
+            errorMessage = fieldErrors
+          }
+        }
+      }
+      
+      if (!errorMessage) {
+        errorMessage = error.message || 'Неизвестная ошибка'
+      }
+      
+      throw new Error("Не удалось найти или создать пациента: " + errorMessage)
+    }
+  }
+
+  // Function to map AI form data to KasallikTarixi format
+  const mapFormDataToMedicalHistory = (formData: MedicalFormData, patientId: number) => {
+    // Extract job information - try to split by common separators
+    const jobText = formData.job || ''
+    let kasbi = ''
+    let ishJoyi = ''
+    let ishVazifasi = ''
+    
+    // Try to parse job field (format: "Место работы, специальность, должность")
+    const jobParts = jobText.split(',').map(s => s.trim()).filter(Boolean)
+    if (jobParts.length >= 1) {
+      ishJoyi = jobParts[0]
+    }
+    if (jobParts.length >= 2) {
+      kasbi = jobParts[1]
+    }
+    if (jobParts.length >= 3) {
+      ishVazifasi = jobParts.slice(2).join(', ')
+    }
+
+    // Combine all complaints
+    const allComplaints = [
+      formData.mainComplaints,
+      formData.mainComplaintsDetail,
+      formData.generalComplaints,
+      formData.additionalComplaints,
+      formData.firstSymptoms,
+    ].filter(Boolean).join('\n')
+
+    // Combine examination data
+    const examinationData = [
+      formData.generalExamination,
+      formData.headNeck,
+      formData.skin,
+      formData.respiratory,
+      formData.cardiovascular,
+      formData.abdomen,
+      formData.musculoskeletal,
+      formData.lymphNodes,
+      formData.abdomenPalpation,
+      formData.percussion,
+      formData.lungAuscultation,
+      formData.heartAuscultation,
+      formData.abdomenAuscultation,
+    ].filter(Boolean).join('\n')
+
+    // Combine test results
+    const testResults = []
+    if (formData.oak_conclusion) testResults.push(`ОАК: ${formData.oak_conclusion}`)
+    if (formData.oam_conclusion) testResults.push(`ОАМ: ${formData.oam_conclusion}`)
+    if (formData.bio_conclusion) testResults.push(`Биохимия: ${formData.bio_conclusion}`)
+    if (formData.imm_conclusion) testResults.push(`Иммунология: ${formData.imm_conclusion}`)
+    if (formData.sero_conclusion) testResults.push(`Серология: ${formData.sero_conclusion}`)
+    if (formData.pcr_conclusion) testResults.push(`ПЦР: ${formData.pcr_conclusion}`)
+
+    // Combine instrumental research
+    const instrumentalData = formData.instrumental_research?.map(item => 
+      `${item.type || ''} (${item.date || 'дата не указана'}): ${item.comment || ''}`
+    ).join('\n') || ''
+
+    return {
+      patient: patientId,
+      fish: formData.fullName || '',
+      tugilgan_sana: formData.birthDate || new Date().toISOString().split('T')[0],
+      millati: '', // Not in AI form
+      malumoti: formData.education || '',
+      kasbi: kasbi,
+      ish_joyi: ishJoyi,
+      ish_vazifasi: ishVazifasi,
+      uy_manzili: formData.address || '',
+      kelgan_vaqti: formData.admissionDate || new Date().toISOString().split('T')[0],
+      shikoyatlar: allComplaints,
+      
+      // Respiratory system - use respiratory examination data
+      nafas_tizimi: formData.respiratory || '',
+      yotal: '', // Not in AI form
+      balgam: '', // Not in AI form
+      qon_tuflash: '', // Not in AI form
+      kokrak_ogriq: '', // Not in AI form
+      nafas_qisishi: '', // Not in AI form
+      
+      // Cardiovascular system - use cardiovascular examination data
+      yurak_qon_shikoyatlari: formData.cardiovascular || '',
+      yurak_ogriq: '', // Not in AI form
+      yurak_urishi_ozgarishi: '', // Not in AI form
+      yurak_urishi_sezish: '', // Not in AI form
+      
+      // Digestive system - use abdomen examination data
+      hazm_tizimi: formData.abdomen || '',
+      qusish: '', // Not in AI form
+      qorin_ogriq: '', // Not in AI form
+      ich_ozgarishi: '', // Not in AI form
+      anus_shikoyatlar: '', // Not in AI form
+      
+      // Urinary system
+      siydik_tizimi: '', // Not in AI form
+      
+      // Endocrine system
+      endokrin_tizimi: '', // Not in AI form
+      
+      // Musculoskeletal system
+      tayanch_tizimi: formData.musculoskeletal || '',
+      
+      // Nervous system
+      asab_tizimi: '', // Not in AI form
+      
+      // Doctor recommendations - combine examination, test results, and instrumental research
+      doktor_tavsiyalari: [
+        '=== ОБЪЕКТИВНОЕ ОБСЛЕДОВАНИЕ ===',
+        examinationData,
+        testResults.length > 0 ? '\n=== РЕЗУЛЬТАТЫ АНАЛИЗОВ ===\n' + testResults.join('\n') : '',
+        instrumentalData ? '\n=== ИНСТРУМЕНТАЛЬНЫЕ ИССЛЕДОВАНИЯ ===\n' + instrumentalData : '',
+      ].filter(Boolean).join('\n\n'),
+    }
+  }
+
   const onSubmit = async (data: MedicalFormData) => {
     if (currentStep !== STEPS.length) return
     const isValid = await validateStep(currentStep)
     if (!isValid) return
-    // TODO: submit somewhere
-    alert(t.messages.submitted)
+    
+    // Analyze medical form data using ChatGPT
+    setIsAnalyzing(true)
+    setShowAnalysisDialog(true)
+    
+    try {
+      const token = localStorage.getItem("accessToken")
+      if (!token) {
+        throw new Error("Требуется авторизация")
+      }
+
+      // Step 1: Analyze with ChatGPT
+      const analysisResponse = await axios.post(
+        API_CONFIG.ENDPOINTS.ANALYZE_MEDICAL_FORM,
+        data,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      )
+
+      if (analysisResponse.data.status === "success" && analysisResponse.data.analysis) {
+        // Fix text encoding from API response
+        let analysisText = analysisResponse.data.analysis
+        if (typeof analysisText === 'string') {
+          // Ensure proper UTF-8 encoding
+          analysisText = analysisText
+            .replace(/^\uFEFF/, '') // Remove BOM
+            .normalize('NFC') // Normalize Unicode
+        }
+        setAnalysisResult(analysisText)
+        // Store form data for saving
+        setFormDataForSave(data)
+      } else {
+        throw new Error("Не удалось получить анализ")
+      }
+
+      // Step 2: Save to medical history
+      setIsSaving(true)
+      setSaveStatus('saving')
+      setSaveError(null)
+      
+      try {
+        // Find or create patient
+        const patientId = await findOrCreatePatient(data, token)
+        setSelectedPatientId(patientId)
+        
+        // Map form data to medical history format
+        const medicalHistoryData = mapFormDataToMedicalHistory(data, patientId)
+        
+        // Save medical history
+        await axios.post(
+          API_CONFIG.ENDPOINTS.MEDICAL_HISTORY,
+          medicalHistoryData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        )
+
+        // Show success
+        setSaveStatus('success')
+        toast({
+          title: "Успешно сохранено",
+          description: "Медицинская анкета сохранена в историю болезни пациента",
+          variant: "default",
+        })
+        console.log("Medical history saved successfully")
+      } catch (saveError: any) {
+        console.error("Error saving medical history:", saveError)
+        setSaveStatus('error')
+        setSaveError(
+          saveError.response?.data?.error ||
+          saveError.response?.data?.message ||
+          saveError.message ||
+          "Не удалось сохранить в историю болезни"
+        )
+        toast({
+          title: "Ошибка сохранения",
+          description: "Анализ завершен, но не удалось сохранить данные. Вы можете попробовать сохранить позже.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsSaving(false)
+      }
+    } catch (error: any) {
+      console.error("Error analyzing medical form:", error)
+      setAnalysisResult(
+        error.response?.data?.error ||
+        error.message ||
+        "Произошла ошибка при анализе медицинской анкеты. Пожалуйста, попробуйте позже."
+      )
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  // Function to retry saving medical history
+  const retrySaveMedicalHistory = async () => {
+    if (!formDataForSave) return
+
+    setIsSaving(true)
+    setSaveStatus('saving')
+    setSaveError(null)
+
+    try {
+      const token = localStorage.getItem("accessToken")
+      if (!token) {
+        throw new Error("Требуется авторизация")
+      }
+
+      // Find or create patient
+      const patientId = await findOrCreatePatient(formDataForSave, token)
+      
+      // Map form data to medical history format
+      const medicalHistoryData = mapFormDataToMedicalHistory(formDataForSave, patientId)
+      
+      // Save medical history
+      await axios.post(
+        API_CONFIG.ENDPOINTS.MEDICAL_HISTORY,
+        medicalHistoryData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      )
+
+      // Show success
+      setSaveStatus('success')
+      setSelectedPatientId(patientId)
+      // Refresh medical history after a short delay to ensure data is saved
+      setTimeout(() => {
+        fetchMedicalHistory(patientId)
+      }, 500)
+      toast({
+        title: "Успешно сохранено",
+        description: "Медицинская анкета сохранена в историю болезни пациента",
+        variant: "default",
+      })
+    } catch (saveError: any) {
+      console.error("Error saving medical history:", saveError)
+      setSaveStatus('error')
+      setSaveError(
+        saveError.response?.data?.error ||
+        saveError.response?.data?.message ||
+        saveError.message ||
+        "Не удалось сохранить в историю болезни"
+      )
+      toast({
+        title: "Ошибка сохранения",
+        description: "Не удалось сохранить данные. Попробуйте еще раз.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleSaveClick = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -286,6 +799,249 @@ function AIFormInner() {
     } catch { alert(t.messages.pdfError) } finally { setIsGeneratingPDF(false) }
   }
 
+  // Helper function to fix text encoding
+  const fixTextEncoding = (text: string): string => {
+    if (!text) return ""
+    try {
+      // Ensure text is properly encoded
+      // If text has encoding issues, try to fix them
+      let fixed = text
+      
+      // Check if text has encoding issues (contains replacement characters or mojibake)
+      // Try to decode and re-encode properly
+      if (typeof text === 'string') {
+        // Remove any BOM and normalize
+        fixed = text.replace(/^\uFEFF/, '').normalize('NFC')
+      }
+      
+      return fixed
+    } catch (e) {
+      console.warn("Text encoding fix error:", e)
+      return text
+    }
+  }
+
+  // Function to download analysis PDF
+  const handleDownloadAnalysisPDF = async () => {
+    if (!analysisResult || !formDataForSave) return
+    
+    setIsGeneratingAnalysisPDF(true)
+    try {
+      // Fix encoding for analysis result
+      const fixedAnalysisResult = fixTextEncoding(analysisResult)
+      
+      // Fix encoding for form data
+      const fixedFormData = {
+        ...formDataForSave,
+        fullName: fixTextEncoding(formDataForSave.fullName || ''),
+        passport: fixTextEncoding(formDataForSave.passport || ''),
+        birthDate: fixTextEncoding(formDataForSave.birthDate || ''),
+        gender: fixTextEncoding(formDataForSave.gender || ''),
+        education: fixTextEncoding(formDataForSave.education || ''),
+        job: fixTextEncoding(formDataForSave.job || ''),
+        address: fixTextEncoding(formDataForSave.address || ''),
+      }
+      
+      const doc = <AnalysisPDFDocument 
+        formData={fixedFormData} 
+        analysisResult={fixedAnalysisResult}
+        logoUrl={LOGO_URL}
+      />
+      const asPdf = pdf(doc)
+      const blob = await asPdf.toBlob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `анализ_медицинской_анкеты_${formDataForSave.fullName || "пациент"}_${new Date().toISOString().split("T")[0]}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
+      toast({
+        title: "PDF скачан",
+        description: "Анализ медицинской анкеты успешно сохранен в PDF",
+        variant: "default",
+      })
+    } catch (error: any) {
+      console.error("Error generating analysis PDF:", error)
+      toast({
+        title: "Ошибка",
+        description: "Не удалось создать PDF файл",
+        variant: "destructive",
+      })
+    } finally {
+      setIsGeneratingAnalysisPDF(false)
+    }
+  }
+
+  // Function to download history entry PDF with analysis
+  const handleDownloadHistoryPDF = async () => {
+    if (!selectedHistoryEntry || !formDataForSave || !analysisResult) return
+    
+    setIsGeneratingHistoryPDF(true)
+    try {
+      const doc = <AnalysisPDFDocument 
+        formData={formDataForSave} 
+        analysisResult={analysisResult}
+        logoUrl={LOGO_URL}
+      />
+      const asPdf = pdf(doc)
+      const blob = await asPdf.toBlob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `kasallik_tarixi_${selectedHistoryEntry.fish || "пациент"}_${new Date(selectedHistoryEntry.yuborilgan_vaqt || selectedHistoryEntry.kelgan_vaqti).toISOString().split("T")[0]}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
+      toast({
+        title: "PDF скачан",
+        description: "История болезни с анализом успешно сохранена в PDF",
+        variant: "default",
+      })
+    } catch (error: any) {
+      console.error("Error generating history PDF:", error)
+      toast({
+        title: "Ошибка",
+        description: "Не удалось создать PDF файл",
+        variant: "destructive",
+      })
+    } finally {
+      setIsGeneratingHistoryPDF(false)
+    }
+  }
+
+  // Function to fetch medical history
+  const fetchMedicalHistory = async (patientId?: number) => {
+    // If no patientId provided, try to find it from form data
+    let targetPatientId = patientId
+    
+    if (!targetPatientId) {
+      const formData = form.getValues()
+      if (formData.passport) {
+        const passport = formData.passport?.replace(/\s+/g, '').toUpperCase() || ''
+        const passportSeries = passport.substring(0, 2)
+        const passportNumber = passport.substring(2)
+        
+        if (passportSeries && passportNumber) {
+          try {
+            const token = localStorage.getItem("accessToken")
+            if (token) {
+              const searchResponse = await axios.get(
+                `${API_CONFIG.ENDPOINTS.PATIENTS_SEARCH}?passport_series=${encodeURIComponent(passportSeries)}&passport_number=${encodeURIComponent(passportNumber)}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+              )
+              if (searchResponse.data && Array.isArray(searchResponse.data) && searchResponse.data.length > 0) {
+                targetPatientId = searchResponse.data[0].id || searchResponse.data[0].pk
+                if (targetPatientId) {
+                  setSelectedPatientId(targetPatientId)
+                }
+              } else if (searchResponse.data?.id) {
+                targetPatientId = searchResponse.data.id
+                setSelectedPatientId(targetPatientId)
+              }
+            }
+          } catch (error) {
+            console.log("Patient not found in search, will use selectedPatientId if available")
+          }
+        }
+      }
+    }
+    
+    // Use selectedPatientId if still no patientId
+    if (!targetPatientId && selectedPatientId) {
+      targetPatientId = selectedPatientId
+    }
+    
+    if (!targetPatientId) {
+      console.log("No patient ID available to fetch history")
+      setMedicalHistory([])
+      return
+    }
+    
+    setIsLoadingHistory(true)
+    try {
+      const token = localStorage.getItem("accessToken")
+      if (!token) {
+        setIsLoadingHistory(false)
+        return
+      }
+
+      const response = await axios.get(
+        `${API_CONFIG.ENDPOINTS.MEDICAL_HISTORY}?patient_id=${targetPatientId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (response.data && Array.isArray(response.data)) {
+        setMedicalHistory(response.data.sort((a: any, b: any) => {
+          const dateA = new Date(a.yuborilgan_vaqt || a.kelgan_vaqti || 0).getTime()
+          const dateB = new Date(b.yuborilgan_vaqt || b.kelgan_vaqti || 0).getTime()
+          return dateB - dateA // Newest first
+        }))
+      } else {
+        setMedicalHistory([])
+      }
+    } catch (error: any) {
+      console.error("Error fetching medical history:", error)
+      setMedicalHistory([])
+    } finally {
+      setIsLoadingHistory(false)
+    }
+  }
+
+  // Handle refresh button click
+  const handleRefreshHistory = async () => {
+    await fetchMedicalHistory()
+  }
+
+  // Fetch history when patient is selected or after saving
+  useEffect(() => {
+    if (selectedPatientId) {
+      fetchMedicalHistory(selectedPatientId)
+    }
+  }, [selectedPatientId])
+
+  // Update selected patient when form data changes
+  useEffect(() => {
+    const formData = form.getValues()
+    if (formData.fullName && formData.passport) {
+      // Try to find patient ID based on passport
+      const passport = formData.passport?.replace(/\s+/g, '').toUpperCase() || ''
+      const passportSeries = passport.substring(0, 2)
+      const passportNumber = passport.substring(2)
+      
+      if (passportSeries && passportNumber) {
+        const token = localStorage.getItem("accessToken")
+        if (token) {
+          axios.get(
+            `${API_CONFIG.ENDPOINTS.PATIENTS_SEARCH}?passport_series=${encodeURIComponent(passportSeries)}&passport_number=${encodeURIComponent(passportNumber)}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          )
+          .then((response) => {
+            if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+              const patientId = response.data[0].id || response.data[0].pk
+              if (patientId && patientId !== selectedPatientId) {
+                setSelectedPatientId(patientId)
+              }
+            }
+          })
+          .catch(() => {
+            // Patient not found, will be created on save
+          })
+        }
+      }
+    }
+  }, [form.watch('passport'), form.watch('fullName')])
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 1: return <Step1PersonalData form={form} />
@@ -300,7 +1056,10 @@ function AIFormInner() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/40 to-emerald-50/40">
-      <div className="container mx-auto px-4 py-6 md:py-8 max-w-5xl">
+      <div className="container mx-auto px-4 py-6 md:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Form - Left Side (2 columns on large screens) */}
+          <div className="lg:col-span-2">
         <div className="flex justify-end mb-4"><LanguageSwitcher /></div>
         <header className="mb-6 md:mb-8 text-center animate-fade-in">
           <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-blue-500 via-blue-600 to-emerald-500 mb-4 shadow-xl shadow-blue-500/30 transition-transform hover:scale-105">
@@ -363,6 +1122,607 @@ function AIFormInner() {
             </div>
           </form>
         </Form>
+          </div>
+
+          {/* Medical History Sidebar - Right Side (1 column on large screens) */}
+          <div className="lg:col-span-1">
+            <Card className="sticky top-6 h-[calc(100vh-3rem)] flex flex-col">
+              <CardHeader className="border-b">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <History className="h-5 w-5 text-blue-600" />
+                    <span>Kasalliklar tarixi</span>
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRefreshHistory}
+                    disabled={isLoadingHistory}
+                    className="h-8 w-8 p-0"
+                    title="Yangilash"
+                  >
+                    {isLoadingHistory ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 text-blue-600" />
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-hidden p-0">
+                {isLoadingHistory ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                  </div>
+                ) : medicalHistory.length > 0 ? (
+                  <ScrollArea className="h-full">
+                    <div className="p-4 space-y-4">
+                      {medicalHistory.map((entry: any, index: number) => {
+                        const entryDate = entry.yuborilgan_vaqt || entry.kelgan_vaqti
+                        const formattedDate = entryDate 
+                          ? new Date(entryDate).toLocaleDateString('ru-RU', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })
+                          : 'Дата не указана'
+                        
+                        return (
+                          <div
+                            key={entry.id || index}
+                            onClick={() => {
+                              setSelectedHistoryEntry(entry)
+                              setShowHistoryDialog(true)
+                            }}
+                            className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow cursor-pointer"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-gray-500" />
+                                <span className="text-sm font-semibold text-gray-800">
+                                  {formattedDate}
+                                </span>
+                              </div>
+                              <Badge variant="secondary" className="text-xs">
+                                Kasallik tarixi
+                              </Badge>
+                            </div>
+                            
+                            {entry.fish && (
+                              <p className="text-sm font-medium text-gray-900 mb-1">
+                                {entry.fish}
+                              </p>
+                            )}
+                            
+                            {entry.shikoyatlar && (
+                              <div className="mt-2">
+                                <p className="text-xs text-gray-600 mb-1 font-medium">
+                                  Shikoyatlar:
+                                </p>
+                                <p className="text-xs text-gray-700 line-clamp-3">
+                                  {entry.shikoyatlar.length > 150 
+                                    ? entry.shikoyatlar.substring(0, 150) + '...'
+                                    : entry.shikoyatlar}
+                                </p>
+                              </div>
+                            )}
+                            
+                            {entry.doktor_tavsiyalari && (
+                              <div className="mt-2 pt-2 border-t">
+                                <p className="text-xs text-gray-600 mb-1 font-medium">
+                                  Doktor tavsiyalari:
+                                </p>
+                                <p className="text-xs text-gray-700 line-clamp-2">
+                                  {entry.doktor_tavsiyalari.length > 100
+                                    ? entry.doktor_tavsiyalari.substring(0, 100) + '...'
+                                    : entry.doktor_tavsiyalari}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+                    <History className="h-12 w-12 text-gray-300 mb-3" />
+                    <p className="text-sm text-gray-500">
+                      {selectedPatientId 
+                        ? "Kasalliklar tarixi mavjud emas"
+                        : "Bemor ma'lumotlarini kiriting"}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {selectedPatientId 
+                        ? "Birinchi yozuv qo'shilgandan keyin bu yerda ko'rinadi"
+                        : "Pasport ma'lumotlarini kiriting"}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Medical History Detail Dialog */}
+        <Dialog open={showHistoryDialog} onOpenChange={setShowHistoryDialog}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-emerald-600 bg-clip-text text-transparent">
+                Kasallik tarixi - Batafsil ma'lumot
+              </DialogTitle>
+              <DialogDescription>
+                {selectedHistoryEntry?.fish && (
+                  <span className="text-base font-medium text-gray-700">
+                    {selectedHistoryEntry.fish}
+                  </span>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {selectedHistoryEntry && (
+              <div className="mt-4 space-y-4">
+                {/* Basic Information */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Asosiy ma'lumotlar</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">F.I.SH</p>
+                        <p className="text-sm text-gray-900">{selectedHistoryEntry.fish || "Kiritilmagan"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Tug'ilgan sana</p>
+                        <p className="text-sm text-gray-900">
+                          {selectedHistoryEntry.tugilgan_sana 
+                            ? new Date(selectedHistoryEntry.tugilgan_sana).toLocaleDateString('ru-RU')
+                            : "Kiritilmagan"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Millati</p>
+                        <p className="text-sm text-gray-900">{selectedHistoryEntry.millati || "Kiritilmagan"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Ma'lumoti</p>
+                        <p className="text-sm text-gray-900">{selectedHistoryEntry.malumoti || "Kiritilmagan"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Kasbi</p>
+                        <p className="text-sm text-gray-900">{selectedHistoryEntry.kasbi || "Kiritilmagan"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Ish joyi</p>
+                        <p className="text-sm text-gray-900">{selectedHistoryEntry.ish_joyi || "Kiritilmagan"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Ish vazifasi</p>
+                        <p className="text-sm text-gray-900">{selectedHistoryEntry.ish_vazifasi || "Kiritilmagan"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Uy manzili</p>
+                        <p className="text-sm text-gray-900">{selectedHistoryEntry.uy_manzili || "Kiritilmagan"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Kelgan vaqti</p>
+                        <p className="text-sm text-gray-900">
+                          {selectedHistoryEntry.kelgan_vaqti 
+                            ? new Date(selectedHistoryEntry.kelgan_vaqti).toLocaleDateString('ru-RU')
+                            : "Kiritilmagan"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Yuborilgan vaqti</p>
+                        <p className="text-sm text-gray-900">
+                          {selectedHistoryEntry.yuborilgan_vaqt 
+                            ? new Date(selectedHistoryEntry.yuborilgan_vaqt).toLocaleDateString('ru-RU', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : "Kiritilmagan"}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Complaints */}
+                {selectedHistoryEntry.shikoyatlar && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Kelgan vaqtdagi shikoyatlari</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {selectedHistoryEntry.shikoyatlar}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Main Diseases */}
+                {selectedHistoryEntry.asosiy_kasalliklar && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Asosiy tizimli kasalliklari</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {selectedHistoryEntry.asosiy_kasalliklar}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Respiratory System */}
+                {(selectedHistoryEntry.nafas_tizimi || selectedHistoryEntry.yotal || selectedHistoryEntry.balgam || 
+                  selectedHistoryEntry.qon_tuflash || selectedHistoryEntry.kokrak_ogriq || selectedHistoryEntry.nafas_qisishi) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Nafas tizimiga oid shikoyatlari</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {selectedHistoryEntry.nafas_tizimi && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Umumiy shikoyatlar</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.nafas_tizimi}</p>
+                        </div>
+                      )}
+                      {selectedHistoryEntry.yotal && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Yo'tal</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.yotal}</p>
+                        </div>
+                      )}
+                      {selectedHistoryEntry.balgam && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Balg'am</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.balgam}</p>
+                        </div>
+                      )}
+                      {selectedHistoryEntry.qon_tuflash && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Qon tuflash</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.qon_tuflash}</p>
+                        </div>
+                      )}
+                      {selectedHistoryEntry.kokrak_ogriq && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Ko'krak qafasidagi og'riq</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.kokrak_ogriq}</p>
+                        </div>
+                      )}
+                      {selectedHistoryEntry.nafas_qisishi && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Nafas qisishi</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.nafas_qisishi}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Cardiovascular System */}
+                {(selectedHistoryEntry.yurak_qon_shikoyatlari || selectedHistoryEntry.yurak_ogriq || 
+                  selectedHistoryEntry.yurak_urishi_ozgarishi || selectedHistoryEntry.yurak_urishi_sezish) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Yurak qon aylanishi tizimi faoliyatiga oid shikoyatlari</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {selectedHistoryEntry.yurak_qon_shikoyatlari && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Umumiy shikoyatlar</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.yurak_qon_shikoyatlari}</p>
+                        </div>
+                      )}
+                      {selectedHistoryEntry.yurak_ogriq && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Yurak sohasidagi og'riq</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.yurak_ogriq}</p>
+                        </div>
+                      )}
+                      {selectedHistoryEntry.yurak_urishi_ozgarishi && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Yurak urishining o'zgarishi</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.yurak_urishi_ozgarishi}</p>
+                        </div>
+                      )}
+                      {selectedHistoryEntry.yurak_urishi_sezish && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Yurak urishini bemor his qilishi</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.yurak_urishi_sezish}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Digestive System */}
+                {(selectedHistoryEntry.hazm_tizimi || selectedHistoryEntry.qusish || selectedHistoryEntry.qorin_ogriq || 
+                  selectedHistoryEntry.ich_ozgarishi || selectedHistoryEntry.anus_shikoyatlar) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Hazm tizimi faoliyatiga oid shikoyatlari</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {selectedHistoryEntry.hazm_tizimi && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Umumiy shikoyatlar</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.hazm_tizimi}</p>
+                        </div>
+                      )}
+                      {selectedHistoryEntry.qusish && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Qusish</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.qusish}</p>
+                        </div>
+                      )}
+                      {selectedHistoryEntry.qorin_ogriq && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Qorin og'riqi</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.qorin_ogriq}</p>
+                        </div>
+                      )}
+                      {selectedHistoryEntry.ich_ozgarishi && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Ich kelishining o'zgarishi</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.ich_ozgarishi}</p>
+                        </div>
+                      )}
+                      {selectedHistoryEntry.anus_shikoyatlar && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Anus sohasidagi simptomlar</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.anus_shikoyatlar}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Other Systems */}
+                {(selectedHistoryEntry.siydik_tizimi || selectedHistoryEntry.endokrin_tizimi || 
+                  selectedHistoryEntry.tayanch_tizimi || selectedHistoryEntry.asab_tizimi) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Boshqa tizimlar</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {selectedHistoryEntry.siydik_tizimi && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Siydik ajratish tizimi</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.siydik_tizimi}</p>
+                        </div>
+                      )}
+                      {selectedHistoryEntry.endokrin_tizimi && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Endokrin tizimi</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.endokrin_tizimi}</p>
+                        </div>
+                      )}
+                      {selectedHistoryEntry.tayanch_tizimi && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Tayanch tizimi</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.tayanch_tizimi}</p>
+                        </div>
+                      )}
+                      {selectedHistoryEntry.asab_tizimi && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Asab tizimi</p>
+                          <p className="text-sm text-gray-700">{selectedHistoryEntry.asab_tizimi}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Doctor Recommendations */}
+                {selectedHistoryEntry.doktor_tavsiyalari && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Doktor tavsiyalari</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {selectedHistoryEntry.doktor_tavsiyalari}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* AI Analysis Results */}
+                {analysisResult && formDataForSave && (
+                  <Card className="bg-gradient-to-br from-blue-50 to-emerald-50 border-blue-200">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Stethoscope className="h-5 w-5 text-blue-600" />
+                        Результаты анализа данных пациента
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="prose prose-sm max-w-none">
+                        <div className="bg-white rounded-lg p-4 border border-blue-100">
+                          <div className="whitespace-pre-wrap text-gray-800 leading-relaxed text-sm">
+                            {analysisResult}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex justify-end">
+                        <Button
+                          onClick={handleDownloadHistoryPDF}
+                          disabled={isGeneratingHistoryPDF}
+                          className="bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600"
+                        >
+                          {isGeneratingHistoryPDF ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Генерация PDF...
+                            </>
+                          ) : (
+                            <>
+                              <Download className="h-4 w-4 mr-2" />
+                              Скачать в PDF
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Analysis Results Dialog */}
+        <Dialog open={showAnalysisDialog} onOpenChange={setShowAnalysisDialog}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-emerald-600 bg-clip-text text-transparent">
+                Анализ медицинской анкеты
+              </DialogTitle>
+              <DialogDescription>
+                Результаты анализа данных пациента с использованием ИИ
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="mt-4 space-y-4">
+              {isAnalyzing ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="h-12 w-12 animate-spin text-blue-500 mb-4" />
+                  <p className="text-gray-600">Анализирую медицинскую анкету...</p>
+                  <p className="text-sm text-gray-500 mt-2">Это может занять несколько секунд</p>
+                </div>
+              ) : analysisResult ? (
+                <>
+                  <div className="prose prose-sm max-w-none">
+                    <div className="bg-gradient-to-br from-blue-50 to-emerald-50 rounded-lg p-6 border border-blue-200">
+                      <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
+                        {analysisResult}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Download PDF Button */}
+                  <div className="flex justify-end pt-4 border-t">
+                    <Button
+                      onClick={handleDownloadAnalysisPDF}
+                      disabled={isGeneratingAnalysisPDF}
+                      className="bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600"
+                    >
+                      {isGeneratingAnalysisPDF ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Генерация PDF...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4 mr-2" />
+                          Скачать анализ в PDF
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Save Status Section */}
+                  <div className="mt-6 border-t pt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-gray-800">Сохранение в историю болезни</h3>
+                      {saveStatus === 'saving' && (
+                        <div className="flex items-center gap-2 text-blue-600">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span className="text-sm">Сохранение...</span>
+                        </div>
+                      )}
+                      {saveStatus === 'success' && (
+                        <div className="flex items-center gap-2 text-emerald-600">
+                          <CheckCircle2 className="h-4 w-4" />
+                          <span className="text-sm">Сохранено</span>
+                        </div>
+                      )}
+                      {saveStatus === 'error' && (
+                        <div className="flex items-center gap-2 text-red-600">
+                          <XCircle className="h-4 w-4" />
+                          <span className="text-sm">Ошибка</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {saveStatus === 'saving' && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p className="text-sm text-blue-800">
+                          Сохранение данных пациента в историю болезни...
+                        </p>
+                      </div>
+                    )}
+
+                    {saveStatus === 'success' && (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-emerald-800">
+                              Данные успешно сохранены
+                            </p>
+                            <p className="text-xs text-emerald-700 mt-1">
+                              Медицинская анкета сохранена в историю болезни пациента на основе личных данных
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {saveStatus === 'error' && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3 mb-3">
+                          <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-red-800">
+                              Ошибка при сохранении
+                            </p>
+                            {saveError && (
+                              <p className="text-xs text-red-700 mt-1">
+                                {saveError}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          onClick={retrySaveMedicalHistory}
+                          disabled={isSaving}
+                          variant="outline"
+                          size="sm"
+                          className="w-full sm:w-auto"
+                        >
+                          {isSaving ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Сохранение...
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              Попробовать снова
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  Не удалось получить анализ
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
