@@ -37,7 +37,6 @@ const getAuthHeaders = () => {
   const token = localStorage.getItem("accessToken");
   return {
     Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
   };
 };
 
@@ -241,7 +240,6 @@ export default function DoctorProfilePage() {
         {
           headers: {
             ...getAuthHeaders(),
-            "Content-Type": "multipart/form-data",
           },
         }
       );

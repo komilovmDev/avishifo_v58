@@ -18,7 +18,7 @@ export function Navigation({ userType, onLogout }: NavigationProps) {
       case "doctor":
         return [
           { label: "Профиль", href: "/dashboard/doctor/profile" },
-          { label: "AI Авишифо", href: "/dashboard/doctor/ai-chat" },
+          { label: "AI Авишифо", href: "/dashboard/doctor/ai" },
           { label: "Записи пациентов", href: "/dashboard/doctor/appointments" },
           { label: "История Пациентов", href: "/dashboard/doctor/patients" },
           { label: "Врачи", href: "/doctors" },

@@ -49,11 +49,19 @@ export function DoctorDashboard({ onLogout }: DoctorDashboardProps) {
           </div>
         </Link>
         
-        <Link href="/dashboard/doctor/ai-chat" className="block">
+        <Link href="/dashboard/doctor/ai" className="block">
           <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow cursor-pointer">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Авишифо</h3>
             <p className="text-gray-600 mb-4">Искусственный интеллект для диагностики</p>
             <div className="text-sm text-gray-500">Доступно</div>
+          </div>
+        </Link>
+
+        <Link href="/dashboard/doctor/ai" className="block">
+          <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-shadow cursor-pointer">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Forma</h3>
+            <p className="text-gray-600 mb-4">Интеллектуальная медицинская анкета (Avi_form)</p>
+            <div className="text-sm text-gray-500">Бета</div>
           </div>
         </Link>
         

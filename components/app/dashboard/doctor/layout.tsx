@@ -31,7 +31,7 @@ const sidebarItems: SidebarItem[] = [
     label: "AI",
     icon: Brain,
     color: "from-blue-500 to-purple-500",
-    href: "/dashboard/doctor/ai-chat",
+    href: "/dashboard/doctor/ai",
   },
   {
     id: "doctors",

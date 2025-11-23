@@ -100,7 +100,7 @@ export default function DoctorsLayout({
             label: "AI Авишифо",
             icon: Brain,
             color: "from-blue-500 to-purple-500",
-            href: "/dashboard/doctor/ai-chat"
+            href: "/dashboard/doctor/ai"
           },
           {
             id: "appointments",
