@@ -9,9 +9,9 @@ export function LanguageSwitcher() {
   const { language, setLanguage } = useI18n()
 
   const languages = [
-    { code: "ru" as const, name: "Русский", flag: "🇷🇺" },
-    { code: "uz" as const, name: "O'zbek", flag: "🇺🇿" },
-    { code: "en" as const, name: "English", flag: "🇬🇧" },
+    { code: "ru" as const, name: "Русский", flag: "🇷🇺", isText: false },
+    { code: "uz" as const, name: "O'zbek", flag: "🇺🇿", isText: false },
+    { code: "en" as const, name: "English", flag: "EN", isText: true },
   ]
 
   return (
@@ -30,7 +30,18 @@ export function LanguageSwitcher() {
               : "hover:bg-gray-100"
           )}
         >
-          <span>{lang.flag}</span>
+          {lang.isText ? (
+            <span className={cn(
+              "font-bold text-[10px] sm:text-xs leading-none inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded",
+              language === lang.code 
+                ? "text-white bg-white/20 backdrop-blur-sm border border-white/30" 
+                : "text-gray-700 bg-gradient-to-br from-gray-50 to-gray-100 px-1.5 py-0.5 rounded border border-gray-300 shadow-sm"
+            )}>
+              {lang.flag}
+            </span>
+          ) : (
+            <span className="text-base leading-none">{lang.flag}</span>
+          )}
           <span className="hidden sm:inline">{lang.name}</span>
         </Button>
       ))}

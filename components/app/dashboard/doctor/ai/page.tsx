@@ -624,7 +624,7 @@ function AIFormInner() {
       // Step 1: Analyze with ChatGPT
       const analysisResponse = await axios.post(
         API_CONFIG.ENDPOINTS.ANALYZE_MEDICAL_FORM,
-        data,
+        { ...data, language },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -1584,10 +1584,10 @@ function AIFormInner() {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-emerald-600 bg-clip-text text-transparent">
-                Анализ медицинской анкеты
+                {t.analysis.title}
               </DialogTitle>
               <DialogDescription>
-                Результаты анализа данных пациента с использованием ИИ
+                {t.analysis.description}
               </DialogDescription>
             </DialogHeader>
             
@@ -1595,8 +1595,8 @@ function AIFormInner() {
               {isAnalyzing ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <Loader2 className="h-12 w-12 animate-spin text-blue-500 mb-4" />
-                  <p className="text-gray-600">Анализирую медицинскую анкету...</p>
-                  <p className="text-sm text-gray-500 mt-2">Это может занять несколько секунд</p>
+                  <p className="text-gray-600">{t.analysis.analyzing}</p>
+                  <p className="text-sm text-gray-500 mt-2">{t.analysis.analyzingSubtext}</p>
                 </div>
               ) : analysisResult ? (
                 <>
@@ -1618,12 +1618,12 @@ function AIFormInner() {
                       {isGeneratingAnalysisPDF ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Генерация PDF...
+                          {t.analysis.generatingPDF}
                         </>
                       ) : (
                         <>
                           <Download className="h-4 w-4 mr-2" />
-                          Скачать анализ в PDF
+                          {t.analysis.downloadPDF}
                         </>
                       )}
                     </Button>
@@ -1632,23 +1632,23 @@ function AIFormInner() {
                   {/* Save Status Section */}
                   <div className="mt-6 border-t pt-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-lg font-semibold text-gray-800">Сохранение в историю болезни</h3>
+                      <h3 className="text-lg font-semibold text-gray-800">{t.analysis.saving}</h3>
                       {saveStatus === 'saving' && (
                         <div className="flex items-center gap-2 text-blue-600">
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="text-sm">Сохранение...</span>
+                          <span className="text-sm">{t.analysis.savingText}</span>
                         </div>
                       )}
                       {saveStatus === 'success' && (
                         <div className="flex items-center gap-2 text-emerald-600">
                           <CheckCircle2 className="h-4 w-4" />
-                          <span className="text-sm">Сохранено</span>
+                          <span className="text-sm">{t.analysis.saved}</span>
                         </div>
                       )}
                       {saveStatus === 'error' && (
                         <div className="flex items-center gap-2 text-red-600">
                           <XCircle className="h-4 w-4" />
-                          <span className="text-sm">Ошибка</span>
+                          <span className="text-sm">{t.analysis.error}</span>
                         </div>
                       )}
                     </div>
@@ -1656,7 +1656,7 @@ function AIFormInner() {
                     {saveStatus === 'saving' && (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <p className="text-sm text-blue-800">
-                          Сохранение данных пациента в историю болезни...
+                          {t.analysis.savingData}
                         </p>
                       </div>
                     )}
@@ -1667,10 +1667,10 @@ function AIFormInner() {
                           <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5" />
                           <div className="flex-1">
                             <p className="text-sm font-medium text-emerald-800">
-                              Данные успешно сохранены
+                              {t.analysis.savedSuccess}
                             </p>
                             <p className="text-xs text-emerald-700 mt-1">
-                              Медицинская анкета сохранена в историю болезни пациента на основе личных данных
+                              {t.analysis.savedSuccessSubtext}
                             </p>
                           </div>
                         </div>
@@ -1683,7 +1683,7 @@ function AIFormInner() {
                           <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
                           <div className="flex-1">
                             <p className="text-sm font-medium text-red-800">
-                              Ошибка при сохранении
+                              {t.analysis.errorText}
                             </p>
                             {saveError && (
                               <p className="text-xs text-red-700 mt-1">
@@ -1702,12 +1702,12 @@ function AIFormInner() {
                           {isSaving ? (
                             <>
                               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Сохранение...
+                              {t.analysis.savingText}
                             </>
                           ) : (
                             <>
                               <RefreshCw className="h-4 w-4 mr-2" />
-                              Попробовать снова
+                              {t.analysis.retry}
                             </>
                           )}
                         </Button>
