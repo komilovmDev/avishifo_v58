@@ -38,6 +38,8 @@ import {
   RefreshCw,
   AlertCircle,
   History,
+  Trash2,
+  RotateCcw,
 } from "lucide-react"
 import { TestResultsTable } from "@/ai-form/components/test-results-table"
 import { SerologicalTestTable } from "@/ai-form/components/serological-test-table"
@@ -606,6 +608,177 @@ function AIFormInner() {
     }
   }
 
+  // Function to format analysis text with markdown support
+  const formatAnalysisText = (text: string) => {
+    if (!text) return null
+
+    const lines = text.split('\n')
+    const elements: React.ReactNode[] = []
+    let currentParagraph: string[] = []
+    let currentListItems: React.ReactNode[] = []
+    let listKey = 0
+
+    const flushParagraph = () => {
+      if (currentParagraph.length > 0) {
+        const paragraphText = currentParagraph.join(' ')
+        if (paragraphText.trim()) {
+          elements.push(
+            <p key={`p-${elements.length}`} className="text-gray-800 leading-relaxed mb-4 last:mb-0">
+              {formatInlineMarkdown(paragraphText)}
+            </p>
+          )
+        }
+        currentParagraph = []
+      }
+    }
+
+    const flushList = () => {
+      if (currentListItems.length > 0) {
+        elements.push(
+          <ul key={`ul-${listKey++}`} className="list-none space-y-2 mb-4 ml-0">
+            {currentListItems}
+          </ul>
+        )
+        currentListItems = []
+      }
+    }
+
+    const formatInlineMarkdown = (text: string): React.ReactNode[] => {
+      const parts: React.ReactNode[] = []
+      let currentIndex = 0
+      
+      // Match **bold**, *italic*, and regular text
+      const boldRegex = /\*\*(.+?)\*\*/g
+      const italicRegex = /\*(.+?)\*/g
+      const matches: Array<{ type: 'bold' | 'italic', start: number, end: number, text: string }> = []
+      
+      let match
+      while ((match = boldRegex.exec(text)) !== null) {
+        matches.push({ type: 'bold', start: match.index, end: match.index + match[0].length, text: match[1] })
+      }
+      while ((match = italicRegex.exec(text)) !== null) {
+        // Skip if it's part of a bold match
+        const isPartOfBold = matches.some(m => match!.index >= m.start && match!.index < m.end)
+        if (!isPartOfBold) {
+          matches.push({ type: 'italic', start: match.index, end: match.index + match[0].length, text: match[1] })
+        }
+      }
+      
+      matches.sort((a, b) => a.start - b.start)
+      
+      matches.forEach((match, idx) => {
+        // Add text before match
+        if (match.start > currentIndex) {
+          const beforeText = text.substring(currentIndex, match.start)
+          if (beforeText) {
+            parts.push(<span key={`text-${idx}-before`}>{beforeText}</span>)
+          }
+        }
+        
+        // Add formatted match
+        if (match.type === 'bold') {
+          parts.push(
+            <strong key={`bold-${idx}`} className="font-semibold text-gray-900">
+              {match.text}
+            </strong>
+          )
+        } else {
+          parts.push(
+            <em key={`italic-${idx}`} className="italic text-gray-700">
+              {match.text}
+            </em>
+          )
+        }
+        
+        currentIndex = match.end
+      })
+      
+      // Add remaining text
+      if (currentIndex < text.length) {
+        const remainingText = text.substring(currentIndex)
+        if (remainingText) {
+          parts.push(<span key={`text-final`}>{remainingText}</span>)
+        }
+      }
+      
+      return parts.length > 0 ? parts : [text]
+    }
+
+    lines.forEach((line, index) => {
+      const trimmedLine = line.trim()
+      
+      // Headers (## or ###)
+      if (trimmedLine.startsWith('###')) {
+        flushParagraph()
+        flushList()
+        const headerText = trimmedLine.replace(/^###+\s*/, '')
+        elements.push(
+          <h3 key={`h3-${index}`} className="text-lg font-bold text-gray-900 mt-6 mb-3 first:mt-0 flex items-center gap-2">
+            <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-emerald-500 rounded-full"></div>
+            {formatInlineMarkdown(headerText)}
+          </h3>
+        )
+        return
+      }
+      
+      if (trimmedLine.startsWith('##')) {
+        flushParagraph()
+        flushList()
+        const headerText = trimmedLine.replace(/^##+\s*/, '')
+        elements.push(
+          <h2 key={`h2-${index}`} className="text-xl font-bold text-gray-900 mt-8 mb-4 first:mt-0 flex items-center gap-3 border-b border-blue-200 pb-2">
+            <div className="w-1.5 h-8 bg-gradient-to-b from-blue-500 to-emerald-500 rounded-full"></div>
+            {formatInlineMarkdown(headerText)}
+          </h2>
+        )
+        return
+      }
+      
+      // List items (- or *)
+      if (trimmedLine.match(/^[-*]\s+/)) {
+        flushParagraph()
+        const listText = trimmedLine.replace(/^[-*]\s+/, '')
+        currentListItems.push(
+          <li key={`li-${index}`} className="flex items-start gap-2 text-gray-800">
+            <span className="text-blue-500 mt-1.5 flex-shrink-0">•</span>
+            <span className="flex-1">{formatInlineMarkdown(listText)}</span>
+          </li>
+        )
+        return
+      }
+      
+      // Numbered list
+      if (trimmedLine.match(/^\d+\.\s+/)) {
+        flushParagraph()
+        const listText = trimmedLine.replace(/^\d+\.\s+/, '')
+        const number = trimmedLine.match(/^(\d+)\./)?.[1] || ''
+        currentListItems.push(
+          <li key={`li-${index}`} className="flex items-start gap-2 text-gray-800">
+            <span className="text-blue-500 font-semibold mt-1.5 flex-shrink-0 min-w-[20px]">{number}.</span>
+            <span className="flex-1">{formatInlineMarkdown(listText)}</span>
+          </li>
+        )
+        return
+      }
+      
+      // Empty line
+      if (!trimmedLine) {
+        flushParagraph()
+        flushList()
+        return
+      }
+      
+      // Regular paragraph text
+      flushList()
+      currentParagraph.push(trimmedLine)
+    })
+    
+    flushParagraph()
+    flushList()
+    
+    return elements.length > 0 ? elements : <p className="text-gray-800">{text}</p>
+  }
+
   const onSubmit = async (data: MedicalFormData) => {
     if (currentStep !== STEPS.length) return
     const isValid = await validateStep(currentStep)
@@ -676,12 +849,18 @@ function AIFormInner() {
 
         // Show success
         setSaveStatus('success')
+        setSelectedPatientId(patientId) // Ensure patient ID is set
         toast({
           title: "Успешно сохранено",
           description: "Медицинская анкета сохранена в историю болезни пациента",
           variant: "default",
         })
         console.log("Medical history saved successfully")
+        
+        // Refresh medical history list after saving
+        setTimeout(() => {
+          fetchMedicalHistory(patientId)
+        }, 500) // Small delay to ensure data is saved on backend
       } catch (saveError: any) {
         console.error("Error saving medical history:", saveError)
         setSaveStatus('error')
@@ -784,6 +963,25 @@ function AIFormInner() {
     return false
   }
 
+  // Function to clear/reset form
+  const handleClearForm = () => {
+    if (!confirm("Barcha ma'lumotlarni o'chirishni xohlaysizmi? Barcha kiritilgan ma'lumotlar yo'qoladi.")) {
+      return
+    }
+    
+    form.reset(defaultValues)
+    setCurrentStep(1)
+    setSelectedHistoryEntry(null)
+    setAnalysisResult(null)
+    setFormDataForSave(null)
+    
+    toast({
+      title: "Tozalandi",
+      description: "Barcha ma'lumotlar o'chirildi",
+      variant: "default",
+    })
+  }
+
   const handleDownloadPDF = async () => {
     setIsGeneratingPDF(true)
     try {
@@ -875,6 +1073,106 @@ function AIFormInner() {
     }
   }
 
+  // Function to delete history entry
+  const handleDeleteHistory = async () => {
+    if (!selectedHistoryEntry || !selectedHistoryEntry.id) {
+      toast({
+        title: "Ошибка",
+        description: "Не удалось удалить запись",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!confirm("Вы уверены, что хотите удалить эту запись истории болезни?")) {
+      return
+    }
+
+    try {
+      const token = localStorage.getItem("accessToken")
+      if (!token) {
+        throw new Error("Требуется авторизация")
+      }
+
+      const deleteUrl = selectedHistoryEntry.id 
+        ? `${API_CONFIG.ENDPOINTS.MEDICAL_HISTORY}${selectedHistoryEntry.id}/`
+        : `${API_CONFIG.ENDPOINTS.MEDICAL_HISTORY}${selectedHistoryEntry.pk || selectedHistoryEntry.id}/`
+      
+      await axios.delete(
+        deleteUrl,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      toast({
+        title: "Успешно",
+        description: "Запись истории болезни удалена",
+        variant: "default",
+      })
+
+      // Close dialog and refresh history
+      setShowHistoryDialog(false)
+      setSelectedHistoryEntry(null)
+      fetchMedicalHistory()
+    } catch (error: any) {
+      console.error("Error deleting history entry:", error)
+      toast({
+        title: "Ошибка",
+        description: error.response?.data?.message || "Не удалось удалить запись",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Function to fill form with history entry data
+  const handleFillFormFromHistory = () => {
+    if (!selectedHistoryEntry) return
+
+    try {
+      // Map history entry data to form data
+      const formData: Partial<MedicalFormData> = {
+        fullName: selectedHistoryEntry.fish || "",
+        birthDate: selectedHistoryEntry.tugilgan_sana || "",
+        education: selectedHistoryEntry.malumoti || "",
+        job: selectedHistoryEntry.kasbi || (selectedHistoryEntry.ish_joyi ? `${selectedHistoryEntry.ish_joyi}${selectedHistoryEntry.ish_vazifasi ? `, ${selectedHistoryEntry.ish_vazifasi}` : ''}` : ""),
+        address: selectedHistoryEntry.uy_manzili || "",
+        admissionDate: selectedHistoryEntry.kelgan_vaqti || "",
+        mainComplaints: selectedHistoryEntry.shikoyatlar || "",
+        // Add more mappings as needed
+      }
+
+      // Set form values
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value) {
+          form.setValue(key as keyof MedicalFormData, value as any)
+        }
+      })
+
+      // Close dialog
+      setShowHistoryDialog(false)
+      setSelectedHistoryEntry(null)
+
+      // Go to first step
+      setCurrentStep(1)
+
+      toast({
+        title: "Успешно",
+        description: "Форма заполнена данными из истории болезни",
+        variant: "default",
+      })
+    } catch (error: any) {
+      console.error("Error filling form from history:", error)
+      toast({
+        title: "Ошибка",
+        description: "Не удалось заполнить форму",
+        variant: "destructive",
+      })
+    }
+  }
+
   // Function to download history entry PDF with analysis
   const handleDownloadHistoryPDF = async () => {
     if (!selectedHistoryEntry || !formDataForSave || !analysisResult) return
@@ -914,64 +1212,100 @@ function AIFormInner() {
     }
   }
 
-  // Function to fetch medical history
-  const fetchMedicalHistory = async (patientId?: number) => {
-    // If no patientId provided, try to find it from form data
-    let targetPatientId = patientId
+  // Function to download PDF from history entry data
+  const handleDownloadHistoryEntryPDF = async () => {
+    if (!selectedHistoryEntry) return
     
-    if (!targetPatientId) {
-      const formData = form.getValues()
-      if (formData.passport) {
-        const passport = formData.passport?.replace(/\s+/g, '').toUpperCase() || ''
-        const passportSeries = passport.substring(0, 2)
-        const passportNumber = passport.substring(2)
-        
-        if (passportSeries && passportNumber) {
-          try {
-            const token = localStorage.getItem("accessToken")
-            if (token) {
-              const searchResponse = await axios.get(
-                `${API_CONFIG.ENDPOINTS.PATIENTS_SEARCH}?passport_series=${encodeURIComponent(passportSeries)}&passport_number=${encodeURIComponent(passportNumber)}`,
-                { headers: { Authorization: `Bearer ${token}` } }
-              )
-              if (searchResponse.data && Array.isArray(searchResponse.data) && searchResponse.data.length > 0) {
-                targetPatientId = searchResponse.data[0].id || searchResponse.data[0].pk
-                if (targetPatientId) {
-                  setSelectedPatientId(targetPatientId)
-                }
-              } else if (searchResponse.data?.id) {
-                targetPatientId = searchResponse.data.id
-                setSelectedPatientId(targetPatientId)
-              }
-            }
-          } catch (error) {
-            console.log("Patient not found in search, will use selectedPatientId if available")
-          }
-        }
+    setIsGeneratingHistoryPDF(true)
+    try {
+      // Convert history entry to form data format
+      const formDataFromHistory: MedicalFormData = {
+        fullName: selectedHistoryEntry.fish || "",
+        passport: selectedHistoryEntry.passport || "",
+        birthDate: selectedHistoryEntry.tugilgan_sana ? new Date(selectedHistoryEntry.tugilgan_sana).toISOString().split("T")[0] : "",
+        gender: selectedHistoryEntry.jinsi || "",
+        maritalStatus: selectedHistoryEntry.oila_holati || "",
+        education: selectedHistoryEntry.malumoti || "",
+        job: selectedHistoryEntry.kasbi || "",
+        address: selectedHistoryEntry.uy_manzili || "",
+        complaints: selectedHistoryEntry.shikoyatlar || "",
+        mainDiseases: selectedHistoryEntry.asosiy_kasalliklar || "",
+        respiratorySystem: selectedHistoryEntry.nafas_tizimi || "",
+        cough: selectedHistoryEntry.yotal || "",
+        sputum: selectedHistoryEntry.balgam || "",
+        hemoptysis: selectedHistoryEntry.qon_tuflash || "",
+        chestPain: selectedHistoryEntry.kokrak_ogriq || "",
+        shortnessOfBreath: selectedHistoryEntry.nafas_qisishi || "",
+        cardiovascularSystem: selectedHistoryEntry.yurak_qon_shikoyatlari || "",
+        heartPain: selectedHistoryEntry.yurak_ogriq || "",
+        heartRateChanges: selectedHistoryEntry.yurak_urishi_ozgarishi || "",
+        heartRateSensation: selectedHistoryEntry.yurak_urishi_sezish || "",
+        digestiveSystem: selectedHistoryEntry.hazm_tizimi || "",
+        vomiting: selectedHistoryEntry.qusish || "",
+        abdominalPain: selectedHistoryEntry.qorin_ogriq || "",
+        abdominalSwelling: selectedHistoryEntry.qorin_shish || "",
+        stoolChanges: selectedHistoryEntry.ich_ozgarishi || "",
+        anusSymptoms: selectedHistoryEntry.anus_shikoyatlar || "",
+        urinarySystem: selectedHistoryEntry.siydik_tizimi || "",
+        endocrineSystem: selectedHistoryEntry.endokrin_tizimi || "",
+        musculoskeletalSystem: selectedHistoryEntry.tayanch_tizimi || "",
+        nervousSystem: selectedHistoryEntry.asab_tizimi || "",
+        badHabits: "",
+        familyHistory: "",
+        allergies: "",
+        pastDiseases: "",
+        instrumental_research: [],
       }
+
+      const doc = <PDFDocument data={formDataFromHistory} />
+      const asPdf = pdf(doc)
+      const blob = await asPdf.toBlob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `kasallik_tarixi_${selectedHistoryEntry.fish || "пациент"}_${new Date(selectedHistoryEntry.yuborilgan_vaqt || selectedHistoryEntry.kelgan_vaqti || Date.now()).toISOString().split("T")[0]}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
+      toast({
+        title: "PDF скачан",
+        description: "История болезни успешно сохранена в PDF",
+        variant: "default",
+      })
+    } catch (error: any) {
+      console.error("Error generating history entry PDF:", error)
+      toast({
+        title: "Ошибка",
+        description: "Не удалось создать PDF файл",
+        variant: "destructive",
+      })
+    } finally {
+      setIsGeneratingHistoryPDF(false)
     }
-    
-    // Use selectedPatientId if still no patientId
-    if (!targetPatientId && selectedPatientId) {
-      targetPatientId = selectedPatientId
-    }
-    
-    if (!targetPatientId) {
-      console.log("No patient ID available to fetch history")
-      setMedicalHistory([])
-      return
-    }
-    
+  }
+
+  // Function to fetch medical history - loads ALL history regardless of patient
+  const fetchMedicalHistory = async (patientId?: number) => {
     setIsLoadingHistory(true)
     try {
       const token = localStorage.getItem("accessToken")
       if (!token) {
+        console.log("No access token available")
         setIsLoadingHistory(false)
+        setMedicalHistory([])
         return
       }
 
+      // If patientId is provided, filter by patient, otherwise load all history
+      const url = patientId 
+        ? `${API_CONFIG.ENDPOINTS.MEDICAL_HISTORY}?patient_id=${patientId}`
+        : API_CONFIG.ENDPOINTS.MEDICAL_HISTORY
+
+      console.log("📋 Fetching medical history:", patientId ? `for patient ${patientId}` : "ALL history")
       const response = await axios.get(
-        `${API_CONFIG.ENDPOINTS.MEDICAL_HISTORY}?patient_id=${targetPatientId}`,
+        url,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -979,17 +1313,39 @@ function AIFormInner() {
         }
       )
 
+      console.log("Medical history response:", response.data)
       if (response.data && Array.isArray(response.data)) {
-        setMedicalHistory(response.data.sort((a: any, b: any) => {
+        const sortedHistory = response.data.sort((a: any, b: any) => {
           const dateA = new Date(a.yuborilgan_vaqt || a.kelgan_vaqti || 0).getTime()
           const dateB = new Date(b.yuborilgan_vaqt || b.kelgan_vaqti || 0).getTime()
           return dateB - dateA // Newest first
-        }))
+        })
+        console.log("Setting medical history:", sortedHistory.length, "entries")
+        setMedicalHistory(sortedHistory)
+      } else if (response.data && typeof response.data === 'object' && !Array.isArray(response.data)) {
+        // Handle case where API returns object instead of array
+        const historyArray = Object.values(response.data)
+        if (Array.isArray(historyArray)) {
+          const sortedHistory = historyArray.sort((a: any, b: any) => {
+            const dateA = new Date(a.yuborilgan_vaqt || a.kelgan_vaqti || 0).getTime()
+            const dateB = new Date(b.yuborilgan_vaqt || b.kelgan_vaqti || 0).getTime()
+            return dateB - dateA
+          })
+          setMedicalHistory(sortedHistory)
+        } else {
+          setMedicalHistory([])
+        }
       } else {
+        console.log("No medical history data found")
         setMedicalHistory([])
       }
     } catch (error: any) {
       console.error("Error fetching medical history:", error)
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      })
       setMedicalHistory([])
     } finally {
       setIsLoadingHistory(false)
@@ -1001,46 +1357,34 @@ function AIFormInner() {
     await fetchMedicalHistory()
   }
 
-  // Fetch history when patient is selected or after saving
+  // Load ALL medical history on component mount - IMMEDIATELY
   useEffect(() => {
-    if (selectedPatientId) {
-      fetchMedicalHistory(selectedPatientId)
-    }
-  }, [selectedPatientId])
-
-  // Update selected patient when form data changes
-  useEffect(() => {
-    const formData = form.getValues()
-    if (formData.fullName && formData.passport) {
-      // Try to find patient ID based on passport
-      const passport = formData.passport?.replace(/\s+/g, '').toUpperCase() || ''
-      const passportSeries = passport.substring(0, 2)
-      const passportNumber = passport.substring(2)
-      
-      if (passportSeries && passportNumber) {
-        const token = localStorage.getItem("accessToken")
-        if (token) {
-          axios.get(
-            `${API_CONFIG.ENDPOINTS.PATIENTS_SEARCH}?passport_series=${encodeURIComponent(passportSeries)}&passport_number=${encodeURIComponent(passportNumber)}`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          )
-          .then((response) => {
-            if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-              const patientId = response.data[0].id || response.data[0].pk
-              if (patientId && patientId !== selectedPatientId) {
-                setSelectedPatientId(patientId)
-              }
-            }
-          })
-          .catch(() => {
-            // Patient not found, will be created on save
-          })
-        }
+    console.log("🔄 Component mounted, loading ALL medical history")
+    // Try to load immediately
+    fetchMedicalHistory()
+    
+    // Also try after a short delay in case token wasn't ready
+    const timer = setTimeout(() => {
+      const token = localStorage.getItem("accessToken")
+      if (token) {
+        console.log("🔄 Retrying to load ALL medical history")
+        fetchMedicalHistory()
       }
+    }, 500)
+    
+    return () => clearTimeout(timer)
+  }, []) // Run only on mount
+
+  // Refresh history after saving new entry
+  useEffect(() => {
+    if (saveStatus === 'success') {
+      // Refresh all history after successful save
+      setTimeout(() => {
+        console.log("🔄 Refreshing ALL medical history after save")
+        fetchMedicalHistory()
+      }, 500)
     }
-  }, [form.watch('passport'), form.watch('fullName')])
+  }, [saveStatus])
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -1110,12 +1454,18 @@ function AIFormInner() {
                   )}
                 </div>
 
-                <div className="flex gap-3 w-full sm:w-auto">
+                <div className="flex gap-3 w-full sm:w-auto flex-wrap">
                   <Button type="button" variant="outline" onClick={handleSaveClick} className="flex-1 sm:flex-none min-w-[140px] transition-all duration-200 hover:shadow-md">
                     <Save className="w-4 h-4 mr-2" />{t.buttons.save}
                   </Button>
-                  <Button type="button" variant="outline" onClick={handleDownloadPDF} disabled={isGeneratingPDF} className="flex-1 sm:flex-none min-w-[140px] transition-all duration-200 hover:shadow-md">
-                    <Download className="w-4 h-4 mr-2" />{isGeneratingPDF ? t.buttons.generating : t.buttons.pdf}
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleClearForm} 
+                    className="flex-1 sm:flex-none min-w-[140px] transition-all duration-200 hover:shadow-md border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Tozalash
                   </Button>
                 </div>
               </div>
@@ -1125,8 +1475,8 @@ function AIFormInner() {
           </div>
 
           {/* Medical History Sidebar - Right Side (1 column on large screens) */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-6 h-[calc(100vh-3rem)] flex flex-col">
+          <div className="lg:col-span-1 order-2 lg:order-3">
+            <Card className="sticky top-6 h-[calc(100vh-3rem)] flex flex-col shadow-lg">
               <CardHeader className="border-b">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
@@ -1228,14 +1578,10 @@ function AIFormInner() {
                   <div className="flex flex-col items-center justify-center h-full p-4 text-center">
                     <History className="h-12 w-12 text-gray-300 mb-3" />
                     <p className="text-sm text-gray-500">
-                      {selectedPatientId 
-                        ? "Kasalliklar tarixi mavjud emas"
-                        : "Bemor ma'lumotlarini kiriting"}
+                      Kasalliklar tarixi mavjud emas
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
-                      {selectedPatientId 
-                        ? "Birinchi yozuv qo'shilgandan keyin bu yerda ko'rinadi"
-                        : "Pasport ma'lumotlarini kiriting"}
+                      Birinchi yozuv qo'shilgandan keyin bu yerda ko'rinadi
                     </p>
                   </div>
                 )}
@@ -1552,28 +1898,41 @@ function AIFormInner() {
                           </div>
                         </div>
                       </div>
-                      <div className="mt-4 flex justify-end">
-                        <Button
-                          onClick={handleDownloadHistoryPDF}
-                          disabled={isGeneratingHistoryPDF}
-                          className="bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600"
-                        >
-                          {isGeneratingHistoryPDF ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Генерация PDF...
-                            </>
-                          ) : (
-                            <>
-                              <Download className="h-4 w-4 mr-2" />
-                              Скачать в PDF
-                            </>
-                          )}
-                        </Button>
-                      </div>
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Action Buttons */}
+                <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-gray-200">
+                  <Button 
+                    type="button" 
+                    variant="destructive" 
+                    onClick={handleDeleteHistory} 
+                    className="flex-1 sm:flex-none min-w-[140px] transition-all duration-200 hover:shadow-md bg-red-500 hover:bg-red-600 text-white"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    O'chirish
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleDownloadHistoryEntryPDF} 
+                    disabled={isGeneratingHistoryPDF}
+                    className="flex-1 sm:flex-none min-w-[140px] transition-all duration-200 hover:shadow-md"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    {isGeneratingHistoryPDF ? t.buttons.generating : t.buttons.pdf}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleFillFormFromHistory} 
+                    className="flex-1 sm:flex-none min-w-[180px] transition-all duration-200 hover:shadow-md bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 text-white border-0"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Kasallik tarixi ma'lumotlari
+                  </Button>
+                </div>
               </div>
             )}
           </DialogContent>
@@ -1600,10 +1959,14 @@ function AIFormInner() {
                 </div>
               ) : analysisResult ? (
                 <>
-                  <div className="prose prose-sm max-w-none">
-                    <div className="bg-gradient-to-br from-blue-50 to-emerald-50 rounded-lg p-6 border border-blue-200">
-                      <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
-                        {analysisResult}
+                  <div className="relative">
+                    <div className="bg-gradient-to-br from-white via-blue-50/30 to-emerald-50/30 rounded-xl p-6 sm:p-8 border border-blue-200/50 shadow-lg">
+                      {/* Decorative top border */}
+                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-blue-400 to-emerald-500 rounded-t-xl"></div>
+                      
+                      {/* Content with beautiful typography */}
+                      <div className="relative z-10 space-y-1">
+                        {formatAnalysisText(analysisResult)}
                       </div>
                     </div>
                   </div>
