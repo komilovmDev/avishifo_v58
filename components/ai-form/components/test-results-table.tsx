@@ -18,9 +18,10 @@ interface TestResultsTableProps {
   rows: TestResultRow[]
   conclusionFieldName?: keyof MedicalFormData
   form?: UseFormReturn<MedicalFormData>
+  hideUnitColumn?: boolean
 }
 
-export function TestResultsTable({ title, rows, conclusionFieldName, form: formProp }: TestResultsTableProps) {
+export function TestResultsTable({ title, rows, conclusionFieldName, form: formProp, hideUnitColumn = false }: TestResultsTableProps) {
   // Always try to get form from context (required by React hooks rules)
   // If formProp is provided, it takes precedence
   let formContext: UseFormReturn<MedicalFormData>
@@ -30,12 +31,12 @@ export function TestResultsTable({ title, rows, conclusionFieldName, form: formP
     // Form context not available
     formContext = undefined as any
   }
-  
+
   const form = formProp || formContext
   if (!form) {
     throw new Error("TestResultsTable requires either a form prop or to be inside a Form provider")
   }
-  
+
   const { t } = useI18n()
 
   return (
@@ -48,12 +49,14 @@ export function TestResultsTable({ title, rows, conclusionFieldName, form: formP
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-r border-gray-200">
                 {t.testResults?.indicator || "Показатель"}
               </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-r border-gray-200">
+              <th className={`px-4 py-3 text-left text-sm font-semibold text-gray-700 ${hideUnitColumn ? '' : 'border-r border-gray-200'}`}>
                 {t.testResults?.result || "Результат"}
               </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-r border-gray-200">
-                {t.testResults?.unit || "Ед. изм."}
-              </th>
+              {!hideUnitColumn && (
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-r border-gray-200">
+                  {t.testResults?.unit || "Ед. изм."}
+                </th>
+              )}
               <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">
                 {t.testResults?.reference || "Референсные значения"}
               </th>
@@ -63,14 +66,13 @@ export function TestResultsTable({ title, rows, conclusionFieldName, form: formP
             {rows.map((row, index) => (
               <tr
                 key={row.fieldName}
-                className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                  index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                }`}
+                className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                  }`}
               >
                 <td className="px-4 py-3 text-sm text-gray-700 border-r border-gray-200 font-medium">
                   {row.name}
                 </td>
-                <td className="px-4 py-3 border-r border-gray-200">
+                <td className={`px-4 py-3 ${hideUnitColumn ? '' : 'border-r border-gray-200'}`}>
                   <FormField
                     control={form.control}
                     name={row.fieldName}
@@ -88,9 +90,11 @@ export function TestResultsTable({ title, rows, conclusionFieldName, form: formP
                     )}
                   />
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-600 border-r border-gray-200">
-                  {row.unit}
-                </td>
+                {!hideUnitColumn && (
+                  <td className="px-4 py-3 text-sm text-gray-600 border-r border-gray-200">
+                    {row.unit}
+                  </td>
+                )}
                 <td className="px-4 py-3 text-sm text-gray-600">
                   {row.reference}
                 </td>

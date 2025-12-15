@@ -101,7 +101,7 @@ function AIFormInner() {
   const [isGeneratingAnalysisPDF, setIsGeneratingAnalysisPDF] = useState(false)
   const [isGeneratingHistoryPDF, setIsGeneratingHistoryPDF] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
-  
+
   // Logo URL - можно настроить через переменную окружения или использовать дефолтный путь
   const LOGO_URL = process.env.NEXT_PUBLIC_LOGO_URL || "/logologin.png"
 
@@ -255,7 +255,7 @@ function AIFormInner() {
     let fieldsToValidate: (keyof MedicalFormData)[] = []
     switch (step) {
       case 1:
-        fieldsToValidate = ["fullName","passport","birthDate","gender","maritalStatus","education","job","address"]
+        fieldsToValidate = ["fullName", "passport", "birthDate", "gender", "maritalStatus", "education", "job", "address"]
         const result = await form.trigger(fieldsToValidate)
         if (!result) {
           const firstError = Object.keys(form.formState.errors)[0]
@@ -298,11 +298,11 @@ function AIFormInner() {
     try {
       // Parse passport (assuming format like "AA1234567" or "AA 1234567" or "AA123456")
       const passport = formData.passport?.replace(/\s+/g, '').toUpperCase() || ''
-      
+
       // Try different passport formats
       let passportSeries = ''
       let passportNumber = ''
-      
+
       // Format 1: AA1234567 (2 letters + 7 digits)
       if (passport.length >= 9) {
         passportSeries = passport.substring(0, 2)
@@ -438,7 +438,7 @@ function AIFormInner() {
         console.error("Could not extract patient ID from response:", createResponse.data)
         throw new Error("Не удалось получить ID созданного пациента из ответа сервера")
       }
-      
+
       return patientId
     } catch (error: any) {
       console.error("Error finding/creating patient:", error)
@@ -454,7 +454,7 @@ function AIFormInner() {
           gender: formData.gender,
         }
       })
-      
+
       // Extract error message from different possible formats
       let errorMessage = ''
       if (error.response?.data) {
@@ -465,7 +465,7 @@ function AIFormInner() {
         } else if (error.response.data.message) {
           errorMessage = error.response.data.message
         } else if (Array.isArray(error.response.data)) {
-          errorMessage = error.response.data.map((err: any) => 
+          errorMessage = error.response.data.map((err: any) =>
             typeof err === 'string' ? err : (err.message || JSON.stringify(err))
           ).join(', ')
         } else if (typeof error.response.data === 'object') {
@@ -483,11 +483,11 @@ function AIFormInner() {
           }
         }
       }
-      
+
       if (!errorMessage) {
         errorMessage = error.message || 'Неизвестная ошибка'
       }
-      
+
       throw new Error("Не удалось найти или создать пациента: " + errorMessage)
     }
   }
@@ -499,7 +499,7 @@ function AIFormInner() {
     let kasbi = ''
     let ishJoyi = ''
     let ishVazifasi = ''
-    
+
     // Try to parse job field (format: "Место работы, специальность, должность")
     const jobParts = jobText.split(',').map(s => s.trim()).filter(Boolean)
     if (jobParts.length >= 1) {
@@ -548,7 +548,7 @@ function AIFormInner() {
     if (formData.pcr_conclusion) testResults.push(`ПЦР: ${formData.pcr_conclusion}`)
 
     // Combine instrumental research
-    const instrumentalData = formData.instrumental_research?.map(item => 
+    const instrumentalData = formData.instrumental_research?.map(item =>
       `${item.type || ''} (${item.date || 'дата не указана'}): ${item.comment || ''}`
     ).join('\n') || ''
 
@@ -564,7 +564,7 @@ function AIFormInner() {
       uy_manzili: formData.address || '',
       kelgan_vaqti: formData.admissionDate || new Date().toISOString().split('T')[0],
       shikoyatlar: allComplaints,
-      
+
       // Respiratory system - use respiratory examination data
       nafas_tizimi: formData.respiratory || '',
       yotal: '', // Not in AI form
@@ -572,39 +572,59 @@ function AIFormInner() {
       qon_tuflash: '', // Not in AI form
       kokrak_ogriq: '', // Not in AI form
       nafas_qisishi: '', // Not in AI form
-      
+
       // Cardiovascular system - use cardiovascular examination data
       yurak_qon_shikoyatlari: formData.cardiovascular || '',
       yurak_ogriq: '', // Not in AI form
       yurak_urishi_ozgarishi: '', // Not in AI form
       yurak_urishi_sezish: '', // Not in AI form
-      
+
       // Digestive system - use abdomen examination data
       hazm_tizimi: formData.abdomen || '',
       qusish: '', // Not in AI form
       qorin_ogriq: '', // Not in AI form
       ich_ozgarishi: '', // Not in AI form
       anus_shikoyatlar: '', // Not in AI form
-      
+
       // Urinary system
       siydik_tizimi: '', // Not in AI form
-      
+
       // Endocrine system
       endokrin_tizimi: '', // Not in AI form
-      
+
       // Musculoskeletal system
       tayanch_tizimi: formData.musculoskeletal || '',
-      
+
       // Nervous system
       asab_tizimi: '', // Not in AI form
-      
-      // Doctor recommendations - combine examination, test results, and instrumental research
+
+      // Doctor recommendations
       doktor_tavsiyalari: [
         '=== ОБЪЕКТИВНОЕ ОБСЛЕДОВАНИЕ ===',
         examinationData,
         testResults.length > 0 ? '\n=== РЕЗУЛЬТАТЫ АНАЛИЗОВ ===\n' + testResults.join('\n') : '',
         instrumentalData ? '\n=== ИНСТРУМЕНТАЛЬНЫЕ ИССЛЕДОВАНИЯ ===\n' + instrumentalData : '',
       ].filter(Boolean).join('\n\n'),
+
+      // Qo'shimcha ma'lumotlar (Life History)
+      zararli_odatlar: formData.badHabits || '',
+      oilaviy_anamnez: formData.familyHistory || '',
+      allergiyalar: formData.allergies || '',
+      otkazilgan_kasalliklar: formData.pastDiseases || '',
+
+      // Fizikal ko'rik (Examination)
+      umumiy_korik: formData.generalExamination || '',
+      bosh_boyin: formData.headNeck || '',
+      teri: formData.skin || '',
+      limfa_tugunlari: formData.lymphNodes || '',
+      qorin_palpatsiyasi: formData.abdomenPalpation || '',
+      perkussiya: formData.percussion || '',
+      opka_auskultatsiyasi: formData.lungAuscultation || '',
+      yurak_auskultatsiyasi: formData.heartAuscultation || '',
+      qorin_auskultatsiyasi: formData.abdomenAuscultation || '',
+
+      // AI Analysis
+      ai_tahlil: analysisResult || ''
     }
   }
 
@@ -646,12 +666,12 @@ function AIFormInner() {
     const formatInlineMarkdown = (text: string): React.ReactNode[] => {
       const parts: React.ReactNode[] = []
       let currentIndex = 0
-      
+
       // Match **bold**, *italic*, and regular text
       const boldRegex = /\*\*(.+?)\*\*/g
       const italicRegex = /\*(.+?)\*/g
       const matches: Array<{ type: 'bold' | 'italic', start: number, end: number, text: string }> = []
-      
+
       let match
       while ((match = boldRegex.exec(text)) !== null) {
         matches.push({ type: 'bold', start: match.index, end: match.index + match[0].length, text: match[1] })
@@ -663,9 +683,9 @@ function AIFormInner() {
           matches.push({ type: 'italic', start: match.index, end: match.index + match[0].length, text: match[1] })
         }
       }
-      
+
       matches.sort((a, b) => a.start - b.start)
-      
+
       matches.forEach((match, idx) => {
         // Add text before match
         if (match.start > currentIndex) {
@@ -674,7 +694,7 @@ function AIFormInner() {
             parts.push(<span key={`text-${idx}-before`}>{beforeText}</span>)
           }
         }
-        
+
         // Add formatted match
         if (match.type === 'bold') {
           parts.push(
@@ -689,10 +709,10 @@ function AIFormInner() {
             </em>
           )
         }
-        
+
         currentIndex = match.end
       })
-      
+
       // Add remaining text
       if (currentIndex < text.length) {
         const remainingText = text.substring(currentIndex)
@@ -700,13 +720,13 @@ function AIFormInner() {
           parts.push(<span key={`text-final`}>{remainingText}</span>)
         }
       }
-      
+
       return parts.length > 0 ? parts : [text]
     }
 
     lines.forEach((line, index) => {
       const trimmedLine = line.trim()
-      
+
       // Headers (## or ###)
       if (trimmedLine.startsWith('###')) {
         flushParagraph()
@@ -720,7 +740,7 @@ function AIFormInner() {
         )
         return
       }
-      
+
       if (trimmedLine.startsWith('##')) {
         flushParagraph()
         flushList()
@@ -733,7 +753,7 @@ function AIFormInner() {
         )
         return
       }
-      
+
       // List items (- or *)
       if (trimmedLine.match(/^[-*]\s+/)) {
         flushParagraph()
@@ -746,7 +766,7 @@ function AIFormInner() {
         )
         return
       }
-      
+
       // Numbered list
       if (trimmedLine.match(/^\d+\.\s+/)) {
         flushParagraph()
@@ -760,22 +780,22 @@ function AIFormInner() {
         )
         return
       }
-      
+
       // Empty line
       if (!trimmedLine) {
         flushParagraph()
         flushList()
         return
       }
-      
+
       // Regular paragraph text
       flushList()
       currentParagraph.push(trimmedLine)
     })
-    
+
     flushParagraph()
     flushList()
-    
+
     return elements.length > 0 ? elements : <p className="text-gray-800">{text}</p>
   }
 
@@ -783,11 +803,11 @@ function AIFormInner() {
     if (currentStep !== STEPS.length) return
     const isValid = await validateStep(currentStep)
     if (!isValid) return
-    
+
     // Analyze medical form data using ChatGPT
     setIsAnalyzing(true)
     setShowAnalysisDialog(true)
-    
+
     try {
       const token = localStorage.getItem("accessToken")
       if (!token) {
@@ -826,15 +846,15 @@ function AIFormInner() {
       setIsSaving(true)
       setSaveStatus('saving')
       setSaveError(null)
-      
+
       try {
         // Find or create patient
         const patientId = await findOrCreatePatient(data, token)
         setSelectedPatientId(patientId)
-        
+
         // Map form data to medical history format
         const medicalHistoryData = mapFormDataToMedicalHistory(data, patientId)
-        
+
         // Save medical history
         await axios.post(
           API_CONFIG.ENDPOINTS.MEDICAL_HISTORY,
@@ -856,7 +876,7 @@ function AIFormInner() {
           variant: "default",
         })
         console.log("Medical history saved successfully")
-        
+
         // Refresh medical history list after saving
         setTimeout(() => {
           fetchMedicalHistory(patientId)
@@ -906,10 +926,10 @@ function AIFormInner() {
 
       // Find or create patient
       const patientId = await findOrCreatePatient(formDataForSave, token)
-      
+
       // Map form data to medical history format
       const medicalHistoryData = mapFormDataToMedicalHistory(formDataForSave, patientId)
-      
+
       // Save medical history
       await axios.post(
         API_CONFIG.ENDPOINTS.MEDICAL_HISTORY,
@@ -968,13 +988,13 @@ function AIFormInner() {
     if (!confirm("Barcha ma'lumotlarni o'chirishni xohlaysizmi? Barcha kiritilgan ma'lumotlar yo'qoladi.")) {
       return
     }
-    
+
     form.reset(defaultValues)
     setCurrentStep(1)
     setSelectedHistoryEntry(null)
     setAnalysisResult(null)
     setFormDataForSave(null)
-    
+
     toast({
       title: "Tozalandi",
       description: "Barcha ma'lumotlar o'chirildi",
@@ -986,7 +1006,7 @@ function AIFormInner() {
     setIsGeneratingPDF(true)
     try {
       const data = form.getValues()
-      const doc = <PDFDocument data={data} />
+      const doc = <PDFDocument data={data} language={language} />
       const asPdf = pdf(doc)
       const blob = await asPdf.toBlob()
       const url = URL.createObjectURL(blob)
@@ -1004,14 +1024,14 @@ function AIFormInner() {
       // Ensure text is properly encoded
       // If text has encoding issues, try to fix them
       let fixed = text
-      
+
       // Check if text has encoding issues (contains replacement characters or mojibake)
       // Try to decode and re-encode properly
       if (typeof text === 'string') {
         // Remove any BOM and normalize
         fixed = text.replace(/^\uFEFF/, '').normalize('NFC')
       }
-      
+
       return fixed
     } catch (e) {
       console.warn("Text encoding fix error:", e)
@@ -1022,12 +1042,12 @@ function AIFormInner() {
   // Function to download analysis PDF
   const handleDownloadAnalysisPDF = async () => {
     if (!analysisResult || !formDataForSave) return
-    
+
     setIsGeneratingAnalysisPDF(true)
     try {
       // Fix encoding for analysis result
       const fixedAnalysisResult = fixTextEncoding(analysisResult)
-      
+
       // Fix encoding for form data
       const fixedFormData = {
         ...formDataForSave,
@@ -1039,11 +1059,12 @@ function AIFormInner() {
         job: fixTextEncoding(formDataForSave.job || ''),
         address: fixTextEncoding(formDataForSave.address || ''),
       }
-      
-      const doc = <AnalysisPDFDocument 
-        formData={fixedFormData} 
+
+      const doc = <AnalysisPDFDocument
+        formData={fixedFormData}
         analysisResult={fixedAnalysisResult}
         logoUrl={LOGO_URL}
+        language={language}
       />
       const asPdf = pdf(doc)
       const blob = await asPdf.toBlob()
@@ -1055,7 +1076,7 @@ function AIFormInner() {
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
-      
+
       toast({
         title: "PDF скачан",
         description: "Анализ медицинской анкеты успешно сохранен в PDF",
@@ -1094,10 +1115,10 @@ function AIFormInner() {
         throw new Error("Требуется авторизация")
       }
 
-      const deleteUrl = selectedHistoryEntry.id 
+      const deleteUrl = selectedHistoryEntry.id
         ? `${API_CONFIG.ENDPOINTS.MEDICAL_HISTORY}${selectedHistoryEntry.id}/`
         : `${API_CONFIG.ENDPOINTS.MEDICAL_HISTORY}${selectedHistoryEntry.pk || selectedHistoryEntry.id}/`
-      
+
       await axios.delete(
         deleteUrl,
         {
@@ -1176,13 +1197,14 @@ function AIFormInner() {
   // Function to download history entry PDF with analysis
   const handleDownloadHistoryPDF = async () => {
     if (!selectedHistoryEntry || !formDataForSave || !analysisResult) return
-    
+
     setIsGeneratingHistoryPDF(true)
     try {
-      const doc = <AnalysisPDFDocument 
-        formData={formDataForSave} 
+      const doc = <AnalysisPDFDocument
+        formData={formDataForSave}
         analysisResult={analysisResult}
         logoUrl={LOGO_URL}
+        language={language}
       />
       const asPdf = pdf(doc)
       const blob = await asPdf.toBlob()
@@ -1194,7 +1216,7 @@ function AIFormInner() {
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
-      
+
       toast({
         title: "PDF скачан",
         description: "История болезни с анализом успешно сохранена в PDF",
@@ -1215,7 +1237,7 @@ function AIFormInner() {
   // Function to download PDF from history entry data
   const handleDownloadHistoryEntryPDF = async () => {
     if (!selectedHistoryEntry) return
-    
+
     setIsGeneratingHistoryPDF(true)
     try {
       // Convert history entry to form data format
@@ -1227,37 +1249,43 @@ function AIFormInner() {
         maritalStatus: selectedHistoryEntry.oila_holati || "",
         education: selectedHistoryEntry.malumoti || "",
         job: selectedHistoryEntry.kasbi || "",
+        nationality: selectedHistoryEntry.millati || "",
+        profession: selectedHistoryEntry.kasbi || "",
+        position: selectedHistoryEntry.ish_vazifasi || "",
         address: selectedHistoryEntry.uy_manzili || "",
-        complaints: selectedHistoryEntry.shikoyatlar || "",
-        mainDiseases: selectedHistoryEntry.asosiy_kasalliklar || "",
-        respiratorySystem: selectedHistoryEntry.nafas_tizimi || "",
-        cough: selectedHistoryEntry.yotal || "",
-        sputum: selectedHistoryEntry.balgam || "",
-        hemoptysis: selectedHistoryEntry.qon_tuflash || "",
-        chestPain: selectedHistoryEntry.kokrak_ogriq || "",
-        shortnessOfBreath: selectedHistoryEntry.nafas_qisishi || "",
-        cardiovascularSystem: selectedHistoryEntry.yurak_qon_shikoyatlari || "",
-        heartPain: selectedHistoryEntry.yurak_ogriq || "",
-        heartRateChanges: selectedHistoryEntry.yurak_urishi_ozgarishi || "",
-        heartRateSensation: selectedHistoryEntry.yurak_urishi_sezish || "",
-        digestiveSystem: selectedHistoryEntry.hazm_tizimi || "",
-        vomiting: selectedHistoryEntry.qusish || "",
-        abdominalPain: selectedHistoryEntry.qorin_ogriq || "",
-        abdominalSwelling: selectedHistoryEntry.qorin_shish || "",
-        stoolChanges: selectedHistoryEntry.ich_ozgarishi || "",
-        anusSymptoms: selectedHistoryEntry.anus_shikoyatlar || "",
-        urinarySystem: selectedHistoryEntry.siydik_tizimi || "",
-        endocrineSystem: selectedHistoryEntry.endokrin_tizimi || "",
-        musculoskeletalSystem: selectedHistoryEntry.tayanch_tizimi || "",
-        nervousSystem: selectedHistoryEntry.asab_tizimi || "",
-        badHabits: "",
-        familyHistory: "",
-        allergies: "",
-        pastDiseases: "",
-        instrumental_research: [],
+        mainComplaints: selectedHistoryEntry.shikoyatlar || "",
+        previousDiagnosis: selectedHistoryEntry.asosiy_kasalliklar || "",
+        respiratory: selectedHistoryEntry.nafas_tizimi || "",
+
+        cardiovascular: selectedHistoryEntry.yurak_qon_shikoyatlari || "",
+
+        abdomen: selectedHistoryEntry.hazm_tizimi || "",
+
+        // anusSymptoms: selectedHistoryEntry.anus_shikoyatlar || "",
+
+
+        musculoskeletal: selectedHistoryEntry.tayanch_tizimi || "",
+        // nervousSystem and endocrineSystem are not in MedicalFormData schema so we skip them
+        // endocrineSystem: selectedHistoryEntry.endokrin_tizimi || "",
+        // nervousSystem: selectedHistoryEntry.asab_tizimi || "",
+        badHabits: selectedHistoryEntry.zararli_odatlar || "",
+        familyHistory: selectedHistoryEntry.oilaviy_anamnez || "",
+        allergies: selectedHistoryEntry.allergiyalar || "",
+        pastDiseases: selectedHistoryEntry.otkazilgan_kasalliklar || "",
+
+        // Restore Examination
+        generalExamination: selectedHistoryEntry.umumiy_korik || "",
+        headNeck: selectedHistoryEntry.bosh_boyin || "",
+        skin: selectedHistoryEntry.teri || "",
+        lymphNodes: selectedHistoryEntry.limfa_tugunlari || "",
+        abdomenPalpation: selectedHistoryEntry.qorin_palpatsiyasi || "",
+        percussion: selectedHistoryEntry.perkussiya || "",
+        lungAuscultation: selectedHistoryEntry.opka_auskultatsiyasi || "",
+        heartAuscultation: selectedHistoryEntry.yurak_auskultatsiyasi || "",
+        abdomenAuscultation: selectedHistoryEntry.qorin_auskultatsiyasi || "",
       }
 
-      const doc = <PDFDocument data={formDataFromHistory} />
+      const doc = <PDFDocument data={formDataFromHistory} language={language} />
       const asPdf = pdf(doc)
       const blob = await asPdf.toBlob()
       const url = URL.createObjectURL(blob)
@@ -1268,7 +1296,7 @@ function AIFormInner() {
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
-      
+
       toast({
         title: "PDF скачан",
         description: "История болезни успешно сохранена в PDF",
@@ -1299,7 +1327,7 @@ function AIFormInner() {
       }
 
       // If patientId is provided, filter by patient, otherwise load all history
-      const url = patientId 
+      const url = patientId
         ? `${API_CONFIG.ENDPOINTS.MEDICAL_HISTORY}?patient_id=${patientId}`
         : API_CONFIG.ENDPOINTS.MEDICAL_HISTORY
 
@@ -1362,7 +1390,7 @@ function AIFormInner() {
     console.log("🔄 Component mounted, loading ALL medical history")
     // Try to load immediately
     fetchMedicalHistory()
-    
+
     // Also try after a short delay in case token wasn't ready
     const timer = setTimeout(() => {
       const token = localStorage.getItem("accessToken")
@@ -1371,7 +1399,7 @@ function AIFormInner() {
         fetchMedicalHistory()
       }
     }, 500)
-    
+
     return () => clearTimeout(timer)
   }, []) // Run only on mount
 
@@ -1404,74 +1432,74 @@ function AIFormInner() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Form - Left Side (2 columns on large screens) */}
           <div className="lg:col-span-2">
-        <div className="flex justify-end mb-4"><LanguageSwitcher /></div>
-        <header className="mb-6 md:mb-8 text-center animate-fade-in">
-          <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-blue-500 via-blue-600 to-emerald-500 mb-4 shadow-xl shadow-blue-500/30 transition-transform hover:scale-105">
-            <Stethoscope className="w-8 h-8 md:w-10 md:h-10 text-white" />
-          </div>
-          <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-emerald-600 bg-clip-text text-transparent mb-2">{t.title}</h1>
-          <p className="text-gray-600 text-sm md:text-base">{t.subtitle}</p>
-        </header>
-
-        <div className="mb-8">
-          <StepNavigation
-            steps={STEPS.map((step) => ({ id: step.id, title: step.title, description: step.description, icon: <step.icon className="w-4 h-4" /> }))}
-            currentStep={currentStep}
-            onStepClick={handleStepClick}
-          />
-        </div>
-
-        <Form {...form}>
-          <form
-            ref={formRef}
-            onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); if (currentStep === STEPS.length) { form.handleSubmit(onSubmit)(e) } return false }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && currentStep !== STEPS.length) {
-                const target = e.target as HTMLElement
-                if (target.tagName !== "TEXTAREA" && target.tagName !== "BUTTON") {
-                  e.preventDefault(); e.stopPropagation()
-                }
-              }
-            }}
-            className="space-y-6"
-          >
-            <div className="min-h-[500px] animate-fade-in">{renderStepContent()}</div>
-
-            <div className="sticky bottom-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-xl rounded-t-2xl p-4 md:p-6 mt-8 -mx-4 md:mx-0 md:rounded-xl">
-              <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
-                <div className="flex gap-3 w-full sm:w-auto">
-                  <Button type="button" variant="outline" onClick={handlePrevious} disabled={currentStep === 1} className="flex-1 sm:flex-none min-w-[120px] transition-all duration-200 hover:shadow-md">
-                    <ArrowLeft className="w-4 h-4 mr-2" />{t.buttons.back}
-                  </Button>
-                  {currentStep < STEPS.length ? (
-                    <Button type="button" onClick={handleNext} className="flex-1 sm:flex-none min-w-[120px] bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 transition-all duration-200 shadow-lg hover:shadow-xl">
-                      {t.buttons.next}<ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  ) : (
-                    <Button type="submit" className="flex-1 sm:flex-none min-w-[120px] bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 transition-all duration-200 shadow-lg hover:shadow-xl">
-                      <Send className="w-4 h-4 mr-2" />{t.buttons.submit}
-                    </Button>
-                  )}
-                </div>
-
-                <div className="flex gap-3 w-full sm:w-auto flex-wrap">
-                  <Button type="button" variant="outline" onClick={handleSaveClick} className="flex-1 sm:flex-none min-w-[140px] transition-all duration-200 hover:shadow-md">
-                    <Save className="w-4 h-4 mr-2" />{t.buttons.save}
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={handleClearForm} 
-                    className="flex-1 sm:flex-none min-w-[140px] transition-all duration-200 hover:shadow-md border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
-                  >
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Tozalash
-                  </Button>
-                </div>
+            <div className="flex justify-end mb-4"><LanguageSwitcher /></div>
+            <header className="mb-6 md:mb-8 text-center animate-fade-in">
+              <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-blue-500 via-blue-600 to-emerald-500 mb-4 shadow-xl shadow-blue-500/30 transition-transform hover:scale-105">
+                <Stethoscope className="w-8 h-8 md:w-10 md:h-10 text-white" />
               </div>
+              <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-emerald-600 bg-clip-text text-transparent mb-2">{t.title}</h1>
+              <p className="text-gray-600 text-sm md:text-base">{t.subtitle}</p>
+            </header>
+
+            <div className="mb-8">
+              <StepNavigation
+                steps={STEPS.map((step) => ({ id: step.id, title: step.title, description: step.description, icon: <step.icon className="w-4 h-4" /> }))}
+                currentStep={currentStep}
+                onStepClick={handleStepClick}
+              />
             </div>
-          </form>
-        </Form>
+
+            <Form {...form}>
+              <form
+                ref={formRef}
+                onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); if (currentStep === STEPS.length) { form.handleSubmit(onSubmit)(e) } return false }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && currentStep !== STEPS.length) {
+                    const target = e.target as HTMLElement
+                    if (target.tagName !== "TEXTAREA" && target.tagName !== "BUTTON") {
+                      e.preventDefault(); e.stopPropagation()
+                    }
+                  }
+                }}
+                className="space-y-6"
+              >
+                <div className="min-h-[500px] animate-fade-in">{renderStepContent()}</div>
+
+                <div className="sticky bottom-0 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-xl rounded-t-2xl p-4 md:p-6 mt-8 -mx-4 md:mx-0 md:rounded-xl">
+                  <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
+                    <div className="flex gap-3 w-full sm:w-auto">
+                      <Button type="button" variant="outline" onClick={handlePrevious} disabled={currentStep === 1} className="flex-1 sm:flex-none min-w-[120px] transition-all duration-200 hover:shadow-md">
+                        <ArrowLeft className="w-4 h-4 mr-2" />{t.buttons.back}
+                      </Button>
+                      {currentStep < STEPS.length ? (
+                        <Button type="button" onClick={handleNext} className="flex-1 sm:flex-none min-w-[120px] bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 transition-all duration-200 shadow-lg hover:shadow-xl">
+                          {t.buttons.next}<ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      ) : (
+                        <Button type="submit" className="flex-1 sm:flex-none min-w-[120px] bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 transition-all duration-200 shadow-lg hover:shadow-xl">
+                          <Send className="w-4 h-4 mr-2" />{t.buttons.submit}
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="flex gap-3 w-full sm:w-auto flex-wrap">
+                      <Button type="button" variant="outline" onClick={handleSaveClick} className="flex-1 sm:flex-none min-w-[140px] transition-all duration-200 hover:shadow-md">
+                        <Save className="w-4 h-4 mr-2" />{t.buttons.save}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleClearForm}
+                        className="flex-1 sm:flex-none min-w-[140px] transition-all duration-200 hover:shadow-md border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
+                      >
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Tozalash
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </Form>
           </div>
 
           {/* Medical History Sidebar - Right Side (1 column on large screens) */}
@@ -1509,14 +1537,14 @@ function AIFormInner() {
                     <div className="p-4 space-y-4">
                       {medicalHistory.map((entry: any, index: number) => {
                         const entryDate = entry.yuborilgan_vaqt || entry.kelgan_vaqti
-                        const formattedDate = entryDate 
+                        const formattedDate = entryDate
                           ? new Date(entryDate).toLocaleDateString('ru-RU', {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric'
-                            })
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })
                           : 'Дата не указана'
-                        
+
                         return (
                           <div
                             key={entry.id || index}
@@ -1537,26 +1565,26 @@ function AIFormInner() {
                                 Kasallik tarixi
                               </Badge>
                             </div>
-                            
+
                             {entry.fish && (
                               <p className="text-sm font-medium text-gray-900 mb-1">
                                 {entry.fish}
                               </p>
                             )}
-                            
+
                             {entry.shikoyatlar && (
                               <div className="mt-2">
                                 <p className="text-xs text-gray-600 mb-1 font-medium">
                                   Shikoyatlar:
                                 </p>
                                 <p className="text-xs text-gray-700 line-clamp-3">
-                                  {entry.shikoyatlar.length > 150 
+                                  {entry.shikoyatlar.length > 150
                                     ? entry.shikoyatlar.substring(0, 150) + '...'
                                     : entry.shikoyatlar}
                                 </p>
                               </div>
                             )}
-                            
+
                             {entry.doktor_tavsiyalari && (
                               <div className="mt-2 pt-2 border-t">
                                 <p className="text-xs text-gray-600 mb-1 font-medium">
@@ -1605,7 +1633,7 @@ function AIFormInner() {
                 )}
               </DialogDescription>
             </DialogHeader>
-            
+
             {selectedHistoryEntry && (
               <div className="mt-4 space-y-4">
                 {/* Basic Information */}
@@ -1622,7 +1650,7 @@ function AIFormInner() {
                       <div>
                         <p className="text-sm font-medium text-gray-500">Tug'ilgan sana</p>
                         <p className="text-sm text-gray-900">
-                          {selectedHistoryEntry.tugilgan_sana 
+                          {selectedHistoryEntry.tugilgan_sana
                             ? new Date(selectedHistoryEntry.tugilgan_sana).toLocaleDateString('ru-RU')
                             : "Kiritilmagan"}
                         </p>
@@ -1654,7 +1682,7 @@ function AIFormInner() {
                       <div>
                         <p className="text-sm font-medium text-gray-500">Kelgan vaqti</p>
                         <p className="text-sm text-gray-900">
-                          {selectedHistoryEntry.kelgan_vaqti 
+                          {selectedHistoryEntry.kelgan_vaqti
                             ? new Date(selectedHistoryEntry.kelgan_vaqti).toLocaleDateString('ru-RU')
                             : "Kiritilmagan"}
                         </p>
@@ -1662,14 +1690,14 @@ function AIFormInner() {
                       <div>
                         <p className="text-sm font-medium text-gray-500">Yuborilgan vaqti</p>
                         <p className="text-sm text-gray-900">
-                          {selectedHistoryEntry.yuborilgan_vaqt 
+                          {selectedHistoryEntry.yuborilgan_vaqt
                             ? new Date(selectedHistoryEntry.yuborilgan_vaqt).toLocaleDateString('ru-RU', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
                             : "Kiritilmagan"}
                         </p>
                       </div>
@@ -1706,166 +1734,166 @@ function AIFormInner() {
                 )}
 
                 {/* Respiratory System */}
-                {(selectedHistoryEntry.nafas_tizimi || selectedHistoryEntry.yotal || selectedHistoryEntry.balgam || 
+                {(selectedHistoryEntry.nafas_tizimi || selectedHistoryEntry.yotal || selectedHistoryEntry.balgam ||
                   selectedHistoryEntry.qon_tuflash || selectedHistoryEntry.kokrak_ogriq || selectedHistoryEntry.nafas_qisishi) && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Nafas tizimiga oid shikoyatlari</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {selectedHistoryEntry.nafas_tizimi && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Umumiy shikoyatlar</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.nafas_tizimi}</p>
-                        </div>
-                      )}
-                      {selectedHistoryEntry.yotal && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Yo'tal</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.yotal}</p>
-                        </div>
-                      )}
-                      {selectedHistoryEntry.balgam && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Balg'am</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.balgam}</p>
-                        </div>
-                      )}
-                      {selectedHistoryEntry.qon_tuflash && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Qon tuflash</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.qon_tuflash}</p>
-                        </div>
-                      )}
-                      {selectedHistoryEntry.kokrak_ogriq && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Ko'krak qafasidagi og'riq</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.kokrak_ogriq}</p>
-                        </div>
-                      )}
-                      {selectedHistoryEntry.nafas_qisishi && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Nafas qisishi</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.nafas_qisishi}</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Nafas tizimiga oid shikoyatlari</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {selectedHistoryEntry.nafas_tizimi && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Umumiy shikoyatlar</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.nafas_tizimi}</p>
+                          </div>
+                        )}
+                        {selectedHistoryEntry.yotal && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Yo'tal</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.yotal}</p>
+                          </div>
+                        )}
+                        {selectedHistoryEntry.balgam && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Balg'am</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.balgam}</p>
+                          </div>
+                        )}
+                        {selectedHistoryEntry.qon_tuflash && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Qon tuflash</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.qon_tuflash}</p>
+                          </div>
+                        )}
+                        {selectedHistoryEntry.kokrak_ogriq && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Ko'krak qafasidagi og'riq</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.kokrak_ogriq}</p>
+                          </div>
+                        )}
+                        {selectedHistoryEntry.nafas_qisishi && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Nafas qisishi</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.nafas_qisishi}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
 
                 {/* Cardiovascular System */}
-                {(selectedHistoryEntry.yurak_qon_shikoyatlari || selectedHistoryEntry.yurak_ogriq || 
+                {(selectedHistoryEntry.yurak_qon_shikoyatlari || selectedHistoryEntry.yurak_ogriq ||
                   selectedHistoryEntry.yurak_urishi_ozgarishi || selectedHistoryEntry.yurak_urishi_sezish) && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Yurak qon aylanishi tizimi faoliyatiga oid shikoyatlari</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {selectedHistoryEntry.yurak_qon_shikoyatlari && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Umumiy shikoyatlar</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.yurak_qon_shikoyatlari}</p>
-                        </div>
-                      )}
-                      {selectedHistoryEntry.yurak_ogriq && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Yurak sohasidagi og'riq</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.yurak_ogriq}</p>
-                        </div>
-                      )}
-                      {selectedHistoryEntry.yurak_urishi_ozgarishi && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Yurak urishining o'zgarishi</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.yurak_urishi_ozgarishi}</p>
-                        </div>
-                      )}
-                      {selectedHistoryEntry.yurak_urishi_sezish && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Yurak urishini bemor his qilishi</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.yurak_urishi_sezish}</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Yurak qon aylanishi tizimi faoliyatiga oid shikoyatlari</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {selectedHistoryEntry.yurak_qon_shikoyatlari && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Umumiy shikoyatlar</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.yurak_qon_shikoyatlari}</p>
+                          </div>
+                        )}
+                        {selectedHistoryEntry.yurak_ogriq && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Yurak sohasidagi og'riq</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.yurak_ogriq}</p>
+                          </div>
+                        )}
+                        {selectedHistoryEntry.yurak_urishi_ozgarishi && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Yurak urishining o'zgarishi</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.yurak_urishi_ozgarishi}</p>
+                          </div>
+                        )}
+                        {selectedHistoryEntry.yurak_urishi_sezish && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Yurak urishini bemor his qilishi</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.yurak_urishi_sezish}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
 
                 {/* Digestive System */}
-                {(selectedHistoryEntry.hazm_tizimi || selectedHistoryEntry.qusish || selectedHistoryEntry.qorin_ogriq || 
+                {(selectedHistoryEntry.hazm_tizimi || selectedHistoryEntry.qusish || selectedHistoryEntry.qorin_ogriq ||
                   selectedHistoryEntry.ich_ozgarishi || selectedHistoryEntry.anus_shikoyatlar) && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Hazm tizimi faoliyatiga oid shikoyatlari</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {selectedHistoryEntry.hazm_tizimi && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Umumiy shikoyatlar</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.hazm_tizimi}</p>
-                        </div>
-                      )}
-                      {selectedHistoryEntry.qusish && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Qusish</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.qusish}</p>
-                        </div>
-                      )}
-                      {selectedHistoryEntry.qorin_ogriq && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Qorin og'riqi</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.qorin_ogriq}</p>
-                        </div>
-                      )}
-                      {selectedHistoryEntry.ich_ozgarishi && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Ich kelishining o'zgarishi</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.ich_ozgarishi}</p>
-                        </div>
-                      )}
-                      {selectedHistoryEntry.anus_shikoyatlar && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Anus sohasidagi simptomlar</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.anus_shikoyatlar}</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Hazm tizimi faoliyatiga oid shikoyatlari</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {selectedHistoryEntry.hazm_tizimi && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Umumiy shikoyatlar</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.hazm_tizimi}</p>
+                          </div>
+                        )}
+                        {selectedHistoryEntry.qusish && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Qusish</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.qusish}</p>
+                          </div>
+                        )}
+                        {selectedHistoryEntry.qorin_ogriq && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Qorin og'riqi</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.qorin_ogriq}</p>
+                          </div>
+                        )}
+                        {selectedHistoryEntry.ich_ozgarishi && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Ich kelishining o'zgarishi</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.ich_ozgarishi}</p>
+                          </div>
+                        )}
+                        {selectedHistoryEntry.anus_shikoyatlar && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Anus sohasidagi simptomlar</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.anus_shikoyatlar}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
 
                 {/* Other Systems */}
-                {(selectedHistoryEntry.siydik_tizimi || selectedHistoryEntry.endokrin_tizimi || 
+                {(selectedHistoryEntry.siydik_tizimi || selectedHistoryEntry.endokrin_tizimi ||
                   selectedHistoryEntry.tayanch_tizimi || selectedHistoryEntry.asab_tizimi) && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Boshqa tizimlar</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {selectedHistoryEntry.siydik_tizimi && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Siydik ajratish tizimi</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.siydik_tizimi}</p>
-                        </div>
-                      )}
-                      {selectedHistoryEntry.endokrin_tizimi && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Endokrin tizimi</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.endokrin_tizimi}</p>
-                        </div>
-                      )}
-                      {selectedHistoryEntry.tayanch_tizimi && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Tayanch tizimi</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.tayanch_tizimi}</p>
-                        </div>
-                      )}
-                      {selectedHistoryEntry.asab_tizimi && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Asab tizimi</p>
-                          <p className="text-sm text-gray-700">{selectedHistoryEntry.asab_tizimi}</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Boshqa tizimlar</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {selectedHistoryEntry.siydik_tizimi && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Siydik ajratish tizimi</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.siydik_tizimi}</p>
+                          </div>
+                        )}
+                        {selectedHistoryEntry.endokrin_tizimi && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Endokrin tizimi</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.endokrin_tizimi}</p>
+                          </div>
+                        )}
+                        {selectedHistoryEntry.tayanch_tizimi && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Tayanch tizimi</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.tayanch_tizimi}</p>
+                          </div>
+                        )}
+                        {selectedHistoryEntry.asab_tizimi && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">Asab tizimi</p>
+                            <p className="text-sm text-gray-700">{selectedHistoryEntry.asab_tizimi}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
 
                 {/* Doctor Recommendations */}
                 {selectedHistoryEntry.doktor_tavsiyalari && (
@@ -1904,29 +1932,29 @@ function AIFormInner() {
 
                 {/* Action Buttons */}
                 <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-gray-200">
-                  <Button 
-                    type="button" 
-                    variant="destructive" 
-                    onClick={handleDeleteHistory} 
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleDeleteHistory}
                     className="flex-1 sm:flex-none min-w-[140px] transition-all duration-200 hover:shadow-md bg-red-500 hover:bg-red-600 text-white"
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
                     O'chirish
                   </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={handleDownloadHistoryEntryPDF} 
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleDownloadHistoryEntryPDF}
                     disabled={isGeneratingHistoryPDF}
                     className="flex-1 sm:flex-none min-w-[140px] transition-all duration-200 hover:shadow-md"
                   >
                     <Download className="w-4 h-4 mr-2" />
                     {isGeneratingHistoryPDF ? t.buttons.generating : t.buttons.pdf}
                   </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={handleFillFormFromHistory} 
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleFillFormFromHistory}
                     className="flex-1 sm:flex-none min-w-[180px] transition-all duration-200 hover:shadow-md bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 text-white border-0"
                   >
                     <FileText className="w-4 h-4 mr-2" />
@@ -1949,7 +1977,7 @@ function AIFormInner() {
                 {t.analysis.description}
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="mt-4 space-y-4">
               {isAnalyzing ? (
                 <div className="flex flex-col items-center justify-center py-12">
@@ -1963,7 +1991,7 @@ function AIFormInner() {
                     <div className="bg-gradient-to-br from-white via-blue-50/30 to-emerald-50/30 rounded-xl p-6 sm:p-8 border border-blue-200/50 shadow-lg">
                       {/* Decorative top border */}
                       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-blue-400 to-emerald-500 rounded-t-xl"></div>
-                      
+
                       {/* Content with beautiful typography */}
                       <div className="relative z-10 space-y-1">
                         {formatAnalysisText(analysisResult)}
@@ -2091,6 +2119,7 @@ function AIFormInner() {
   )
 }
 
+// Step 1: Personal Data
 function Step1PersonalData({ form }: { form: ReturnType<typeof useForm<MedicalFormData>> }) {
   const { t } = useI18n()
   return (
@@ -2120,25 +2149,33 @@ function Step1PersonalData({ form }: { form: ReturnType<typeof useForm<MedicalFo
           </FormItem>
         )} />
 
-        <FormField control={form.control} name="gender" render={({ field }) => (
+        <FormField control={form.control} name="nationality" render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-gray-700 font-medium">{t.personalData.gender} <span className="text-red-500">{t.personalData.required}</span></FormLabel>
-            <FormControl>
-              <RadioGroup onValueChange={field.onChange} value={field.value as string} className="flex gap-6">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value={t.personalData.male} id="male" />
-                  <label htmlFor="male" className="text-sm font-normal leading-none cursor-pointer hover:text-blue-600 transition-colors">{t.personalData.male}</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value={t.personalData.female} id="female" />
-                  <label htmlFor="female" className="text-sm font-normal leading-none cursor-pointer hover:text-blue-600 transition-colors">{t.personalData.female}</label>
-                </div>
-              </RadioGroup>
-            </FormControl>
+            <FormLabel className="text-gray-700 font-medium">{t.personalData.nationality} <span className="text-red-500">{t.personalData.required}</span></FormLabel>
+            <FormControl><Input title={t.personalData.nationality} className="transition-all duration-200 hover:border-primary/50 focus:ring-2 focus:ring-blue-500/20" {...field} /></FormControl>
             <FormMessage />
           </FormItem>
         )} />
       </div>
+
+      <FormField control={form.control} name="gender" render={({ field }) => (
+        <FormItem>
+          <FormLabel className="text-gray-700 font-medium">{t.personalData.gender} <span className="text-red-500">{t.personalData.required}</span></FormLabel>
+          <FormControl>
+            <RadioGroup onValueChange={field.onChange} value={field.value as string} className="flex gap-6">
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value={t.personalData.male} id="male" />
+                <label htmlFor="male" className="text-sm font-normal leading-none cursor-pointer hover:text-blue-600 transition-colors">{t.personalData.male}</label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value={t.personalData.female} id="female" />
+                <label htmlFor="female" className="text-sm font-normal leading-none cursor-pointer hover:text-blue-600 transition-colors">{t.personalData.female}</label>
+              </div>
+            </RadioGroup>
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )} />
 
       <FormField control={form.control} name="maritalStatus" render={({ field }) => (
         <FormItem>
@@ -2158,6 +2195,24 @@ function Step1PersonalData({ form }: { form: ReturnType<typeof useForm<MedicalFo
         </FormItem>
       )} />
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <FormField control={form.control} name="profession" render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-gray-700 font-medium"><b>{t.personalData.profession}</b> <span className="text-red-500">{t.personalData.required}</span></FormLabel>
+            <FormControl><Input title={t.personalData.profession} className="transition-all duration-200 hover:border-primary/50 focus:ring-2 focus:ring-blue-500/20" {...field} /></FormControl>
+            <FormMessage />
+          </FormItem>
+        )} />
+
+        <FormField control={form.control} name="position" render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-gray-700 font-medium"><b>{t.personalData.position}</b></FormLabel>
+            <FormControl><Input title={t.personalData.position} className="transition-all duration-200 hover:border-primary/50 focus:ring-2 focus:ring-blue-500/20" {...field} /></FormControl>
+            <FormMessage />
+          </FormItem>
+        )} />
+      </div>
+
       <FormField control={form.control} name="job" render={({ field }) => (
         <FormItem>
           <FormLabel className="text-gray-700 font-medium"><b>{t.personalData.job}</b> <span className="text-red-500">{t.personalData.required}</span></FormLabel>
@@ -2170,7 +2225,7 @@ function Step1PersonalData({ form }: { form: ReturnType<typeof useForm<MedicalFo
       <FormField control={form.control} name="address" render={({ field }) => (
         <FormItem>
           <FormLabel className="text-gray-700 font-medium"><b>{t.personalData.address}</b> <span className="text-red-500">{t.personalData.required}</span></FormLabel>
-          <FormControl><Textarea title={t.personalData.addressHint} rows={2} className="transition-all duration-200 hover:border-primary/50 focus:ring-2 focus:ring-blue-500/20" {...field} /></FormControl>
+          <FormControl><Input title={t.personalData.addressHint} className="transition-all duration-200 hover:border-primary/50 focus:ring-2 focus:ring-blue-500/20" {...field} /></FormControl>
           <p className="text-xs text-gray-500 italic">{t.personalData.addressHint}</p>
           <FormMessage />
         </FormItem>
@@ -2491,27 +2546,27 @@ function Step5TestResults({ form }: { form: ReturnType<typeof useForm<MedicalFor
         title={t.testResults.oam}
         conclusionFieldName="oam_conclusion"
         rows={[
-          { name: t.testResults.oam_color, fieldName: "oam_color", unit: "—", reference: "жёлтый" },
-          { name: t.testResults.oam_transparency, fieldName: "oam_transparency", unit: "—", reference: "прозрачная" },
-          { name: t.testResults.oam_sediment, fieldName: "oam_sediment", unit: "—", reference: "незначит. количество" },
-          { name: t.testResults.oam_ph_reaction, fieldName: "oam_ph_reaction", unit: "—", reference: "слабокислая" },
-          { name: t.testResults.oam_bilirubin, fieldName: "oam_bilirubin", unit: "мкмоль/л", reference: "0 – 3.4" },
-          { name: t.testResults.oam_urobilinogen, fieldName: "oam_urobilinogen", unit: "мкмоль/л", reference: "0 – 17" },
-          { name: t.testResults.oam_ketones, fieldName: "oam_ketones", unit: "ммоль/л", reference: "0 – 0.5" },
-          { name: t.testResults.oam_ascorbic_acid, fieldName: "oam_ascorbic_acid", unit: "мг/л", reference: "отсутствует" },
-          { name: t.testResults.oam_glucose, fieldName: "oam_glucose", unit: "ммоль/л", reference: "0 – 1.7" },
-          { name: t.testResults.oam_protein, fieldName: "oam_protein", unit: "г/л", reference: "0 – 0.1" },
-          { name: t.testResults.oam_blood, fieldName: "oam_blood", unit: "эр/мкл", reference: "0 – 5" },
-          { name: t.testResults.oam_ph, fieldName: "oam_ph", unit: "—", reference: "4.8 – 7.4" },
-          { name: t.testResults.oam_nitrites, fieldName: "oam_nitrites", unit: "—", reference: "отрицательные" },
-          { name: t.testResults.oam_leukocytes_digital, fieldName: "oam_leukocytes_digital", unit: "лейк/мкл", reference: "0 – 10" },
-          { name: t.testResults.oam_specific_gravity, fieldName: "oam_specific_gravity", unit: "—", reference: "1016 – 1022" },
-          { name: t.testResults.oam_epithelium, fieldName: "oam_epithelium", unit: "в п. зр.", reference: "< 5" },
-          { name: t.testResults.oam_leukocytes_microscopy, fieldName: "oam_leukocytes_microscopy", unit: "в п. зр.", reference: "0 – 5" },
-          { name: t.testResults.oam_erythrocytes_unchanged, fieldName: "oam_erythrocytes_unchanged", unit: "в п. зр.", reference: "отсутствуют" },
-          { name: t.testResults.oam_erythrocytes_changed, fieldName: "oam_erythrocytes_changed", unit: "в п. зр.", reference: "0 – 2" },
-          { name: t.testResults.oam_bacteria, fieldName: "oam_bacteria", unit: "в п. зр.", reference: "отсутствуют" },
-          { name: t.testResults.oam_mucus, fieldName: "oam_mucus", unit: "в п. зр.", reference: "незначит. количество" },
+          { name: t.testResults.oam_color, fieldName: "oam_color", unit: t.testResults.unit_none, reference: t.testResults.ref_yellow },
+          { name: t.testResults.oam_transparency, fieldName: "oam_transparency", unit: t.testResults.unit_none, reference: t.testResults.ref_transparent },
+          { name: t.testResults.oam_sediment, fieldName: "oam_sediment", unit: t.testResults.unit_none, reference: t.testResults.ref_insignificant },
+          { name: t.testResults.oam_ph_reaction, fieldName: "oam_ph_reaction", unit: t.testResults.unit_none, reference: t.testResults.ref_weakly_acidic },
+          { name: t.testResults.oam_bilirubin, fieldName: "oam_bilirubin", unit: t.testResults.unit_umol_l, reference: "0 – 3.4" },
+          { name: t.testResults.oam_urobilinogen, fieldName: "oam_urobilinogen", unit: t.testResults.unit_umol_l, reference: "0 – 17" },
+          { name: t.testResults.oam_ketones, fieldName: "oam_ketones", unit: t.testResults.unit_mmol_l, reference: "0 – 0.5" },
+          { name: t.testResults.oam_ascorbic_acid, fieldName: "oam_ascorbic_acid", unit: t.testResults.unit_mg_l, reference: t.testResults.ref_absent },
+          { name: t.testResults.oam_glucose, fieldName: "oam_glucose", unit: t.testResults.unit_mmol_l, reference: "0 – 1.7" },
+          { name: t.testResults.oam_protein, fieldName: "oam_protein", unit: t.testResults.unit_g_l, reference: "0 – 0.1" },
+          { name: t.testResults.oam_blood, fieldName: "oam_blood", unit: t.testResults.unit_er_mkl, reference: "0 – 5" },
+          { name: t.testResults.oam_ph, fieldName: "oam_ph", unit: t.testResults.unit_none, reference: "4.8 – 7.4" },
+          { name: t.testResults.oam_nitrites, fieldName: "oam_nitrites", unit: t.testResults.unit_none, reference: t.testResults.ref_negative },
+          { name: t.testResults.oam_leukocytes_digital, fieldName: "oam_leukocytes_digital", unit: t.testResults.unit_leuk_mkl, reference: "0 – 10" },
+          { name: t.testResults.oam_specific_gravity, fieldName: "oam_specific_gravity", unit: t.testResults.unit_none, reference: "1016 – 1022" },
+          { name: t.testResults.oam_epithelium, fieldName: "oam_epithelium", unit: t.testResults.unit_in_field, reference: "< 5" },
+          { name: t.testResults.oam_leukocytes_microscopy, fieldName: "oam_leukocytes_microscopy", unit: t.testResults.unit_in_field, reference: "0 – 5" },
+          { name: t.testResults.oam_erythrocytes_unchanged, fieldName: "oam_erythrocytes_unchanged", unit: t.testResults.unit_in_field, reference: t.testResults.ref_not_found },
+          { name: t.testResults.oam_erythrocytes_changed, fieldName: "oam_erythrocytes_changed", unit: t.testResults.unit_in_field, reference: "0 – 2" },
+          { name: t.testResults.oam_bacteria, fieldName: "oam_bacteria", unit: t.testResults.unit_in_field, reference: t.testResults.ref_not_found },
+          { name: t.testResults.oam_mucus, fieldName: "oam_mucus", unit: t.testResults.unit_in_field, reference: t.testResults.ref_insignificant },
         ]}
       />
 
@@ -2520,21 +2575,21 @@ function Step5TestResults({ form }: { form: ReturnType<typeof useForm<MedicalFor
         title={t.testResults.bio}
         conclusionFieldName="bio_conclusion"
         rows={[
-          { name: t.testResults.bio_bilt, fieldName: "bio_bilt", unit: "мкмоль/л", reference: "2.00 – 13.50" },
-          { name: t.testResults.bio_bild, fieldName: "bio_bild", unit: "мкмоль/л", reference: "0.00 – 5.50" },
-          { name: t.testResults.bio_ast, fieldName: "bio_ast", unit: "ед./л", reference: "8.0 – 42.0" },
-          { name: t.testResults.bio_alt, fieldName: "bio_alt", unit: "ед./л", reference: "10.0 – 58.0" },
-          { name: t.testResults.bio_urea, fieldName: "bio_urea", unit: "ммоль/л", reference: "3.50 – 9.20" },
-          { name: t.testResults.bio_crea, fieldName: "bio_crea", unit: "мкмоль/л", reference: "26.0 – 130.0" },
-          { name: t.testResults.bio_tp, fieldName: "bio_tp", unit: "г/л", reference: "55.0 – 75.0" },
-          { name: t.testResults.bio_alb, fieldName: "bio_alb", unit: "г/л", reference: "25.0 – 39.0" },
-          { name: t.testResults.bio_alp, fieldName: "bio_alp", unit: "ед./л", reference: "10 – 70" },
-          { name: t.testResults.bio_amy, fieldName: "bio_amy", unit: "ед./л", reference: "300 – 1500" },
-          { name: t.testResults.bio_glue, fieldName: "bio_glue", unit: "ммоль/л", reference: "4.30 – 7.30" },
-          { name: t.testResults.bio_ldh, fieldName: "bio_ldh", unit: "ед./л", reference: "23 – 220" },
-          { name: t.testResults.bio_glob, fieldName: "bio_glob", unit: "г/л", reference: "30.00 – 36.00" },
-          { name: t.testResults.bio_alb_glob, fieldName: "bio_alb_glob", unit: "—", reference: "0.600 – 1.300" },
-          { name: t.testResults.bio_ritis, fieldName: "bio_ritis", unit: "—", reference: "—" },
+          { name: t.testResults.bio_bilt, fieldName: "bio_bilt", unit: t.testResults.unit_umol_l, reference: "2.00 – 13.50" },
+          { name: t.testResults.bio_bild, fieldName: "bio_bild", unit: t.testResults.unit_umol_l, reference: "0.00 – 5.50" },
+          { name: t.testResults.bio_ast, fieldName: "bio_ast", unit: t.testResults.unit_u_l, reference: "8.0 – 42.0" },
+          { name: t.testResults.bio_alt, fieldName: "bio_alt", unit: t.testResults.unit_u_l, reference: "10.0 – 58.0" },
+          { name: t.testResults.bio_urea, fieldName: "bio_urea", unit: t.testResults.unit_mmol_l, reference: "3.50 – 9.20" },
+          { name: t.testResults.bio_crea, fieldName: "bio_crea", unit: t.testResults.unit_umol_l, reference: "26.0 – 130.0" },
+          { name: t.testResults.bio_tp, fieldName: "bio_tp", unit: t.testResults.unit_g_l, reference: "55.0 – 75.0" },
+          { name: t.testResults.bio_alb, fieldName: "bio_alb", unit: t.testResults.unit_g_l, reference: "25.0 – 39.0" },
+          { name: t.testResults.bio_alp, fieldName: "bio_alp", unit: t.testResults.unit_u_l, reference: "10 – 70" },
+          { name: t.testResults.bio_amy, fieldName: "bio_amy", unit: t.testResults.unit_u_l, reference: "300 – 1500" },
+          { name: t.testResults.bio_glue, fieldName: "bio_glue", unit: t.testResults.unit_mmol_l, reference: "4.30 – 7.30" },
+          { name: t.testResults.bio_ldh, fieldName: "bio_ldh", unit: t.testResults.unit_u_l, reference: "23 – 220" },
+          { name: t.testResults.bio_glob, fieldName: "bio_glob", unit: t.testResults.unit_g_l, reference: "30.00 – 36.00" },
+          { name: t.testResults.bio_alb_glob, fieldName: "bio_alb_glob", unit: t.testResults.unit_none, reference: "0.600 – 1.300" },
+          { name: t.testResults.bio_ritis, fieldName: "bio_ritis", unit: t.testResults.unit_none, reference: t.testResults.unit_none },
         ]}
       />
 
@@ -2542,6 +2597,7 @@ function Step5TestResults({ form }: { form: ReturnType<typeof useForm<MedicalFor
         form={form}
         title={t.testResults.imm}
         conclusionFieldName="imm_conclusion"
+        hideUnitColumn={true}
         rows={[
           { name: t.testResults.imm_cd3, fieldName: "imm_cd3", unit: "", reference: "58–85" },
           { name: t.testResults.imm_cd3_hla_dr, fieldName: "imm_cd3_hla_dr", unit: "", reference: "3–15" },
@@ -2570,6 +2626,7 @@ function Step5TestResults({ form }: { form: ReturnType<typeof useForm<MedicalFor
         form={form}
         title={t.testResults.pcr}
         conclusionFieldName="pcr_conclusion"
+        hideUnitColumn={true}
         rows={[
           { name: t.testResults.pcr_chlamydia, fieldName: "pcr_chlamydia", unit: "", reference: t.testResults.referenceNormal },
           { name: t.testResults.pcr_ureaplasma, fieldName: "pcr_ureaplasma", unit: "", reference: t.testResults.referenceNormal },

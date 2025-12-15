@@ -25,6 +25,9 @@ export const createMedicalFormSchema = (language: Language = "ru") => {
     education: z.string().min(1, t.validation.educationRequired),
     job: z.string().min(1, t.validation.jobRequired),
     address: z.string().min(1, t.validation.addressRequired),
+    nationality: z.string().min(1, t.validation.nationalityRequired || "Национальность обязательна"),
+    profession: z.string().min(1, t.validation.professionRequired || "Профессия обязательна"),
+    position: z.string().optional(),
 
     admissionDate: z.string().optional(),
     referralDiagnosis: z.string().optional(),

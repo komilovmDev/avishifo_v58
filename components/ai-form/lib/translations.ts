@@ -30,6 +30,10 @@ export const translations = {
       address: "Домашний адрес",
       addressHint: "Полный адрес проживания, контактный телефон. Пример: «г. Ургенч, ул. Ленина, 12, кв. 5; тел. +998...».",
       required: "*",
+      nationality: "Национальность",
+      profession: "Профессия",
+      position: "Должность",
+      positionHint: "",
     },
     clinicVisit: {
       title: "Обращение в клинику",
@@ -199,6 +203,24 @@ export const translations = {
       pcr_hpv_high: "ВПЧ инфекция (HPV) высокоонкогенного риска",
       pcr_hpv_low: "ВПЧ инфекция (HPV) низкоонкогенного риска",
       pcr_streptococcus: "Стрептококк (Streptococcus species)",
+      // OAM Units
+      unit_none: "—",
+      unit_umol_l: "мкмоль/л",
+      unit_mmol_l: "ммоль/л",
+      unit_mg_l: "мг/л",
+      unit_g_l: "г/л",
+      unit_er_mkl: "эр/мкл",
+      unit_leuk_mkl: "лейк/мкл",
+      unit_in_field: "в п. зр.",
+      unit_u_l: "ед./л",
+      // OAM Reference values
+      ref_yellow: "жёлтый",
+      ref_transparent: "прозрачная",
+      ref_insignificant: "незначит. количество",
+      ref_weakly_acidic: "слабокислая",
+      ref_absent: "отсутствует",
+      ref_negative: "отрицательные",
+      ref_not_found: "отсутствуют",
     },
     instrumentalResearch: {
       title: "Инструментальные методы исследования",
@@ -237,7 +259,7 @@ export const translations = {
     },
     messages: { saved: "Анкета сохранена!", submitted: "Анкета успешно отправлена!", pdfError: "Ошибка при создании PDF файла" },
     analysis: {
-      title: "Анализ медицинской анкеты",
+      title: "История болезни",
       description: "Результаты анализа данных пациента с использованием ИИ",
       analyzing: "Анализирую медицинскую анкету...",
       analyzingSubtext: "Это может занять несколько секунд",
@@ -252,6 +274,9 @@ export const translations = {
       savedSuccessSubtext: "Медицинская анкета сохранена в историю болезни пациента на основе личных данных",
       errorText: "Ошибка при сохранении",
       retry: "Повторить попытку",
+      date: "Дата анализа:",
+      generated: "Сгенерировано системой AviShifo",
+      patientData: "Данные пациента",
     },
     validation: {
       fullNameMin: "ФИО должно содержать минимум 2 символа",
@@ -262,8 +287,10 @@ export const translations = {
       educationRequired: "Образование обязательно",
       jobRequired: "Место работы обязательно",
       addressRequired: "Адрес обязателен",
-      selectPlusOrMinus: "Выберите + или -",
+      selectPlusOrMinus: "Выберите '+' или '-'",
       typeRequired: "Тип исследования обязателен",
+      nationalityRequired: "Национальность обязательна",
+      professionRequired: "Профессия обязательна",
     },
   },
   uz: {
@@ -295,6 +322,10 @@ export const translations = {
       address: "Uy manzili",
       addressHint: "To'liq manzil, aloqa telefoni.",
       required: "*",
+      nationality: "Millati",
+      profession: "Kasbi",
+      position: "Lavozimi",
+      positionHint: "",
     },
     clinicVisit: {
       title: "Klinikaga murojaat",
@@ -464,6 +495,24 @@ export const translations = {
       pcr_hpv_high: "HPV infeksiyasi (HPV) yuqori onkogenik xavfi",
       pcr_hpv_low: "HPV infeksiyasi (HPV) past onkogenik xavfi",
       pcr_streptococcus: "Streptokokk (Streptococcus species)",
+      // OAM Units (O'lchov birliklari)
+      unit_none: "—",
+      unit_umol_l: "mkmol/l",
+      unit_mmol_l: "mmol/l",
+      unit_mg_l: "mg/l",
+      unit_g_l: "g/l",
+      unit_er_mkl: "er/mkl",
+      unit_leuk_mkl: "leyk/mkl",
+      unit_in_field: "k.m.da",
+      unit_u_l: "b./l",
+      // OAM Reference values (Referens qiymatlari)
+      ref_yellow: "sariq",
+      ref_transparent: "tiniq",
+      ref_insignificant: "ahamiyatsiz miqdor",
+      ref_weakly_acidic: "kuchsiz kislotali",
+      ref_absent: "yo'q",
+      ref_negative: "manfiy",
+      ref_not_found: "aniqlanmadi",
     },
     instrumentalResearch: {
       title: "Instrumental tekshiruv usullari",
@@ -502,7 +551,7 @@ export const translations = {
     },
     messages: { saved: "Anketa saqlandi!", submitted: "Anketa yuborildi!", pdfError: "PDF yaratishda xatolik" },
     analysis: {
-      title: "Tibbiy anketani tahlil qilish",
+      title: "Kasallik tarixi",
       description: "AI yordamida bemor ma'lumotlarini tahlil qilish natijalari",
       analyzing: "Tibbiy anketani tahlil qilmoqdaman...",
       analyzingSubtext: "Bu bir necha soniya vaqt olishi mumkin",
@@ -517,6 +566,9 @@ export const translations = {
       savedSuccessSubtext: "Tibbiy anketa shaxsiy ma'lumotlarga asoslanib bemorning kasallik tarixiga saqlandi",
       errorText: "Saqlashda xatolik",
       retry: "Qayta urinib ko'rish",
+      date: "Tahlil sanasi:",
+      generated: "AviShifo tizimi tomonidan yaratilgan",
+      patientData: "Bemor ma'lumotlari",
     },
     validation: {
       fullNameMin: "F.I.O kamida 2 belgi",
@@ -529,6 +581,8 @@ export const translations = {
       addressRequired: "Manzil majburiy",
       selectPlusOrMinus: "+ yoki - tanlang",
       typeRequired: "Tekshiruv turi majburiy",
+      nationalityRequired: "Millatini kiritish majburiy",
+      professionRequired: "Kasbini kiritish majburiy",
     },
   },
   en: {
@@ -560,6 +614,10 @@ export const translations = {
       address: "Home Address",
       addressHint: "Full address and phone.",
       required: "*",
+      nationality: "Nationality",
+      profession: "Profession",
+      position: "Position",
+      positionHint: "",
     },
     clinicVisit: {
       title: "Clinic Visit",
@@ -729,6 +787,24 @@ export const translations = {
       pcr_hpv_high: "HPV infection (HPV) high oncogenic risk",
       pcr_hpv_low: "HPV infection (HPV) low oncogenic risk",
       pcr_streptococcus: "Streptococcus (Streptococcus species)",
+      // OAM Units
+      unit_none: "—",
+      unit_umol_l: "µmol/l",
+      unit_mmol_l: "mmol/l",
+      unit_mg_l: "mg/l",
+      unit_g_l: "g/l",
+      unit_er_mkl: "RBC/µl",
+      unit_leuk_mkl: "WBC/µl",
+      unit_in_field: "per HPF",
+      unit_u_l: "U/l",
+      // OAM Reference values
+      ref_yellow: "yellow",
+      ref_transparent: "transparent",
+      ref_insignificant: "insignificant amount",
+      ref_weakly_acidic: "weakly acidic",
+      ref_absent: "absent",
+      ref_negative: "negative",
+      ref_not_found: "not detected",
     },
     instrumentalResearch: {
       title: "Instrumental Research Methods",
@@ -767,7 +843,7 @@ export const translations = {
     },
     messages: { saved: "Form saved!", submitted: "Form successfully submitted!", pdfError: "Error creating PDF file" },
     analysis: {
-      title: "Medical Form Analysis",
+      title: "Medical History",
       description: "Patient data analysis results using AI",
       analyzing: "Analyzing medical form...",
       analyzingSubtext: "This may take a few seconds",
@@ -782,6 +858,9 @@ export const translations = {
       savedSuccessSubtext: "Medical form saved to patient's medical history based on personal data",
       errorText: "Error saving",
       retry: "Retry",
+      date: "Analysis Date:",
+      generated: "Generated by AviShifo system",
+      patientData: "Patient Data",
     },
     validation: {
       fullNameMin: "Full name must contain at least 2 characters",
@@ -793,12 +872,12 @@ export const translations = {
       jobRequired: "Place of work is required",
       addressRequired: "Address is required",
       selectPlusOrMinus: "Select + or -",
-      typeRequired: "Research type is required",
+      typeRequired: "Type is required",
+      nationalityRequired: "Nationality is required",
+      professionRequired: "Profession is required",
     },
   },
 } as const
-
-export type TranslationKey = keyof typeof translations.ru
 
 
 
