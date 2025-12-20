@@ -12,7 +12,7 @@ import { Heart, User, UserCheck, Shield, Eye, EyeOff, Loader2, AlertCircle } fro
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 
-// Define the API base URL 2
+// Define the API base URL 2x
 import { API_CONFIG } from "../config/api";
 
 const API_BASE_URL = API_CONFIG.BASE_URL
