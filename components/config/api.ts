@@ -37,6 +37,7 @@ export const API_CONFIG = {
     CHAT_SESSIONS: `${API_BASE_URL}/api/chat/gpt/chats/`,
     CHAT_SEND_MESSAGE: (id: string) => `${API_BASE_URL}/api/chat/gpt/chats/${id}/send_message/`,
     ANALYZE_MEDICAL_FORM: `${API_BASE_URL}/api/chat/analyze-medical-form/`,
+    ANALYZE_INSTRUMENTAL_IMAGE: `${API_BASE_URL}/api/chat/analyze-instrumental-image/`,
     
     // Profile
     PROFILE: `${API_BASE_URL}/api/accounts/profile/`,

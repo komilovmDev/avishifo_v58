@@ -8,9 +8,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import Image from "next/image"
-import { Plus, Eye, Edit, Trash2, Download, X, Scan } from "lucide-react"
+import { Plus, Eye, Edit, Trash2, Download, X, Scan, Loader2, Brain, RefreshCw } from "lucide-react"
 import { useI18n } from "@/ai-form/lib/i18n"
 import type { MedicalFormData } from "@/ai-form/lib/validation"
+import { API_CONFIG } from "@/config/api"
+import axios from "axios"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 interface ResearchItem {
   id?: string
@@ -19,11 +23,12 @@ interface ResearchItem {
   performingDoctor?: string
   institution?: string
   images?: string[]
+  imageAnalyses?: string[] // AI tahlil natijalari har bir rasm uchun
   comment?: string
 }
 
 export function Step6InstrumentalResearch({ form }: { form: ReturnType<typeof useFormContext<MedicalFormData>> }) {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const researches = form.watch("instrumental_research") || []
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [viewingIndex, setViewingIndex] = useState<number | null>(null)
@@ -100,6 +105,7 @@ export function Step6InstrumentalResearch({ form }: { form: ReturnType<typeof us
             onSubmit={handleAddResearch}
             onCancel={() => setShowAddForm(false)}
             ir={ir || {}}
+            languageProp={language}
           />
         )}
 
@@ -111,6 +117,7 @@ export function Step6InstrumentalResearch({ form }: { form: ReturnType<typeof us
             onSubmit={(data) => handleEditResearch(editingIndex, data)}
             onCancel={() => setEditingIndex(null)}
             ir={ir || {}}
+            languageProp={language}
           />
         )}
 
@@ -239,6 +246,7 @@ function ResearchForm({
   onSubmit,
   onCancel,
   ir,
+  languageProp,
 }: {
   form: ReturnType<typeof useFormContext<MedicalFormData>>
   researchTypes: { value: string; label: string }[]
@@ -246,12 +254,17 @@ function ResearchForm({
   onSubmit: (data: ResearchItem) => void
   onCancel: () => void
   ir: any
+  languageProp?: string
 }) {
+  const { language: i18nLanguage } = useI18n()
+  const language = languageProp || i18nLanguage || "ru"
   const [formData, setFormData] = useState<ResearchItem>(
-    initialData || { type: "", date: "", performingDoctor: "", institution: "", images: [], comment: "" }
+    initialData || { type: "", date: "", performingDoctor: "", institution: "", images: [], imageAnalyses: [], comment: "" }
   )
   const [otherType, setOtherType] = useState(initialData?.type === "other" ? initialData.type : "")
   const [uploadedImages, setUploadedImages] = useState<string[]>(initialData?.images || [])
+  const [imageAnalyses, setImageAnalyses] = useState<string[]>(initialData?.imageAnalyses || [])
+  const [analyzingImages, setAnalyzingImages] = useState<boolean[]>([])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -264,17 +277,85 @@ function ResearchForm({
       alert(ir.imageOrCommentRequired)
       return
     }
-    onSubmit({ ...formData, type: formData.type === "other" ? otherType : formData.type, images: uploadedImages })
+    onSubmit({ 
+      ...formData, 
+      type: formData.type === "other" ? otherType : formData.type, 
+      images: uploadedImages,
+      imageAnalyses: imageAnalyses
+    })
   }
 
   useEffect(() => {
     if (initialData?.images) setUploadedImages(initialData.images)
     else setUploadedImages([])
+    if (initialData?.imageAnalyses) setImageAnalyses(initialData.imageAnalyses)
+    else setImageAnalyses([])
   }, [initialData])
+
+  // Analyze image with AI
+  const analyzeImage = async (imageBase64: string, imageIndex: number) => {
+    try {
+      // Set analyzing state for this image
+      const newAnalyzing = [...analyzingImages]
+      newAnalyzing[imageIndex] = true
+      setAnalyzingImages(newAnalyzing)
+
+      const token = localStorage.getItem("accessToken")
+      if (!token) {
+        throw new Error("Требуется авторизация")
+      }
+
+      // Convert base64 to blob for FormData
+      const base64Data = imageBase64.split(',')[1] // Remove data:image/jpeg;base64, prefix
+      const byteCharacters = atob(base64Data)
+      const byteNumbers = new Array(byteCharacters.length)
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      }
+      const byteArray = new Uint8Array(byteNumbers)
+      const blob = new Blob([byteArray], { type: 'image/jpeg' })
+      const file = new File([blob], `image-${imageIndex}.jpg`, { type: 'image/jpeg' })
+
+      const formData = new FormData()
+      formData.append("image", file)
+      formData.append("language", language || "ru") // Add language parameter
+
+      const response = await axios.post(
+        API_CONFIG.ENDPOINTS.ANALYZE_INSTRUMENTAL_IMAGE,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      )
+
+      if (response.data.status === "success" && response.data.analysis) {
+        // Update analysis for this image
+        const newAnalyses = [...imageAnalyses]
+        newAnalyses[imageIndex] = response.data.analysis
+        setImageAnalyses(newAnalyses)
+      } else {
+        throw new Error("Не удалось получить анализ")
+      }
+    } catch (error) {
+      console.error("Error analyzing image:", error)
+      // Set error analysis
+      const newAnalyses = [...imageAnalyses]
+      newAnalyses[imageIndex] = "Ошибка при анализе изображения. Попробуйте еще раз."
+      setImageAnalyses(newAnalyses)
+    } finally {
+      // Clear analyzing state
+      const newAnalyzing = [...analyzingImages]
+      newAnalyzing[imageIndex] = false
+      setAnalyzingImages(newAnalyzing)
+    }
+  }
 
   return (
     <form onSubmit={handleSubmit} className="border rounded-lg p-6 bg-gray-50 space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             {ir.researchType} <span className="text-red-500">*</span>
@@ -315,7 +396,7 @@ function ResearchForm({
           <Input value={formData.institution} onChange={(e) => setFormData({ ...formData, institution: e.target.value })} placeholder={ir.institution} />
         </div>
 
-        <div>
+        <div className="md:col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">{ir.image} ({uploadedImages.length})</label>
           <Input
             id="research-image"
@@ -339,21 +420,105 @@ function ResearchForm({
                 reader.onerror = reject
                 reader.readAsDataURL(file)
               }))
-              Promise.all(readers).then((base64Strings) => setUploadedImages([...uploadedImages, ...base64Strings]))
+              Promise.all(readers).then((base64Strings) => {
+                const newImages = [...uploadedImages, ...base64Strings]
+                setUploadedImages(newImages)
+                // Initialize analyzing states
+                setAnalyzingImages([...analyzingImages, ...new Array(base64Strings.length).fill(false)])
+                // Initialize empty analyses for new images
+                setImageAnalyses([...imageAnalyses, ...new Array(base64Strings.length).fill("")])
+                
+                // Automatically analyze each new image
+                base64Strings.forEach((base64String, index) => {
+                  const imageIndex = uploadedImages.length + index
+                  analyzeImage(base64String, imageIndex)
+                })
+              })
             }}
           />
           {uploadedImages.length > 0 && (
-            <div className="mt-2 grid grid-cols-3 gap-2">
+            <div className="mt-2 space-y-4 w-full">
               {uploadedImages.map((image, idx) => (
-                <div key={idx} className="relative group">
-                  <Image src={image} alt={`Preview ${idx + 1}`} width={100} height={75} className="rounded border w-full h-20 object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => setUploadedImages(uploadedImages.filter((_, i) => i !== idx))}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    ×
-                  </button>
+                <div key={idx} className="border rounded-lg p-4 md:p-6 bg-white w-full">
+                  <div className="relative group mb-3">
+                    <Image src={image} alt={`Preview ${idx + 1}`} width={400} height={300} className="rounded border w-full h-48 md:h-64 object-contain bg-gray-50" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUploadedImages(uploadedImages.filter((_, i) => i !== idx))
+                        setImageAnalyses(imageAnalyses.filter((_, i) => i !== idx))
+                        setAnalyzingImages(analyzingImages.filter((_, i) => i !== idx))
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  
+                  {/* AI Analysis Section */}
+                  <div className="mt-3">
+                    {analyzingImages[idx] ? (
+                      <div className="flex items-center gap-2 text-sm text-blue-600 py-4">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>AI tahlil qilmoqda...</span>
+                      </div>
+                    ) : imageAnalyses[idx] ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-base font-semibold text-gray-800">
+                          <Brain className="w-5 h-5 text-purple-600" />
+                          <span>AI Tahlil:</span>
+                        </div>
+                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 md:p-6 text-sm md:text-base text-gray-700 max-h-96 overflow-y-auto prose prose-sm md:prose-base max-w-none w-full">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              h1: ({ node, ...props }) => <h1 className="text-lg font-bold mt-3 mb-2 text-gray-900" {...props} />,
+                              h2: ({ node, ...props }) => <h2 className="text-base font-bold mt-3 mb-2 text-gray-900" {...props} />,
+                              h3: ({ node, ...props }) => <h3 className="text-sm font-semibold mt-2 mb-1 text-gray-800" {...props} />,
+                              p: ({ node, ...props }) => <p className="mb-2 text-gray-700 leading-relaxed" {...props} />,
+                              ul: ({ node, ...props }) => <ul className="list-disc list-inside mb-2 space-y-1" {...props} />,
+                              ol: ({ node, ...props }) => <ol className="list-decimal list-inside mb-2 space-y-1" {...props} />,
+                              li: ({ node, ...props }) => <li className="ml-2 text-gray-700" {...props} />,
+                              strong: ({ node, ...props }) => <strong className="font-semibold text-gray-900" {...props} />,
+                              em: ({ node, ...props }) => <em className="italic text-gray-700" {...props} />,
+                              code: ({ node, ...props }) => <code className="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono" {...props} />,
+                              blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-purple-300 pl-3 italic text-gray-600 my-2" {...props} />,
+                              table: ({ node, ...props }) => (
+                                <div className="overflow-x-auto my-2">
+                                  <table className="min-w-full border border-gray-300" {...props} />
+                                </div>
+                              ),
+                              th: ({ node, ...props }) => <th className="border border-gray-300 px-2 py-1 bg-gray-100 font-semibold text-left" {...props} />,
+                              td: ({ node, ...props }) => <td className="border border-gray-300 px-2 py-1" {...props} />,
+                            }}
+                          >
+                            {imageAnalyses[idx]}
+                          </ReactMarkdown>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => analyzeImage(image, idx)}
+                          className="w-full"
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Qayta tahlil qilish
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => analyzeImage(image, idx)}
+                        className="w-full"
+                      >
+                        <Brain className="w-4 h-4 mr-2" />
+                        AI tahlil qilish
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -429,20 +594,62 @@ function ResearchModal({
           {images.length > 0 && (
             <div className="mb-6">
               <h4 className="text-base font-semibold text-gray-900 mb-4">{ir.image} ({images.length})</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {images.map((image, idx) => (
-                  <div key={idx} className="relative group border border-gray-200 rounded-lg overflow-hidden bg-gray-50">
-                    <div className="aspect-video flex items-center justify-center">
-                      <Image src={image} alt={`${typeLabel} ${idx + 1}`} width={500} height={350} className="max-w-full max-h-full object-contain" />
+              <div className="space-y-6">
+                {images.map((image, idx) => {
+                  const analysis = research.imageAnalyses?.[idx] || ""
+                  return (
+                    <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                      <div className="relative group bg-gray-50">
+                        <div className="aspect-video flex items-center justify-center p-4">
+                          <Image src={image} alt={`${typeLabel} ${idx + 1}`} width={500} height={350} className="max-w-full max-h-full object-contain" />
+                        </div>
+                        <div className="absolute top-2 right-2 flex gap-2">
+                          <Button type="button" variant="outline" size="sm" onClick={() => onDownload(idx)} className="bg-white/90 hover:bg-white">
+                            <Download className="w-4 h-4 mr-1" />
+                            {ir.download}
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {/* AI Analysis Section */}
+                      {analysis && (
+                        <div className="p-4 border-t border-gray-200 bg-purple-50">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Brain className="w-5 h-5 text-purple-600" />
+                            <h5 className="text-sm font-semibold text-gray-900">AI Tahlil:</h5>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 border border-purple-200 max-h-60 overflow-y-auto prose prose-sm max-w-none">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                h1: ({ node, ...props }) => <h1 className="text-lg font-bold mt-3 mb-2 text-gray-900" {...props} />,
+                                h2: ({ node, ...props }) => <h2 className="text-base font-bold mt-3 mb-2 text-gray-900" {...props} />,
+                                h3: ({ node, ...props }) => <h3 className="text-sm font-semibold mt-2 mb-1 text-gray-800" {...props} />,
+                                p: ({ node, ...props }) => <p className="mb-2 text-gray-700 leading-relaxed" {...props} />,
+                                ul: ({ node, ...props }) => <ul className="list-disc list-inside mb-2 space-y-1" {...props} />,
+                                ol: ({ node, ...props }) => <ol className="list-decimal list-inside mb-2 space-y-1" {...props} />,
+                                li: ({ node, ...props }) => <li className="ml-2 text-gray-700" {...props} />,
+                                strong: ({ node, ...props }) => <strong className="font-semibold text-gray-900" {...props} />,
+                                em: ({ node, ...props }) => <em className="italic text-gray-700" {...props} />,
+                                code: ({ node, ...props }) => <code className="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono" {...props} />,
+                                blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-purple-300 pl-3 italic text-gray-600 my-2" {...props} />,
+                                table: ({ node, ...props }) => (
+                                  <div className="overflow-x-auto my-2">
+                                    <table className="min-w-full border border-gray-300" {...props} />
+                                  </div>
+                                ),
+                                th: ({ node, ...props }) => <th className="border border-gray-300 px-2 py-1 bg-gray-100 font-semibold text-left" {...props} />,
+                                td: ({ node, ...props }) => <td className="border border-gray-300 px-2 py-1" {...props} />,
+                              }}
+                            >
+                              {analysis}
+                            </ReactMarkdown>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={() => onDownload(idx)} className="bg-white opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Download className="w-4 h-4 mr-1" />
-                        {ir.download}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}

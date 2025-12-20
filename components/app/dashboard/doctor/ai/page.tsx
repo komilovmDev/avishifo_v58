@@ -40,6 +40,7 @@ import {
   History,
   Trash2,
   RotateCcw,
+  Brain,
 } from "lucide-react"
 import { TestResultsTable } from "@/ai-form/components/test-results-table"
 import { SerologicalTestTable } from "@/ai-form/components/serological-test-table"
@@ -63,6 +64,9 @@ import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
+import Image from "next/image"
 
 export default function DoctorAIFormPage() {
   return (
@@ -550,10 +554,43 @@ function AIFormInner() {
     if (formData.sero_conclusion) testResults.push(`Серология: ${formData.sero_conclusion}`)
     if (formData.pcr_conclusion) testResults.push(`ПЦР: ${formData.pcr_conclusion}`)
 
-    // Combine instrumental research
-    const instrumentalData = formData.instrumental_research?.map(item =>
-      `${item.type || ''} (${item.date || 'дата не указана'}): ${item.comment || ''}`
-    ).join('\n') || ''
+    // Combine instrumental research with AI analyses
+    const instrumentalData = formData.instrumental_research?.map((item, itemIndex) => {
+      // Get research type label
+      const researchTypeLabels: Record<string, string> = {
+        'xray': 'Рентгенография',
+        'fluoroscopy': 'Рентгеноскопия',
+        'contrast': 'Контрастные исследования',
+        'ct': 'КТ / МСКТ',
+        'mri': 'МРТ',
+        'ultrasound': 'УЗИ',
+        'echocardiography': 'Эхокардиография',
+        'ecg': 'ЭКГ',
+        'eeg': 'ЭЭГ',
+        'pft': 'ФВД',
+        'other': item.type || 'Другое',
+      }
+      const researchTypeLabel = researchTypeLabels[item.type] || item.type || 'Исследование'
+      
+      let result = `\n${researchTypeLabel}`
+      if (item.date) result += `\nДата: ${item.date}`
+      if (item.performingDoctor) result += `\nВрач-выполняющий: ${item.performingDoctor}`
+      if (item.institution) result += `\nУчреждение: ${item.institution}`
+      if (item.comment) result += `\nКомментарий врача: ${item.comment}`
+      
+      // Add AI analyses for images
+      if (item.images && item.images.length > 0) {
+        result += `\n\n📷 Изображения (${item.images.length}):`
+        item.images.forEach((image, imgIndex) => {
+          result += `\n\n🖼️ Изображение ${imgIndex + 1}:`
+          if (item.imageAnalyses && item.imageAnalyses[imgIndex]) {
+            result += `\n\n🤖 AI Tahlil:\n${item.imageAnalyses[imgIndex]}\n`
+          }
+        })
+      }
+      
+      return result
+    }).join('\n\n' + '='.repeat(50) + '\n\n') || ''
 
     return {
       patient: patientId,
@@ -1286,6 +1323,68 @@ function AIFormInner() {
         lungAuscultation: selectedHistoryEntry.opka_auskultatsiyasi || "",
         heartAuscultation: selectedHistoryEntry.yurak_auskultatsiyasi || "",
         abdomenAuscultation: selectedHistoryEntry.qorin_auskultatsiyasi || "",
+        
+        // Parse instrumental research from doktor_tavsiyalari
+        instrumental_research: (() => {
+          if (!selectedHistoryEntry.doktor_tavsiyalari || !selectedHistoryEntry.doktor_tavsiyalari.includes('=== ИНСТРУМЕНТАЛЬНЫЕ ИССЛЕДОВАНИЯ ===')) {
+            return []
+          }
+          
+          const instrumentalSection = selectedHistoryEntry.doktor_tavsiyalari.split('=== ИНСТРУМЕНТАЛЬНЫЕ ИССЛЕДОВАНИЯ ===')[1]?.split('===')[0]?.trim() || ''
+          if (!instrumentalSection) return []
+          
+          const researchItems = instrumentalSection.split('='.repeat(50)).filter((item: string) => item.trim())
+          
+          return researchItems.map((item: string) => {
+            const lines = item.trim().split('\n').filter((line: string) => line.trim())
+            if (lines.length === 0) return null
+            
+            const researchType = lines[0] || 'Исследование'
+            const researchData: any = {
+              type: researchType,
+              images: [],
+              imageAnalyses: [],
+            }
+            
+            let currentImageIndex = -1
+            let isInAIAnalysis = false
+            let currentAIAnalysis = ''
+            
+            lines.slice(1).forEach((line: string) => {
+              if (line.startsWith('Дата:')) {
+                researchData.date = line.replace('Дата:', '').trim()
+              } else if (line.startsWith('Врач-выполняющий:')) {
+                researchData.performingDoctor = line.replace('Врач-выполняющий:', '').trim()
+              } else if (line.startsWith('Учреждение:')) {
+                researchData.institution = line.replace('Учреждение:', '').trim()
+              } else if (line.startsWith('Комментарий врача:')) {
+                researchData.comment = line.replace('Комментарий врача:', '').trim()
+              } else if (line.includes('🖼️ Изображение')) {
+                currentImageIndex++
+                researchData.images.push('') // Placeholder for image
+              } else if (line.includes('🤖 AI Tahlil:')) {
+                isInAIAnalysis = true
+                currentAIAnalysis = ''
+              } else if (isInAIAnalysis) {
+                if (line.trim() && !line.startsWith('Дата:') && !line.startsWith('Врач:') && !line.startsWith('Учреждение:') && !line.startsWith('Комментарий:')) {
+                  currentAIAnalysis += line + '\n'
+                } else {
+                  if (currentAIAnalysis && currentImageIndex >= 0) {
+                    researchData.imageAnalyses[currentImageIndex] = currentAIAnalysis.trim()
+                    currentAIAnalysis = ''
+                  }
+                  isInAIAnalysis = false
+                }
+              }
+            })
+            
+            if (currentAIAnalysis && currentImageIndex >= 0) {
+              researchData.imageAnalyses[currentImageIndex] = currentAIAnalysis.trim()
+            }
+            
+            return researchData
+            }).filter((item: any) => item !== null) as any[]
+        })(),
       }
 
       const doc = <PDFDocument data={formDataFromHistory} language={language} />
@@ -1898,19 +1997,176 @@ function AIFormInner() {
                     </Card>
                   )}
 
-                {/* Doctor Recommendations */}
-                {selectedHistoryEntry.doktor_tavsiyalari && (
-                  <Card>
+                {/* Instrumental Research Section */}
+                {selectedHistoryEntry.doktor_tavsiyalari && selectedHistoryEntry.doktor_tavsiyalari.includes('=== ИНСТРУМЕНТАЛЬНЫЕ ИССЛЕДОВАНИЯ ===') && (
+                  <Card className="bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
                     <CardHeader>
-                      <CardTitle className="text-lg">Doktor tavsiyalari</CardTitle>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Scan className="h-5 w-5 text-purple-600" />
+                        Инструментальные методы исследования
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                        {selectedHistoryEntry.doktor_tavsiyalari}
-                      </p>
+                      {(() => {
+                        // Parse instrumental research from doktor_tavsiyalari
+                        const instrumentalSection = selectedHistoryEntry.doktor_tavsiyalari.split('=== ИНСТРУМЕНТАЛЬНЫЕ ИССЛЕДОВАНИЯ ===')[1]?.split('===')[0]?.trim() || ''
+                        if (!instrumentalSection) return null
+                        
+                        // Split by separator
+                        const researchItems = instrumentalSection.split('='.repeat(50)).filter((item: string) => item.trim())
+                        
+                        return (
+                          <div className="space-y-4">
+                            {researchItems.map((item: string, index: number) => {
+                              const lines = item.trim().split('\n').filter((line: string) => line.trim())
+                              if (lines.length === 0) return null
+                              
+                              const researchType = lines[0] || 'Исследование'
+                              const researchData: Record<string, string> = {}
+                              const images: string[] = []
+                              const aiAnalyses: string[] = []
+                              
+                              let currentImageIndex = -1
+                              let isInImageSection = false
+                              let isInAIAnalysis = false
+                              let currentAIAnalysis = ''
+                              
+                              lines.slice(1).forEach((line: string) => {
+                                if (line.includes('📷 Изображения')) {
+                                  isInImageSection = true
+                                  return
+                                }
+                                if (line.includes('🖼️ Изображение')) {
+                                  currentImageIndex++
+                                  isInImageSection = true
+                                  return
+                                }
+                                if (line.includes('🤖 AI Tahlil:')) {
+                                  isInAIAnalysis = true
+                                  currentAIAnalysis = ''
+                                  return
+                                }
+                                if (isInAIAnalysis) {
+                                  if (line.trim() && !line.includes('Дата:') && !line.includes('Врач:') && !line.includes('Учреждение:') && !line.includes('Комментарий:')) {
+                                    currentAIAnalysis += line + '\n'
+                                  } else {
+                                    if (currentAIAnalysis) {
+                                      aiAnalyses[currentImageIndex] = currentAIAnalysis.trim()
+                                      currentAIAnalysis = ''
+                                    }
+                                    isInAIAnalysis = false
+                                  }
+                                }
+                                if (line.startsWith('Дата:')) researchData.date = line.replace('Дата:', '').trim()
+                                if (line.startsWith('Врач-выполняющий:')) researchData.doctor = line.replace('Врач-выполняющий:', '').trim()
+                                if (line.startsWith('Учреждение:')) researchData.institution = line.replace('Учреждение:', '').trim()
+                                if (line.startsWith('Комментарий врача:')) researchData.comment = line.replace('Комментарий врача:', '').trim()
+                              })
+                              
+                              if (currentAIAnalysis && currentImageIndex >= 0) {
+                                aiAnalyses[currentImageIndex] = currentAIAnalysis.trim()
+                              }
+                              
+                              return (
+                                <div key={index} className="border rounded-lg p-4 bg-white">
+                                  <h4 className="font-semibold text-gray-900 mb-3">{researchType}</h4>
+                                  <div className="space-y-2 mb-3">
+                                    {researchData.date && (
+                                      <div>
+                                        <span className="text-sm font-medium text-gray-500">Дата: </span>
+                                        <span className="text-sm text-gray-700">{researchData.date}</span>
+                                      </div>
+                                    )}
+                                    {researchData.doctor && (
+                                      <div>
+                                        <span className="text-sm font-medium text-gray-500">Врач-выполняющий: </span>
+                                        <span className="text-sm text-gray-700">{researchData.doctor}</span>
+                                      </div>
+                                    )}
+                                    {researchData.institution && (
+                                      <div>
+                                        <span className="text-sm font-medium text-gray-500">Учреждение: </span>
+                                        <span className="text-sm text-gray-700">{researchData.institution}</span>
+                                      </div>
+                                    )}
+                                    {researchData.comment && (
+                                      <div>
+                                        <span className="text-sm font-medium text-gray-500">Комментарий: </span>
+                                        <span className="text-sm text-gray-700">{researchData.comment}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  {/* AI Analyses */}
+                                  {aiAnalyses.length > 0 && (
+                                    <div className="space-y-3 mt-4">
+                                      {aiAnalyses.map((analysis, aiIndex) => (
+                                        analysis && (
+                                          <div key={aiIndex} className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <Brain className="w-5 h-5 text-purple-600" />
+                                              <h5 className="text-sm font-semibold text-gray-900">AI Tahlil (Изображение {aiIndex + 1}):</h5>
+                                            </div>
+                                            <div className="bg-white rounded-lg p-3 border border-purple-200 max-h-60 overflow-y-auto prose prose-sm max-w-none">
+                                              <ReactMarkdown
+                                                remarkPlugins={[remarkGfm]}
+                                                components={{
+                                                  h1: ({ node, ...props }) => <h1 className="text-lg font-bold mt-3 mb-2 text-gray-900" {...props} />,
+                                                  h2: ({ node, ...props }) => <h2 className="text-base font-bold mt-3 mb-2 text-gray-900" {...props} />,
+                                                  h3: ({ node, ...props }) => <h3 className="text-sm font-semibold mt-2 mb-1 text-gray-800" {...props} />,
+                                                  p: ({ node, ...props }) => <p className="mb-2 text-gray-700 leading-relaxed" {...props} />,
+                                                  ul: ({ node, ...props }) => <ul className="list-disc list-inside mb-2 space-y-1" {...props} />,
+                                                  ol: ({ node, ...props }) => <ol className="list-decimal list-inside mb-2 space-y-1" {...props} />,
+                                                  li: ({ node, ...props }) => <li className="ml-2 text-gray-700" {...props} />,
+                                                  strong: ({ node, ...props }) => <strong className="font-semibold text-gray-900" {...props} />,
+                                                  em: ({ node, ...props }) => <em className="italic text-gray-700" {...props} />,
+                                                  code: ({ node, ...props }) => <code className="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono" {...props} />,
+                                                  blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-purple-300 pl-3 italic text-gray-600 my-2" {...props} />,
+                                                  table: ({ node, ...props }) => (
+                                                    <div className="overflow-x-auto my-2">
+                                                      <table className="min-w-full border border-gray-300" {...props} />
+                                                    </div>
+                                                  ),
+                                                  th: ({ node, ...props }) => <th className="border border-gray-300 px-2 py-1 bg-gray-100 font-semibold text-left" {...props} />,
+                                                  td: ({ node, ...props }) => <td className="border border-gray-300 px-2 py-1" {...props} />,
+                                                }}
+                                              >
+                                                {analysis}
+                                              </ReactMarkdown>
+                                            </div>
+                                          </div>
+                                        )
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )
+                      })()}
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Doctor Recommendations (without instrumental research) */}
+                {selectedHistoryEntry.doktor_tavsiyalari && (() => {
+                  const recommendations = selectedHistoryEntry.doktor_tavsiyalari.split('=== ИНСТРУМЕНТАЛЬНЫЕ ИССЛЕДОВАНИЯ ===')[0]?.trim() || ''
+                  if (!recommendations) return null
+                  
+                  return (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Doktor tavsiyalari</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                          {recommendations}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )
+                })()}
 
                 {/* AI Analysis Results */}
                 {analysisResult && formDataForSave && (

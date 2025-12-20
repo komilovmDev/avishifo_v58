@@ -501,6 +501,75 @@ export const AnalysisPDFDocument = ({ formData, analysisResult, logoUrl, languag
           </View>
         )}
 
+        {/* Instrumental Research Section with AI Analyses */}
+        {formData.instrumental_research && formData.instrumental_research.length > 0 && (
+          <View style={styles.section} break={false}>
+            <Text style={styles.sectionTitle}>{normalizeText(t.instrumentalResearch.title)}</Text>
+            {formData.instrumental_research.map((research: any, index: number) => {
+              // Get research type label
+              const ir = t.instrumentalResearch || {}
+              let researchTypeLabel = research.type
+              const typeMap: Record<string, string> = {
+                'xray': ir.typeXray || 'Рентгенография',
+                'fluoroscopy': ir.typeFluoroscopy || 'Рентгеноскопия',
+                'contrast': ir.typeContrast || 'Контрастные исследования',
+                'ct': ir.typeCT || 'КТ / МСКТ',
+                'mri': ir.typeMRI || 'МРТ',
+                'ultrasound': ir.typeUltrasound || 'УЗИ',
+                'echocardiography': ir.typeEchocardiography || 'Эхокардиография',
+                'ecg': ir.typeECG || 'ЭКГ',
+                'eeg': ir.typeEEG || 'ЭЭГ',
+                'pft': ir.typePFT || 'ФВД',
+                'other': ir.typeOther || 'Другое',
+              }
+              if (typeMap[research.type]) {
+                researchTypeLabel = typeMap[research.type]
+              }
+              
+              return (
+                <View key={index} style={{ marginBottom: 15, padding: 10, backgroundColor: '#f9fafb', borderRadius: 4 }}>
+                  <Text style={[styles.fieldLabel, { marginBottom: 5 }]}>
+                    {index + 1}. {normalizeText(researchTypeLabel)}
+                  </Text>
+                  {research.date && renderField(t.instrumentalResearch.researchDate, research.date)}
+                  {research.performingDoctor && renderField(t.instrumentalResearch.performingDoctor, research.performingDoctor)}
+                  {research.institution && renderField(t.instrumentalResearch.institution, research.institution)}
+                  {research.comment && renderField(t.instrumentalResearch.comment, research.comment)}
+                  
+                  {/* AI Analyses for Images */}
+                  {research.images && research.images.length > 0 && (
+                    <View style={{ marginTop: 10 }}>
+                      <Text style={[styles.fieldLabel, { marginBottom: 5 }]}>
+                        {normalizeText(t.instrumentalResearch.image)} ({research.images.length})
+                      </Text>
+                      {research.images.map((image: string, imgIndex: number) => {
+                        const analysis = research.imageAnalyses?.[imgIndex]
+                        return (
+                          <View key={imgIndex} style={{ marginBottom: 10, padding: 8, backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                            <Text style={[styles.fieldLabel, { fontSize: 9, marginBottom: 3 }]}>
+                              {normalizeText(t.instrumentalResearch.image)} {imgIndex + 1}:
+                            </Text>
+                            {analysis && (
+                              <View style={{ marginTop: 5, padding: 10, backgroundColor: '#f3e8ff', border: '1px solid #d8b4fe', borderRadius: 4 }}>
+                                <Text style={[styles.fieldLabel, { fontSize: 10, color: '#7c3aed', marginBottom: 5, fontWeight: 'bold' }]}>
+                                  🤖 AI Tahlil:
+                                </Text>
+                                <Text style={[styles.fieldValue, { fontSize: 9, color: '#374151', lineHeight: 1.5 }]}>
+                                  {normalizeText(analysis)}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        )
+                      })}
+                    </View>
+                  )}
+                </View>
+              )
+            })}
+          </View>
+        )}
+
         <View break>
           <Text style={styles.analysisTitle}>{normalizeText(t.analysis.title)}</Text>
           <View style={styles.analysisSection}>

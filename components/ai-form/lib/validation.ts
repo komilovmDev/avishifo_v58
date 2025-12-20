@@ -170,6 +170,7 @@ export const createMedicalFormSchema = (language: Language = "ru") => {
         performingDoctor: z.string().optional(),
         institution: z.string().optional(),
         images: z.array(z.string()).optional(),
+        imageAnalyses: z.array(z.string()).optional(), // AI tahlil natijalari
         comment: z.string().optional(),
       })
     ).optional(),
