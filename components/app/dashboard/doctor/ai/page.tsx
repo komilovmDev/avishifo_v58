@@ -109,10 +109,13 @@ function AIFormInner() {
     fullName: "",
     passport: "",
     birthDate: "",
-    gender: undefined,
+    gender: "",
     maritalStatus: "",
     education: "",
     job: "",
+    nationality: "",
+    profession: "",
+    position: "",
     address: "",
     admissionDate: "",
     referralDiagnosis: "",
@@ -255,7 +258,7 @@ function AIFormInner() {
     let fieldsToValidate: (keyof MedicalFormData)[] = []
     switch (step) {
       case 1:
-        fieldsToValidate = ["fullName", "passport", "birthDate", "gender", "maritalStatus", "education", "job", "address"]
+        fieldsToValidate = ["fullName", "passport", "birthDate", "gender", "maritalStatus", "education", "job", "address", "nationality", "profession", "position"]
         const result = await form.trigger(fieldsToValidate)
         if (!result) {
           const firstError = Object.keys(form.formState.errors)[0]
