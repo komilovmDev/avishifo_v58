@@ -357,18 +357,25 @@ export default function DoctorsPage() {
           }
         }
         
-        // Get specialty label - backend can send specialty as string or specialty_label
-        // If specialty is a string (like "Ревматология"), use it directly
-        // Otherwise try to get label from specialties list
-        let specialtyLabel = doctor.specialty_label || doctor.specialty || 'Специализация не указана'
+        // Get specialty label - backend sends specialty_label field which is the correct label
+        // Priority: specialty_label > getSpecialtyLabel(specialty) > specialty (if looks like label)
+        let specialtyLabel = 'Специализация не указана'
         let specialtyValue = doctor.specialty
         
-        // If specialty is a string that looks like a label (not a value), use it as label
-        // Otherwise try to find matching specialty from specialties list
-        if (specialtyValue && getSpecialtyLabel(specialtyValue)) {
+        // Priority 1: Use specialty_label from backend (this is the correct label)
+        if (doctor.specialty_label) {
+          specialtyLabel = doctor.specialty_label
+        }
+        // Priority 2: Try to get label from specialties list using specialty value
+        else if (specialtyValue && getSpecialtyLabel(specialtyValue)) {
           specialtyLabel = getSpecialtyLabel(specialtyValue)
-        } else if (specialtyValue && !specialtyValue.includes('_') && specialtyValue.length > 3) {
-          // If specialty looks like a label (not a snake_case value), use it directly
+        }
+        // Priority 3: If specialty looks like a label (not a snake_case value and not a number), use it directly
+        else if (specialtyValue && !specialtyValue.includes('_') && specialtyValue.length > 3 && !/^\d+$/.test(specialtyValue)) {
+          specialtyLabel = specialtyValue
+        }
+        // Priority 4: Use specialty value as fallback (but this should be rare)
+        else if (specialtyValue) {
           specialtyLabel = specialtyValue
         }
         
