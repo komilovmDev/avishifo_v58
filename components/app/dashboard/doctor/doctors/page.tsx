@@ -28,24 +28,45 @@ interface Doctor {
   first_name: string
   last_name: string
   specialization: string
+  specialty?: string // Backend field
   experience: string
+  years_of_experience?: number // Backend field
   education: string
   location: string
   bio: string
   languages: string
+  languages_spoken?: string[] // Backend field
   certifications: string
   phone: string
+  work_phone?: string // Backend field
   email: string
+  work_email?: string // Backend field
   address: string
   working_hours: string
   consultation_fee: string
   availability: string
   rating: number
   total_reviews: number
+  reviews_count?: number // Backend field
   total_patients: number
+  patients_accepted_count?: number // Backend field
   monthly_consultations: number
+  consultations_count?: number // Backend field
   profile_picture: string | null
+  user?: {
+    profile_picture?: string
+    first_name?: string
+    last_name?: string
+    email?: string
+    phone_number?: string
+  }
   is_recommended?: boolean
+}
+
+interface Specialty {
+  value: string
+  label: string
+  count: number
 }
 
 type DoctorsByCategory = Record<string, Doctor[]>
@@ -187,45 +208,248 @@ const MOCK_DOCTORS_BY_CATEGORY: DoctorsByCategory = {
 
 export default function DoctorsPage() {
   const router = useRouter()
-  const [doctorsByCategory, setDoctorsByCategory] = useState<DoctorsByCategory>(MOCK_DOCTORS_BY_CATEGORY)
+  const [doctorsByCategory, setDoctorsByCategory] = useState<DoctorsByCategory>({})
+  const [allDoctors, setAllDoctors] = useState<Doctor[]>([])
+  const [specialties, setSpecialties] = useState<Specialty[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingSpecialties, setIsLoadingSpecialties] = useState(false)
   const [notification, setNotification] = useState<{ type: 'success' | 'info', message: string } | null>(null)
   const [showReviews, setShowReviews] = useState(false)
 
   useEffect(() => {
     // Check if we're in browser environment before fetching
     if (typeof window !== 'undefined') {
-      // In real app, fetch doctors from API
+      fetchSpecialties()
       fetchDoctors()
     }
   }, [])
 
-  const fetchDoctors = async () => {
-    setIsLoading(true)
+  // Fetch specialties/categories from API
+  const fetchSpecialties = async () => {
+    setIsLoadingSpecialties(true)
     try {
-      // Check if we're in browser environment
       if (typeof window !== 'undefined') {
         const token = localStorage.getItem("accessToken")
         if (token) {
-          const response = await axios.get(`${API_CONFIG.BASE_URL}/api/doctors/`, {
+          const response = await axios.get(API_CONFIG.ENDPOINTS.DOCTOR_SPECIALTIES, {
             headers: { Authorization: `Bearer ${token}` }
           })
-          // Group doctors by specialization
-          const grouped = groupDoctorsBySpecialization(response.data)
-          setDoctorsByCategory(grouped)
+          if (response.data.success && response.data.data) {
+            setSpecialties(response.data.data)
+          }
         }
       }
     } catch (error) {
+      console.error("Error fetching specialties:", error)
+    } finally {
+      setIsLoadingSpecialties(false)
+    }
+  }
+
+  // Fetch doctors from API
+  const fetchDoctors = async (specialty?: string, search?: string) => {
+    setIsLoading(true)
+    try {
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem("accessToken")
+        if (!token) {
+          console.error("No access token found")
+          setIsLoading(false)
+          return
+        }
+        
+        let url = API_CONFIG.ENDPOINTS.DOCTORS
+        const params = new URLSearchParams()
+        
+        if (specialty) {
+          params.append('specialty', specialty)
+        }
+        if (search) {
+          params.append('search', search)
+        }
+        
+        if (params.toString()) {
+          url += `?${params.toString()}`
+        }
+        
+        console.log("Fetching doctors from:", url)
+        const response = await axios.get(url, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        
+        console.log("Doctors API response:", response.data)
+        
+        // Handle different response formats
+        let doctorsData = []
+        if (Array.isArray(response.data)) {
+          doctorsData = response.data
+        } else if (response.data.results && Array.isArray(response.data.results)) {
+          doctorsData = response.data.results
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          doctorsData = response.data.data
+        } else {
+          console.warn("Unexpected API response format:", response.data)
+          doctorsData = []
+        }
+        
+        console.log("Processed doctors data:", doctorsData)
+        
+        if (doctorsData.length === 0) {
+          console.warn("No doctors found in API response")
+          setAllDoctors([])
+          setDoctorsByCategory({})
+          return
+        }
+        
+        // Transform backend data to frontend format
+        const transformedDoctors = transformDoctors(doctorsData)
+        console.log("Transformed doctors:", transformedDoctors)
+        setAllDoctors(transformedDoctors)
+        
+        // Group doctors by specialization
+        const grouped = groupDoctorsBySpecialization(transformedDoctors)
+        console.log("Grouped doctors by category:", grouped)
+        setDoctorsByCategory(grouped)
+      }
+    } catch (error: any) {
       console.error("Error fetching doctors:", error)
+      if (error.response) {
+        console.error("API Error Response:", error.response.data)
+        console.error("API Error Status:", error.response.status)
+      }
       // Use mock data if API fails
+      console.log("Using mock data as fallback")
+      setDoctorsByCategory(MOCK_DOCTORS_BY_CATEGORY)
     } finally {
       setIsLoading(false)
     }
   }
 
+  // Transform backend doctor data to frontend format
+  const transformDoctors = (doctors: any[]): Doctor[] => {
+    if (!Array.isArray(doctors) || doctors.length === 0) {
+      console.warn("transformDoctors: Invalid or empty doctors array")
+      return []
+    }
+    
+    return doctors.map((doctor: any, index: number) => {
+      try {
+        // Handle user data - check different possible formats
+        const user = doctor.user || {}
+        const firstName = user.first_name || ''
+        const lastName = user.last_name || ''
+        const fullName = user.full_name || `${firstName} ${lastName}`.trim() || 'Имя не указано'
+        
+        // Handle profile picture - could be URL string or object
+        let profilePicture = null
+        if (user.profile_picture) {
+          if (typeof user.profile_picture === 'string') {
+            profilePicture = user.profile_picture.startsWith('http') 
+              ? user.profile_picture 
+              : `${API_CONFIG.BASE_URL}${user.profile_picture}`
+          } else if (user.profile_picture.url) {
+            profilePicture = user.profile_picture.url.startsWith('http')
+              ? user.profile_picture.url
+              : `${API_CONFIG.BASE_URL}${user.profile_picture.url}`
+          }
+        }
+        
+        // Get specialty label - backend can send specialty as string or specialty_label
+        // If specialty is a string (like "Ревматология"), use it directly
+        // Otherwise try to get label from specialties list
+        let specialtyLabel = doctor.specialty_label || doctor.specialty || 'Специализация не указана'
+        let specialtyValue = doctor.specialty
+        
+        // If specialty is a string that looks like a label (not a value), use it as label
+        // Otherwise try to find matching specialty from specialties list
+        if (specialtyValue && getSpecialtyLabel(specialtyValue)) {
+          specialtyLabel = getSpecialtyLabel(specialtyValue)
+        } else if (specialtyValue && !specialtyValue.includes('_') && specialtyValue.length > 3) {
+          // If specialty looks like a label (not a snake_case value), use it directly
+          specialtyLabel = specialtyValue
+        }
+        
+        // Handle languages
+        let languagesStr = 'Языки не указаны'
+        if (Array.isArray(doctor.languages_spoken)) {
+          languagesStr = doctor.languages_spoken.join(', ')
+        } else if (typeof doctor.languages_spoken === 'string') {
+          languagesStr = doctor.languages_spoken
+        }
+        
+        // Handle certifications
+        let certificationsStr = 'Сертификаты не указаны'
+        if (Array.isArray(doctor.certifications)) {
+          certificationsStr = doctor.certifications.join(', ')
+        } else if (typeof doctor.certifications === 'string') {
+          certificationsStr = doctor.certifications
+        }
+        
+        // Handle location
+        const region = doctor.region || ''
+        const country = doctor.country || 'Узбекистан'
+        const location = `${region} ${country}`.trim() || 'Местоположение не указано'
+        
+        // Handle consultation fee
+        let consultationFeeStr = 'Стоимость не указана'
+        if (doctor.consultation_fee) {
+          const fee = Number(doctor.consultation_fee)
+          if (!isNaN(fee)) {
+            consultationFeeStr = `${fee.toLocaleString('ru-RU')} сум`
+          }
+        }
+        
+        return {
+          id: doctor.id || index,
+          full_name: fullName,
+          first_name: firstName,
+          last_name: lastName,
+          specialization: specialtyLabel,
+          specialty: specialtyValue || doctor.specialty,
+          experience: doctor.years_of_experience ? `${doctor.years_of_experience} лет` : (doctor.experience_years_text || 'Опыт не указан'),
+          years_of_experience: doctor.years_of_experience || 0,
+          education: doctor.education || 'Образование не указано',
+          location: location,
+          bio: doctor.bio || '',
+          languages: languagesStr,
+          languages_spoken: Array.isArray(doctor.languages_spoken) ? doctor.languages_spoken : [],
+          certifications: certificationsStr,
+          phone: doctor.work_phone || user.phone_number || 'Телефон не указан',
+          work_phone: doctor.work_phone,
+          email: doctor.work_email || user.email || 'Email не указан',
+          work_email: doctor.work_email,
+          address: doctor.address || 'Адрес не указан',
+          working_hours: doctor.working_hours || 'Рабочие часы не указаны',
+          consultation_fee: consultationFeeStr,
+          availability: doctor.availability || doctor.availability_status || 'Доступность не указана',
+          rating: Number(doctor.rating) || 0,
+          total_reviews: doctor.reviews_count || doctor.total_reviews || 0,
+          reviews_count: doctor.reviews_count,
+          total_patients: doctor.patients_accepted_count || doctor.total_patients || 0,
+          patients_accepted_count: doctor.patients_accepted_count,
+          monthly_consultations: doctor.consultations_count || doctor.monthly_consultations || 0,
+          consultations_count: doctor.consultations_count,
+          profile_picture: profilePicture,
+          user: user,
+          is_recommended: false
+        }
+      } catch (error) {
+        console.error(`Error transforming doctor at index ${index}:`, error, doctor)
+        return null as any
+      }
+    }).filter((doctor: Doctor | null) => doctor !== null) as Doctor[]
+  }
+
+  // Get specialty label from value
+  const getSpecialtyLabel = (value: string): string | null => {
+    const specialty = specialties.find(s => s.value === value)
+    return specialty ? specialty.label : null
+  }
+
+  // Group doctors by specialization
   const groupDoctorsBySpecialization = (doctors: Doctor[]): DoctorsByCategory => {
     const grouped: DoctorsByCategory = {}
     doctors.forEach(doctor => {
@@ -238,43 +462,35 @@ export default function DoctorsPage() {
     return grouped
   }
 
+  // Handle search - debounced
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (selectedCategory) {
+        const specialty = specialties.find(s => s.label === selectedCategory)
+        if (specialty) {
+          fetchDoctors(specialty.value, searchTerm || undefined)
+        }
+      } else {
+        fetchDoctors(undefined, searchTerm || undefined)
+      }
+    }, 300) // Debounce search by 300ms
+
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm, selectedCategory, specialties])
+
   const handleCategoryClick = (category: string) => {
     setSelectedCategory(category)
+    setSearchTerm("") // Clear search when selecting category
   }
 
   const handleBackToCategories = () => {
     setSelectedCategory(null)
+    setSearchTerm("")
+    fetchDoctors()
   }
 
   const handleDoctorClick = (doctor: Doctor) => {
     setSelectedDoctor(doctor)
-    
-    // Check if we're in browser environment
-    if (typeof window === 'undefined') {
-      return
-    }
-    
-    // Recently viewed doctors ga qo'shish
-    const recentlyViewed = localStorage.getItem('recentlyViewedDoctors')
-    let viewedIds: number[] = []
-    
-    if (recentlyViewed) {
-      try {
-        viewedIds = JSON.parse(recentlyViewed)
-      } catch (error) {
-        console.error("Error parsing recently viewed doctors:", error)
-        viewedIds = []
-      }
-    }
-    
-    // Doctor ID ni boshiga qo'shish (agar allaqachon bor bo'lsa, uni olib tashlash)
-    viewedIds = viewedIds.filter(id => id !== doctor.id)
-    viewedIds.unshift(doctor.id)
-    
-    // Faqat oxirgi 10 ta doctor ni saqlash
-    viewedIds = viewedIds.slice(0, 10)
-    
-    localStorage.setItem('recentlyViewedDoctors', JSON.stringify(viewedIds))
   }
 
   const closeDoctorModal = () => {
@@ -368,39 +584,14 @@ export default function DoctorsPage() {
     return reviews
   }
 
-  // Get recently viewed doctors (last 3 viewed)
-  const getRecentlyViewedDoctors = () => {
-    // Check if we're in browser environment
-    if (typeof window === 'undefined') {
-      return Object.values(doctorsByCategory)
-        .flat()
-        .slice(0, 3)
-    }
-    
-    // localStorage dan recently viewed doctors ni olish
-    const recentlyViewed = localStorage.getItem('recentlyViewedDoctors')
-    if (recentlyViewed) {
-      try {
-        const viewedIds = JSON.parse(recentlyViewed)
-        const viewedDoctors = Object.values(doctorsByCategory)
-          .flat()
-          .filter(doctor => viewedIds.includes(doctor.id))
-          .slice(0, 3) // Show max 3 recently viewed doctors
-        
-        return viewedDoctors
-      } catch (error) {
-        console.error("Error parsing recently viewed doctors:", error)
-      }
-    }
-    
-    // Agar hech qanday recently viewed yo'q bo'lsa, default 3 ta doctor ko'rsatish
-    return Object.values(doctorsByCategory)
-      .flat()
-      .slice(0, 3)
-  }
 
   // Get doctors for selected category
-  const categoryDoctors = selectedCategory ? doctorsByCategory[selectedCategory] || [] : []
+  const categoryDoctors = selectedCategory 
+    ? (doctorsByCategory[selectedCategory] || allDoctors.filter(d => {
+        const specialty = specialties.find(s => s.label === selectedCategory)
+        return specialty && d.specialty === specialty.value
+      }))
+    : []
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -473,156 +664,179 @@ export default function DoctorsPage() {
                          {/* Categories Section */}
              <div className="bg-white rounded-lg shadow-sm border p-6">
                <h2 className="text-2xl font-bold text-gray-900 mb-6">Специализации</h2>
+               {isLoadingSpecialties ? (
+                 <div className="flex items-center justify-center py-12">
+                   <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                 </div>
+               ) : (
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                 {Object.entries(doctorsByCategory).map(([category, doctors]) => {
-                   // Har bir kategoriya uchun alohida ikonka va rang
-                   let icon, description, gradientStyle, iconBgStyle, iconColor
-                   
-                   switch(category) {
-                     case "Кардиология":
+                 {Object.keys(doctorsByCategory).length > 0 ? (
+                   Object.entries(doctorsByCategory).map(([category, doctors]) => {
+                     // Find specialty info if available
+                     const specialty = specialties.find(s => s.label === category || s.value === category)
+                     const doctorCount = doctors.length
+                     
+                     // Get icon and description for category
+                     let icon, description, gradientStyle, iconBgStyle, iconColor
+                     
+                     const categoryLower = category.toLowerCase()
+                     if (categoryLower.includes('кардиолог') || categoryLower.includes('сердц')) {
                        icon = Heart
                        description = "Заболевания сердца и сосудов"
                        gradientStyle = "linear-gradient(to right, rgb(239, 68, 68), rgb(236, 72, 153))"
                        iconBgStyle = "linear-gradient(to bottom right, rgb(239, 68, 68), rgb(236, 72, 153))"
                        iconColor = "text-white"
-                       break
-                     case "Неврология":
+                     } else if (categoryLower.includes('невролог') || categoryLower.includes('нервн')) {
                        icon = Brain
                        description = "Заболевания нервной системы"
                        gradientStyle = "linear-gradient(to right, rgb(168, 85, 247), rgb(129, 140, 248))"
                        iconBgStyle = "linear-gradient(to bottom right, rgb(168, 85, 247), rgb(129, 140, 248))"
                        iconColor = "text-white"
-                       break
-                     case "Педиатрия":
+                     } else if (categoryLower.includes('педиатр') || categoryLower.includes('детск')) {
                        icon = Baby
                        description = "Здоровье детей и подростков"
                        gradientStyle = "linear-gradient(to right, rgb(6, 182, 212), rgb(59, 130, 246))"
                        iconBgStyle = "linear-gradient(to bottom right, rgb(6, 182, 212), rgb(59, 130, 246))"
                        iconColor = "text-white"
-                       break
-                     case "Хирургия":
+                     } else if (categoryLower.includes('хирург') || categoryLower.includes('оперативн')) {
                        icon = Scissors
                        description = "Оперативное лечение заболеваний"
                        gradientStyle = "linear-gradient(to right, rgb(16, 185, 129), rgb(20, 184, 166))"
                        iconBgStyle = "linear-gradient(to bottom right, rgb(16, 185, 129), rgb(20, 184, 166))"
                        iconColor = "text-white"
-                       break
-                     default:
+                     } else {
                        icon = Stethoscope
                        description = "Общая медицина и первичная диагностика"
                        gradientStyle = "linear-gradient(to right, rgb(16, 185, 129), rgb(20, 184, 166))"
                        iconBgStyle = "linear-gradient(to bottom right, rgb(16, 185, 129), rgb(20, 184, 166))"
                        iconColor = "text-white"
-                   }
-                   
-                   return (
-                     <Card 
-                       key={category} 
-                       className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-blue-300 group relative overflow-hidden"
-                       onClick={() => handleCategoryClick(category)}
-                     >
-                       {/* Gradient border at top */}
-                       <div className="absolute top-0 left-0 right-0 h-2" style={{ background: gradientStyle }}></div>
-                       
-                       <CardContent className="p-6">
-                         {/* Doctor count badge - top right */}
-                         <div className="absolute top-4 right-4 z-10">
-                           <Badge className="px-3 py-1 rounded-full text-xs font-medium bg-white/95 text-gray-700 border border-gray-200 shadow-sm">
-                             {doctors.length} {doctors.length === 1 ? 'врач' : 'врачей'}
-                           </Badge>
-                         </div>
+                     }
+                     
+                     return (
+                       <Card 
+                         key={category} 
+                         className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-blue-300 group relative overflow-hidden"
+                         onClick={() => handleCategoryClick(category)}
+                       >
+                         {/* Gradient border at top */}
+                         <div className="absolute top-0 left-0 right-0 h-2" style={{ background: gradientStyle }}></div>
                          
-                         <div className="flex items-start gap-4">
-                           {/* Icon on the left side */}
-                           <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform" style={{ background: iconBgStyle }}>
-                             {React.createElement(icon, { className: `w-6 h-6 ${iconColor}` })}
+                         <CardContent className="p-6">
+                           {/* Doctor count badge - top right */}
+                           <div className="absolute top-4 right-4 z-10">
+                             <Badge className="px-3 py-1 rounded-full text-xs font-medium bg-white/95 text-gray-700 border border-gray-200 shadow-sm">
+                               {doctorCount} {doctorCount === 1 ? 'врач' : 'врачей'}
+                             </Badge>
                            </div>
                            
-                           {/* Content on the right side */}
-                           <div className="flex-1 min-w-0">
-                             <h3 className="text-xl font-semibold mb-2 text-gray-900">{category}</h3>
-                             <p className="text-gray-600 text-sm mb-4 leading-relaxed">{description}</p>
+                           <div className="flex items-start gap-4">
+                             {/* Icon on the left side */}
+                             <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform" style={{ background: iconBgStyle }}>
+                               {React.createElement(icon, { className: `w-6 h-6 ${iconColor}` })}
+                             </div>
                              
-                             {/* Bottom info */}
-                             <div className="flex justify-between items-center mt-auto pt-4 border-t border-gray-100">
-                               <span className="text-sm text-gray-500">Доступно врачей: {doctors.length}</span>
-                               <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
+                             {/* Content on the right side */}
+                             <div className="flex-1 min-w-0">
+                               <h3 className="text-xl font-semibold mb-2 text-gray-900">{category}</h3>
+                               <p className="text-gray-600 text-sm mb-4 leading-relaxed">{description}</p>
+                               
+                               {/* Bottom info */}
+                               <div className="flex justify-between items-center mt-auto pt-4 border-t border-gray-100">
+                                 <span className="text-sm text-gray-500">Доступно врачей: {doctorCount}</span>
+                                 <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
+                               </div>
                              </div>
                            </div>
-                         </div>
-                       </CardContent>
-                     </Card>
-                   )
-                 })}
+                         </CardContent>
+                       </Card>
+                     )
+                   })
+                 ) : allDoctors.length > 0 ? (
+                   // If specialties not loaded but doctors exist, show them grouped by specialization
+                   Object.entries(doctorsByCategory).map(([category, doctors]) => {
+                     // Get icon and description for category
+                     let icon, description, gradientStyle, iconBgStyle, iconColor
+                     
+                     const categoryLower = category.toLowerCase()
+                     if (categoryLower.includes('кардиолог') || categoryLower.includes('сердц')) {
+                       icon = Heart
+                       description = "Заболевания сердца и сосудов"
+                       gradientStyle = "linear-gradient(to right, rgb(239, 68, 68), rgb(236, 72, 153))"
+                       iconBgStyle = "linear-gradient(to bottom right, rgb(239, 68, 68), rgb(236, 72, 153))"
+                       iconColor = "text-white"
+                     } else if (categoryLower.includes('невролог') || categoryLower.includes('нервн')) {
+                       icon = Brain
+                       description = "Заболевания нервной системы"
+                       gradientStyle = "linear-gradient(to right, rgb(168, 85, 247), rgb(129, 140, 248))"
+                       iconBgStyle = "linear-gradient(to bottom right, rgb(168, 85, 247), rgb(129, 140, 248))"
+                       iconColor = "text-white"
+                     } else if (categoryLower.includes('педиатр') || categoryLower.includes('детск')) {
+                       icon = Baby
+                       description = "Здоровье детей и подростков"
+                       gradientStyle = "linear-gradient(to right, rgb(6, 182, 212), rgb(59, 130, 246))"
+                       iconBgStyle = "linear-gradient(to bottom right, rgb(6, 182, 212), rgb(59, 130, 246))"
+                       iconColor = "text-white"
+                     } else if (categoryLower.includes('хирург') || categoryLower.includes('оперативн')) {
+                       icon = Scissors
+                       description = "Оперативное лечение заболеваний"
+                       gradientStyle = "linear-gradient(to right, rgb(16, 185, 129), rgb(20, 184, 166))"
+                       iconBgStyle = "linear-gradient(to bottom right, rgb(16, 185, 129), rgb(20, 184, 166))"
+                       iconColor = "text-white"
+                     } else {
+                       icon = Stethoscope
+                       description = "Общая медицина и первичная диагностика"
+                       gradientStyle = "linear-gradient(to right, rgb(16, 185, 129), rgb(20, 184, 166))"
+                       iconBgStyle = "linear-gradient(to bottom right, rgb(16, 185, 129), rgb(20, 184, 166))"
+                       iconColor = "text-white"
+                     }
+                     
+                     return (
+                       <Card 
+                         key={category} 
+                         className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-blue-300 group relative overflow-hidden"
+                         onClick={() => handleCategoryClick(category)}
+                       >
+                         <div className="absolute top-0 left-0 right-0 h-2" style={{ background: gradientStyle }}></div>
+                         <CardContent className="p-6">
+                           <div className="absolute top-4 right-4 z-10">
+                             <Badge className="px-3 py-1 rounded-full text-xs font-medium bg-white/95 text-gray-700 border border-gray-200 shadow-sm">
+                               {doctors.length} {doctors.length === 1 ? 'врач' : 'врачей'}
+                             </Badge>
+                           </div>
+                           <div className="flex items-start gap-4">
+                             <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform" style={{ background: iconBgStyle }}>
+                               {React.createElement(icon, { className: `w-6 h-6 ${iconColor}` })}
+                             </div>
+                             <div className="flex-1 min-w-0">
+                               <h3 className="text-xl font-semibold mb-2 text-gray-900">{category}</h3>
+                               <p className="text-gray-600 text-sm mb-4 leading-relaxed">{description}</p>
+                               <div className="flex justify-between items-center mt-auto pt-4 border-t border-gray-100">
+                                 <span className="text-sm text-gray-500">Доступно врачей: {doctors.length}</span>
+                                 <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
+                               </div>
+                             </div>
+                           </div>
+                         </CardContent>
+                       </Card>
+                     )
+                   })
+                 ) : (
+                   <div className="text-center py-12 text-gray-500">
+                     <Stethoscope className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                     {isLoading || isLoadingSpecialties ? (
+                       <p>Специализации загружаются...</p>
+                     ) : (
+                       <>
+                         <p className="text-lg font-medium mb-2">Специализации не найдены</p>
+                         <p className="text-sm">Попробуйте обновить страницу или проверьте подключение к серверу</p>
+                       </>
+                     )}
+                   </div>
+                 )}
                </div>
+               )}
              </div>
 
-                         {/* Recently Viewed Doctors Section */}
-             <div className="bg-white rounded-lg shadow-sm border p-6">
-               <div className="flex items-center gap-3 mb-6">
-                 <Clock className="w-8 h-8 text-blue-500" />
-                 <h2 className="text-2xl font-bold text-gray-900">Недавно просмотренные врачи</h2>
-               </div>
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                 {getRecentlyViewedDoctors().map((doctor) => (
-                   <Card 
-                     key={doctor.id} 
-                     className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-blue-300"
-                     onClick={() => handleDoctorClick(doctor)}
-                   >
-                     <CardContent className="p-6">
-                       <div className="flex items-start gap-4">
-                         <Avatar className="w-16 h-16 border-2 border-blue-200">
-                           <AvatarImage src={doctor.profile_picture || undefined} />
-                           <AvatarFallback className="bg-blue-500 text-white text-lg font-bold">
-                             {doctor.first_name?.[0]}{doctor.last_name?.[0]}
-                           </AvatarFallback>
-                         </Avatar>
-                         <div className="flex-1 min-w-0">
-                           <div className="flex items-center gap-2 mb-2">
-                             <h3 className="text-lg font-semibold text-gray-900 truncate">
-                               {doctor.full_name}
-                             </h3>
-                             <Clock className="w-4 h-4 text-blue-500" />
-                           </div>
-                           <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-3">
-                             {doctor.specialization}
-                           </Badge>
-                           <div className="space-y-2 text-sm text-gray-600">
-                             <div className="flex items-center gap-2">
-                               <MapPin className="w-4 h-4 text-gray-400" />
-                               <span className="truncate">{doctor.location}</span>
-                             </div>
-                             <div className="flex items-center gap-2">
-                               <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                               <span>{doctor.rating} ({doctor.total_reviews} отзывов)</span>
-                             </div>
-                           </div>
-                         </div>
-                       </div>
-                       
-                       <div className="mt-4 pt-4 border-t border-gray-100">
-                         <div className="flex items-center justify-between text-sm mb-3">
-                           <span className="text-gray-500">Консультация:</span>
-                           <span className="font-semibold text-green-600">{doctor.consultation_fee}</span>
-                         </div>
-                         <Button 
-                           variant="outline" 
-                           className="w-full border-blue-300 text-blue-600 hover:bg-blue-50"
-                           onClick={(e) => {
-                             e.stopPropagation()
-                             handleDoctorClick(doctor)
-                           }}
-                         >
-                           <Eye className="w-4 h-4 mr-2" />
-                           Подробнее
-                         </Button>
-                       </div>
-                     </CardContent>
-                   </Card>
-                 ))}
-               </div>
-             </div>
           </>
         ) : (
           /* Category Doctors Section */

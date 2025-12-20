@@ -40,6 +40,11 @@ export const API_CONFIG = {
     
     // Profile
     PROFILE: `${API_BASE_URL}/api/accounts/profile/`,
+    
+    // Doctors
+    DOCTORS: `${API_BASE_URL}/api/doctors/`,
+    DOCTOR_SPECIALTIES: `${API_BASE_URL}/api/doctors/specialties/stats/`,
+    DOCTOR_DETAIL: (id: string) => `${API_BASE_URL}/api/doctors/${id}/`,
   }
 };
 

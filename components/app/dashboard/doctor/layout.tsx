@@ -38,7 +38,7 @@ const sidebarItems: SidebarItem[] = [
     label: "Врачи",
     icon: Stethoscope,
     color: "from-emerald-500 to-teal-500",
-    href: "/under-construction",
+    href: "/dashboard/doctor/doctors",
   },
   {
     id: "appointments",
