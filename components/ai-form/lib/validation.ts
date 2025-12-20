@@ -15,18 +15,18 @@ export const createMedicalFormSchema = (language: Language = "ru") => {
 
   return z.object({
     fullName: z.string().min(2, t.validation.fullNameMin),
-    passport: z.string().min(5, t.validation.passportRequired),
-    birthDate: z.string().min(1, t.validation.birthDateRequired),
+    passport: z.string().optional(),
+    birthDate: z.string().optional(),
     gender: z.string().refine(
-      (val): val is string => val !== undefined && val !== null && genderValues.includes(val),
+      (val): val is string => !val || val === "" || genderValues.includes(val),
       { message: t.validation.genderRequired }
-    ),
-    maritalStatus: z.string().min(1, t.validation.maritalStatusRequired),
-    education: z.string().min(1, t.validation.educationRequired),
-    job: z.string().min(1, t.validation.jobRequired),
-    address: z.string().min(1, t.validation.addressRequired),
-    nationality: z.string().min(1, t.validation.nationalityRequired || "Национальность обязательна"),
-    profession: z.string().min(1, t.validation.professionRequired || "Профессия обязательна"),
+    ).optional(),
+    maritalStatus: z.string().optional(),
+    education: z.string().optional(),
+    job: z.string().optional(),
+    address: z.string().optional(),
+    nationality: z.string().optional(),
+    profession: z.string().optional(),
     position: z.string().optional(),
 
     admissionDate: z.string().optional(),

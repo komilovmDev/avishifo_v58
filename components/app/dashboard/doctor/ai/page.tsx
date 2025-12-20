@@ -1611,7 +1611,7 @@ function AIFormInner() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <History className="h-5 w-5 text-blue-600" />
-                    <span>Kasalliklar tarixi</span>
+                    <span>So'rovlar tarixi</span>
                   </CardTitle>
                   <Button
                     variant="ghost"
@@ -2217,7 +2217,7 @@ function AIFormInner() {
                     className="flex-1 sm:flex-none min-w-[180px] transition-all duration-200 hover:shadow-md bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 text-white border-0"
                   >
                     <FileText className="w-4 h-4 mr-2" />
-                    Kasallik tarixi ma'lumotlari
+                    Maʼlumotlarni tahrirlash
                   </Button>
                 </div>
               </div>
@@ -2393,7 +2393,7 @@ function Step1PersonalData({ form }: { form: ReturnType<typeof useForm<MedicalFo
 
       <FormField control={form.control} name="passport" render={({ field }) => (
         <FormItem>
-          <FormLabel className="text-gray-700 font-medium">{t.personalData.passport} <span className="text-red-500">{t.personalData.required}</span></FormLabel>
+          <FormLabel className="text-gray-700 font-medium">{t.personalData.passport}</FormLabel>
           <FormControl><Input title={t.personalData.passport} className="transition-all duration-200 hover:border-primary/50 focus:ring-2 focus:ring-blue-500/20" {...field} /></FormControl>
           <FormMessage />
         </FormItem>
@@ -2402,7 +2402,7 @@ function Step1PersonalData({ form }: { form: ReturnType<typeof useForm<MedicalFo
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <FormField control={form.control} name="birthDate" render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-gray-700 font-medium">{t.personalData.birthDate} <span className="text-red-500">{t.personalData.required}</span></FormLabel>
+            <FormLabel className="text-gray-700 font-medium">{t.personalData.birthDate}</FormLabel>
             <FormControl><Input type="date" className="transition-all duration-200 hover:border-primary/50 focus:ring-2 focus:ring-blue-500/20" {...field} /></FormControl>
             <FormMessage />
           </FormItem>
@@ -2410,7 +2410,7 @@ function Step1PersonalData({ form }: { form: ReturnType<typeof useForm<MedicalFo
 
         <FormField control={form.control} name="nationality" render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-gray-700 font-medium">{t.personalData.nationality} <span className="text-red-500">{t.personalData.required}</span></FormLabel>
+            <FormLabel className="text-gray-700 font-medium">{t.personalData.nationality}</FormLabel>
             <FormControl><Input title={t.personalData.nationality} className="transition-all duration-200 hover:border-primary/50 focus:ring-2 focus:ring-blue-500/20" {...field} /></FormControl>
             <FormMessage />
           </FormItem>
@@ -2419,7 +2419,7 @@ function Step1PersonalData({ form }: { form: ReturnType<typeof useForm<MedicalFo
 
       <FormField control={form.control} name="gender" render={({ field }) => (
         <FormItem>
-          <FormLabel className="text-gray-700 font-medium">{t.personalData.gender} <span className="text-red-500">{t.personalData.required}</span></FormLabel>
+          <FormLabel className="text-gray-700 font-medium">{t.personalData.gender}</FormLabel>
           <FormControl>
             <RadioGroup onValueChange={field.onChange} value={field.value as string} className="flex gap-6">
               <div className="flex items-center space-x-2">
@@ -2438,7 +2438,7 @@ function Step1PersonalData({ form }: { form: ReturnType<typeof useForm<MedicalFo
 
       <FormField control={form.control} name="maritalStatus" render={({ field }) => (
         <FormItem>
-          <FormLabel className="text-gray-700 font-medium"><b>{t.personalData.maritalStatus}</b> <span className="text-red-500">{t.personalData.required}</span></FormLabel>
+          <FormLabel className="text-gray-700 font-medium"><b>{t.personalData.maritalStatus}</b></FormLabel>
           <FormControl><Input title={t.personalData.maritalStatusHint} className="transition-all duration-200 hover:border-primary/50 focus:ring-2 focus:ring-blue-500/20" {...field} /></FormControl>
           <p className="text-xs text-gray-500 italic">{t.personalData.maritalStatusHint}</p>
           <FormMessage />
@@ -2447,7 +2447,7 @@ function Step1PersonalData({ form }: { form: ReturnType<typeof useForm<MedicalFo
 
       <FormField control={form.control} name="education" render={({ field }) => (
         <FormItem>
-          <FormLabel className="text-gray-700 font-medium"><b>{t.personalData.education}</b> <span className="text-red-500">{t.personalData.required}</span></FormLabel>
+          <FormLabel className="text-gray-700 font-medium"><b>{t.personalData.education}</b></FormLabel>
           <FormControl><Input title={t.personalData.educationHint} className="transition-all duration-200 hover:border-primary/50 focus:ring-2 focus:ring-blue-500/20" {...field} /></FormControl>
           <p className="text-xs text-gray-500 italic">{t.personalData.educationHint}</p>
           <FormMessage />
@@ -2457,7 +2457,7 @@ function Step1PersonalData({ form }: { form: ReturnType<typeof useForm<MedicalFo
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <FormField control={form.control} name="profession" render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-gray-700 font-medium"><b>{t.personalData.profession}</b> <span className="text-red-500">{t.personalData.required}</span></FormLabel>
+            <FormLabel className="text-gray-700 font-medium"><b>{t.personalData.profession}</b></FormLabel>
             <FormControl><Input title={t.personalData.profession} className="transition-all duration-200 hover:border-primary/50 focus:ring-2 focus:ring-blue-500/20" {...field} /></FormControl>
             <FormMessage />
           </FormItem>
@@ -2474,7 +2474,7 @@ function Step1PersonalData({ form }: { form: ReturnType<typeof useForm<MedicalFo
 
       <FormField control={form.control} name="job" render={({ field }) => (
         <FormItem>
-          <FormLabel className="text-gray-700 font-medium"><b>{t.personalData.job}</b> <span className="text-red-500">{t.personalData.required}</span></FormLabel>
+          <FormLabel className="text-gray-700 font-medium"><b>{t.personalData.job}</b></FormLabel>
           <FormControl><Textarea title={t.personalData.jobHint} rows={3} className="transition-all duration-200 hover:border-primary/50 focus:ring-2 focus:ring-blue-500/20" {...field} /></FormControl>
           <p className="text-xs text-gray-500 italic">{t.personalData.jobHint}</p>
           <FormMessage />
@@ -2483,7 +2483,7 @@ function Step1PersonalData({ form }: { form: ReturnType<typeof useForm<MedicalFo
 
       <FormField control={form.control} name="address" render={({ field }) => (
         <FormItem>
-          <FormLabel className="text-gray-700 font-medium"><b>{t.personalData.address}</b> <span className="text-red-500">{t.personalData.required}</span></FormLabel>
+          <FormLabel className="text-gray-700 font-medium"><b>{t.personalData.address}</b></FormLabel>
           <FormControl><Input title={t.personalData.addressHint} className="transition-all duration-200 hover:border-primary/50 focus:ring-2 focus:ring-blue-500/20" {...field} /></FormControl>
           <p className="text-xs text-gray-500 italic">{t.personalData.addressHint}</p>
           <FormMessage />
