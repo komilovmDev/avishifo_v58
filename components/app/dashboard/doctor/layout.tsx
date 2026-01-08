@@ -45,7 +45,7 @@ const sidebarItems: SidebarItem[] = [
     label: "Записи пациентов",
     icon: CalendarIcon,
     color: "from-teal-500 to-cyan-500",
-    href: "/under-construction",
+    href: "/dashboard/doctor/appointments",
   },
   {
     id: "patients",

@@ -44,7 +44,8 @@ export const API_CONFIG = {
     
     // Doctors
     DOCTORS: `${API_BASE_URL}/api/doctors/`,
-    DOCTOR_SPECIALTIES: `${API_BASE_URL}/api/doctors/specialties/stats/`,
+    DOCTOR_SPECIALTIES: `${API_BASE_URL}/api/doctors/specialties/choices/`, // Use choices endpoint to get from Specialization model
+    DOCTOR_SPECIALTIES_STATS: `${API_BASE_URL}/api/doctors/specialties/stats/`, // Stats endpoint (legacy)
     DOCTOR_DETAIL: (id: string) => `${API_BASE_URL}/api/doctors/${id}/`,
   }
 };

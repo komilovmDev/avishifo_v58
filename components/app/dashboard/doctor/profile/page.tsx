@@ -30,7 +30,7 @@ import AvailabilityModal from "./Сomponents/Modals/AvailabilityModal";
 const API_BASE_URL = API_CONFIG.BASE_URL;
 const DOCTOR_PROFILE_PAGE_API = `${API_BASE_URL}/api/doctors/profile/page/`;
 const DOCTOR_PROFILE_OPTIONS_API = `${API_BASE_URL}/api/doctors/profile/options/`;
-const DOCTOR_SPECIALTIES_API = `${API_BASE_URL}/api/doctors/specialties/`;
+const DOCTOR_SPECIALTIES_API = `${API_BASE_URL}/api/doctors/specialties/choices/`; // Use choices endpoint to get from Specialization model
 
 // Helper Functions & Constants
 const getAuthHeaders = () => {
@@ -122,26 +122,67 @@ export default function DoctorProfilePage() {
   const loadProfileOptions = async () => {
     try {
       if (!isAuthenticated()) return;
-      const [optionsRes, specialtiesRes] = await Promise.all([
-        axios.get(DOCTOR_PROFILE_OPTIONS_API, { headers: getAuthHeaders() }),
-        axios.get(DOCTOR_SPECIALTIES_API),
-      ]);
+      
+      // Default fallback languages
+      const defaultLanguages = [
+        "Узбекский", "Русский", "Казахский", "Киргизский", "Таджикский", "Туркменский",
+        "Китайский", "Корейский", "Японский", "Вьетнамский", "Тайский", "Малайский",
+        "Индонезийский", "Филиппинский", "Бенгальский", "Хинди", "Урду", "Персидский",
+        "Арабский", "Турецкий", "Азербайджанский", "Грузинский", "Армянский",
+        "Английский", "Немецкий", "Французский", "Испанский", "Итальянский", "Португальский",
+        "Голландский", "Шведский", "Норвежский", "Датский", "Финский", "Польский",
+        "Чешский", "Словацкий", "Венгерский", "Румынский", "Болгарский", "Сербский",
+        "Хорватский", "Словенский", "Македонский", "Албанский", "Греческий",
+        "Иврит", "Амхарский", "Суахили", "Зулу", "Африкаанс", "Хауса", "Йоруба"
+      ];
+      
+      const defaultWorkingHours = [
+        "9:00-18:00", "8:00-17:00", "10:00-19:00", "9:00-17:00", "8:00-18:00",
+        "10:00-18:00", "9:00-16:00", "8:00-16:00", "10:00-16:00", "24/7",
+        "По вызову", "Гибкий график"
+      ];
+      
+      const defaultAvailability = [
+        "Понедельник - Пятница", "Пн-Пт", "Понедельник - Суббота", "Пн-Сб",
+        "Ежедневно", "По будням", "По выходным", "По записи", "Экстренные случаи",
+        "24/7", "Гибкий график"
+      ];
+      
+      try {
+        const [optionsRes, specialtiesRes] = await Promise.all([
+          axios.get(DOCTOR_PROFILE_OPTIONS_API, { headers: getAuthHeaders() }),
+          axios.get(DOCTOR_SPECIALTIES_API, { headers: getAuthHeaders() }),
+        ]);
 
-      if (optionsRes.data.success) {
-        const options = optionsRes.data.data;
-        setAvailableLanguages(options.languages || []);
-        setAvailableWorkingHours(options.working_hours || []);
-        setAvailableAvailability(options.availability || []);
-      }
+        if (optionsRes.data && optionsRes.data.success) {
+          const options = optionsRes.data.data;
+          setAvailableLanguages(options.languages || defaultLanguages);
+          setAvailableWorkingHours(options.working_hours || defaultWorkingHours);
+          setAvailableAvailability(options.availability || defaultAvailability);
+        } else {
+          // Use fallback if API response format is unexpected
+          setAvailableLanguages(defaultLanguages);
+          setAvailableWorkingHours(defaultWorkingHours);
+          setAvailableAvailability(defaultAvailability);
+        }
 
-      if (specialtiesRes.data.success) {
-        setAvailableSpecializations(
-          specialtiesRes.data.data.map((spec) => spec.label)
-        );
+        if (specialtiesRes.data && specialtiesRes.data.success) {
+          setAvailableSpecializations(
+            specialtiesRes.data.data.map((spec) => spec.label)
+          );
+        }
+      } catch (apiError: any) {
+        console.error("❌ Error loading profile options:", apiError);
+        if (apiError.response?.status === 401) {
+          console.warn("401 Unauthorized - using fallback options");
+        }
+        // Use fallback options on error
+        setAvailableLanguages(defaultLanguages);
+        setAvailableWorkingHours(defaultWorkingHours);
+        setAvailableAvailability(defaultAvailability);
       }
     } catch (error) {
-      console.error("❌ Error loading profile options:", error);
-      // Fallback options can be set here if needed
+      console.error("❌ Error in loadProfileOptions:", error);
     }
   };
 
@@ -199,7 +240,31 @@ export default function DoctorProfilePage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await axios.patch(DOCTOR_PROFILE_PAGE_API, formData, {
+      // Prepare form data - convert specializations labels to values
+      const apiFormData = { ...formData }
+      
+      // Convert specializations from labels to values if needed
+      if (apiFormData.specializations && Array.isArray(apiFormData.specializations)) {
+        // Get specialty mapping from API response
+        try {
+          const specialtiesRes = await axios.get(DOCTOR_SPECIALTIES_API)
+          if (specialtiesRes.data.success) {
+            const specialtyMap: Record<string, string> = {}
+            specialtiesRes.data.data.forEach((spec: any) => {
+              specialtyMap[spec.label] = spec.value
+            })
+            
+            // Convert labels to values
+            apiFormData.specializations = apiFormData.specializations.map((label: string) => {
+              return specialtyMap[label] || label
+            })
+          }
+        } catch (e) {
+          console.warn("Could not fetch specialties for conversion, sending as-is")
+        }
+      }
+      
+      const response = await axios.patch(DOCTOR_PROFILE_PAGE_API, apiFormData, {
         headers: getAuthHeaders(),
       });
       if (response.data.success) {

@@ -24,11 +24,13 @@ const API_BASE_URL = API_CONFIG.BASE_URL
 // Type definitions
 interface Doctor {
   id: number
+  uuid?: string
   full_name: string
   first_name: string
   last_name: string
   specialization: string
   specialty?: string // Backend field
+  specializations?: string[] // Multiple specializations
   experience: string
   years_of_experience?: number // Backend field
   education: string
@@ -212,38 +214,64 @@ export default function DoctorsPage() {
   const [allDoctors, setAllDoctors] = useState<Doctor[]>([])
   const [specialties, setSpecialties] = useState<Specialty[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null)
+  // Removed selectedDoctor state - now using separate page
+  //   // Removed selectedDoctor and showReviews - now using separate page
+  // const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingSpecialties, setIsLoadingSpecialties] = useState(false)
   const [notification, setNotification] = useState<{ type: 'success' | 'info', message: string } | null>(null)
-  const [showReviews, setShowReviews] = useState(false)
+  // const [showReviews, setShowReviews] = useState(false)
 
   useEffect(() => {
     // Check if we're in browser environment before fetching
     if (typeof window !== 'undefined') {
-      fetchSpecialties()
-      fetchDoctors()
+      // First fetch specialties, then doctors
+      fetchSpecialties().then(() => {
+        // After specialties are loaded, fetch doctors
+        fetchDoctors()
+      }).catch(() => {
+        // If specialties fail, still try to fetch doctors
+        fetchDoctors()
+      })
     }
   }, [])
 
   // Fetch specialties/categories from API
-  const fetchSpecialties = async () => {
+  const fetchSpecialties = async (): Promise<void> => {
     setIsLoadingSpecialties(true)
     try {
       if (typeof window !== 'undefined') {
         const token = localStorage.getItem("accessToken")
         if (token) {
-          const response = await axios.get(API_CONFIG.ENDPOINTS.DOCTOR_SPECIALTIES, {
+          // Add timestamp to prevent caching
+          const url = `${API_CONFIG.ENDPOINTS.DOCTOR_SPECIALTIES}?t=${Date.now()}`
+          const response = await axios.get(url, {
             headers: { Authorization: `Bearer ${token}` }
           })
+          console.log("Specialties API response:", response.data)
           if (response.data.success && response.data.data) {
-            setSpecialties(response.data.data)
+            console.log("Fetched specialties from database:", response.data.data)
+            console.log(`Total specialties: ${response.data.count}`)
+            // Map to ensure we have value and label
+            const mappedSpecialties = response.data.data.map((spec: any) => ({
+              value: spec.value,
+              label: spec.label,
+              id: spec.id,
+              count: spec.count || 0
+            }))
+            setSpecialties(mappedSpecialties)
+          } else {
+            console.warn("Specialties API response format unexpected:", response.data)
           }
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching specialties:", error)
+      if (error.response) {
+        console.error("API Error Response:", error.response.data)
+        console.error("API Error Status:", error.response.status)
+      }
     } finally {
       setIsLoadingSpecialties(false)
     }
@@ -304,9 +332,16 @@ export default function DoctorsPage() {
           return
         }
         
-        // Transform backend data to frontend format
-        const transformedDoctors = transformDoctors(doctorsData)
+        // Transform backend data to frontend format - pass specialties for proper matching
+        const transformedDoctors = transformDoctors(doctorsData, specialties)
         console.log("Transformed doctors:", transformedDoctors)
+        console.log("Transformed doctors specializations:", transformedDoctors.map(d => ({
+          id: d.id,
+          name: d.full_name,
+          specializations: d.specializations,
+          specialty: d.specialty,
+          specialization: d.specialization
+        })))
         setAllDoctors(transformedDoctors)
         
         // Group doctors by specialization
@@ -329,7 +364,7 @@ export default function DoctorsPage() {
   }
 
   // Transform backend doctor data to frontend format
-  const transformDoctors = (doctors: any[]): Doctor[] => {
+  const transformDoctors = (doctors: any[], specialtiesList: Specialty[] = []): Doctor[] => {
     if (!Array.isArray(doctors) || doctors.length === 0) {
       console.warn("transformDoctors: Invalid or empty doctors array")
       return []
@@ -367,8 +402,11 @@ export default function DoctorsPage() {
           specialtyLabel = doctor.specialty_label
         }
         // Priority 2: Try to get label from specialties list using specialty value
-        else if (specialtyValue && getSpecialtyLabel(specialtyValue)) {
-          specialtyLabel = getSpecialtyLabel(specialtyValue)
+        else if (specialtyValue) {
+          const label = getSpecialtyLabel(specialtyValue, specialtiesList)
+          if (label) {
+            specialtyLabel = label
+          }
         }
         // Priority 3: If specialty looks like a label (not a snake_case value and not a number), use it directly
         else if (specialtyValue && !specialtyValue.includes('_') && specialtyValue.length > 3 && !/^\d+$/.test(specialtyValue)) {
@@ -411,11 +449,53 @@ export default function DoctorsPage() {
         
         return {
           id: doctor.id || index,
+          uuid: doctor.uuid || undefined,
           full_name: fullName,
           first_name: firstName,
           last_name: lastName,
           specialization: specialtyLabel,
           specialty: specialtyValue || doctor.specialty,
+          specializations: (() => {
+            // Get specializations from backend - can be array of strings (labels) or array of objects
+            if (doctor.specializations && Array.isArray(doctor.specializations) && doctor.specializations.length > 0) {
+              const parsed = doctor.specializations.map((spec: any) => {
+                if (typeof spec === 'string') {
+                  // If it's already a label, use it
+                  if (!spec.includes('_') && spec.length > 3) {
+                    return spec
+                  }
+                  // Otherwise, try to get label from value
+                  const label = getSpecialtyLabel(spec, specialtiesList)
+                  return label || spec
+                } else if (spec && typeof spec === 'object') {
+                  // Backend returns {value, label} objects from SpecializationSerializer
+                  // Always prefer label if available
+                  if (spec.label) {
+                    return spec.label
+                  } else if (spec.value) {
+                    const label = getSpecialtyLabel(spec.value, specialtiesList)
+                    return label || spec.value
+                  }
+                  return spec
+                }
+                return spec
+              }).filter((s: any) => s) // Remove any null/undefined values
+              
+              console.log(`Doctor ${doctor.id} (${fullName}) specializations:`, {
+                original: doctor.specializations,
+                parsed: parsed,
+                specialtiesListLength: specialtiesList.length
+              })
+              
+              return parsed.length > 0 ? parsed : (specialtyLabel ? [specialtyLabel] : [])
+            }
+            // Fallback: use specialty as single specialization
+            const fallback = specialtyLabel ? [specialtyLabel] : []
+            if (fallback.length > 0) {
+              console.log(`Doctor ${doctor.id} (${fullName}) using fallback specialization:`, fallback)
+            }
+            return fallback
+          })(),
           experience: doctor.years_of_experience ? `${doctor.years_of_experience} лет` : (doctor.experience_years_text || 'Опыт не указан'),
           years_of_experience: doctor.years_of_experience || 0,
           education: doctor.education || 'Образование не указано',
@@ -451,8 +531,8 @@ export default function DoctorsPage() {
   }
 
   // Get specialty label from value
-  const getSpecialtyLabel = (value: string): string | null => {
-    const specialty = specialties.find(s => s.value === value)
+  const getSpecialtyLabel = (value: string, specialtiesList: Specialty[] = specialties): string | null => {
+    const specialty = specialtiesList.find(s => s.value === value)
     return specialty ? specialty.label : null
   }
 
@@ -460,11 +540,20 @@ export default function DoctorsPage() {
   const groupDoctorsBySpecialization = (doctors: Doctor[]): DoctorsByCategory => {
     const grouped: DoctorsByCategory = {}
     doctors.forEach(doctor => {
-      const spec = doctor.specialization || "Другое"
-      if (!grouped[spec]) {
-        grouped[spec] = []
-      }
-      grouped[spec].push(doctor)
+      // Use specializations if available, otherwise use specialization
+      const specs = doctor.specializations && doctor.specializations.length > 0 
+        ? doctor.specializations 
+        : (doctor.specialization ? [doctor.specialization] : ["Другое"])
+      
+      specs.forEach(spec => {
+        if (!grouped[spec]) {
+          grouped[spec] = []
+        }
+        // Only add doctor once per category (avoid duplicates)
+        if (!grouped[spec].find(d => d.id === doctor.id)) {
+          grouped[spec].push(doctor)
+        }
+      })
     })
     return grouped
   }
@@ -472,18 +561,13 @@ export default function DoctorsPage() {
   // Handle search - debounced
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (selectedCategory) {
-        const specialty = specialties.find(s => s.label === selectedCategory)
-        if (specialty) {
-          fetchDoctors(specialty.value, searchTerm || undefined)
-        }
-      } else {
-        fetchDoctors(undefined, searchTerm || undefined)
-      }
+      // Don't send specialty filter to backend - filter on frontend instead
+      // This avoids 400 errors when specialty value doesn't match Doctor.SPECIALTIES choices
+      fetchDoctors(undefined, searchTerm || undefined)
     }, 300) // Debounce search by 300ms
 
     return () => clearTimeout(timeoutId)
-  }, [searchTerm, selectedCategory, specialties])
+  }, [searchTerm]) // Removed selectedCategory and specialties from dependencies to avoid re-fetching
 
   const handleCategoryClick = (category: string) => {
     setSelectedCategory(category)
@@ -497,12 +581,15 @@ export default function DoctorsPage() {
   }
 
   const handleDoctorClick = (doctor: Doctor) => {
-    setSelectedDoctor(doctor)
+    // Navigate to doctor detail page using UUID for security
+    const doctorIdentifier = (doctor as any).uuid || doctor.id
+    router.push(`/dashboard/doctor/doctors/${doctorIdentifier}`)
   }
 
-  const closeDoctorModal = () => {
-    setSelectedDoctor(null)
-  }
+  // Removed closeDoctorModal - now using separate page
+  // const closeDoctorModal = () => {
+  //   setSelectedDoctor(null)
+  // }
 
   const handleAppointment = (doctor: Doctor) => {
     // Telefon qilish uchun chat page ga o'tish
@@ -544,13 +631,14 @@ export default function DoctorsPage() {
     router.push('/dashboard/doctor/chat')
   }
 
-  const handleShowReviews = () => {
-    setShowReviews(true)
-  }
+  // Removed handleShowReviews and closeReviews - now using separate page
+  // const handleShowReviews = () => {
+  //   setShowReviews(true)
+  // }
 
-  const closeReviews = () => {
-    setShowReviews(false)
-  }
+  // const closeReviews = () => {
+  //   setShowReviews(false)
+  // }
 
   // Mock reviews data
   const getMockReviews = (doctorId: number) => {
@@ -592,12 +680,48 @@ export default function DoctorsPage() {
   }
 
 
-  // Get doctors for selected category
+  // Get doctors for selected category - filter on frontend
   const categoryDoctors = selectedCategory 
-    ? (doctorsByCategory[selectedCategory] || allDoctors.filter(d => {
+    ? (() => {
         const specialty = specialties.find(s => s.label === selectedCategory)
-        return specialty && d.specialty === specialty.value
-      }))
+        if (!specialty) {
+          // Fallback to old method
+          return doctorsByCategory[selectedCategory] || []
+        }
+        
+        // Filter doctors by specialization value or label (frontend filtering)
+        const filtered = allDoctors.filter(d => {
+          // Check specializations array
+          if (d.specializations && Array.isArray(d.specializations) && d.specializations.length > 0) {
+            return d.specializations.some((spec: any) => {
+              // Handle string format (labels)
+              if (typeof spec === 'string') {
+                // Compare with both label and value (case-insensitive for safety)
+                return spec.toLowerCase() === specialty.label.toLowerCase() || 
+                       spec.toLowerCase() === specialty.value.toLowerCase() ||
+                       spec === specialty.label || 
+                       spec === specialty.value
+              }
+              // Object format should already be converted to strings in transformDoctors
+              return false
+            })
+          }
+          // Fallback: check main specialty field
+          return d.specialty === specialty.value || 
+                 d.specialization === specialty.label ||
+                 (d.specialty && d.specialty.toLowerCase() === specialty.value.toLowerCase()) ||
+                 (d.specialization && d.specialization.toLowerCase() === specialty.label.toLowerCase())
+        })
+        
+        console.log(`Filtered doctors for "${selectedCategory}":`, {
+          specialty: specialty,
+          totalDoctors: allDoctors.length,
+          filteredCount: filtered.length,
+          filtered: filtered.map(d => ({ id: d.id, name: d.full_name, specializations: d.specializations }))
+        })
+        
+        return filtered
+      })()
     : []
 
   return (
@@ -677,11 +801,47 @@ export default function DoctorsPage() {
                  </div>
                ) : (
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                 {Object.keys(doctorsByCategory).length > 0 ? (
-                   Object.entries(doctorsByCategory).map(([category, doctors]) => {
-                     // Find specialty info if available
-                     const specialty = specialties.find(s => s.label === category || s.value === category)
-                     const doctorCount = doctors.length
+                 {specialties.length > 0 ? (
+                   specialties.map((specialty) => {
+                     // Find doctors for this specialization
+                     const doctorsForSpecialty = allDoctors.filter(doctor => {
+                       // Check if doctor has this specialization in their specializations array
+                       if (doctor.specializations && Array.isArray(doctor.specializations) && doctor.specializations.length > 0) {
+                         const hasMatch = doctor.specializations.some((spec: any) => {
+                           // Handle string format (labels)
+                           if (typeof spec === 'string') {
+                             // Compare with both label and value (case-insensitive for safety)
+                             const matches = spec.toLowerCase() === specialty.label.toLowerCase() || 
+                                            spec.toLowerCase() === specialty.value.toLowerCase() ||
+                                            spec === specialty.label || 
+                                            spec === specialty.value
+                             if (matches) {
+                               console.log(`✓ Doctor ${doctor.id} (${doctor.full_name}) matches "${specialty.label}" via string: "${spec}"`)
+                             }
+                             return matches
+                           }
+                           // Object format should already be converted to strings in transformDoctors
+                           return false
+                         })
+                         if (hasMatch) return true
+                       }
+                       // Fallback: check main specialty field
+                       const fallbackMatch = doctor.specialty === specialty.value || 
+                                            doctor.specialization === specialty.label ||
+                                            (doctor.specialty && doctor.specialty.toLowerCase() === specialty.value.toLowerCase()) ||
+                                            (doctor.specialization && doctor.specialization.toLowerCase() === specialty.label.toLowerCase())
+                       if (fallbackMatch) {
+                         console.log(`✓ Doctor ${doctor.id} (${doctor.full_name}) matches "${specialty.label}" via fallback: specialty="${doctor.specialty}", specialization="${doctor.specialization}"`)
+                       }
+                       return fallbackMatch
+                     })
+                     const doctorCount = doctorsForSpecialty.length
+                     const category = specialty.label
+                     
+                     // Debug log
+                     console.log(`Specialization "${category}" (${specialty.value}): ${doctorCount} doctors found`, {
+                       doctors: doctorsForSpecialty.map(d => ({ id: d.id, name: d.full_name, specializations: d.specializations }))
+                     })
                      
                      // Get icon and description for category
                      let icon, description, gradientStyle, iconBgStyle, iconColor
@@ -750,6 +910,78 @@ export default function DoctorsPage() {
                                {/* Bottom info */}
                                <div className="flex justify-between items-center mt-auto pt-4 border-t border-gray-100">
                                  <span className="text-sm text-gray-500">Доступно врачей: {doctorCount}</span>
+                                 <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
+                               </div>
+                             </div>
+                           </div>
+                         </CardContent>
+                       </Card>
+                     )
+                   })
+                 ) : specialties.length > 0 ? (
+                   // If no doctors but specialties exist, show empty categories
+                   specialties.map((specialty) => {
+                     const category = specialty.label
+                     const doctorCount = 0
+                     
+                     // Get icon and description for category
+                     let icon, description, gradientStyle, iconBgStyle, iconColor
+                     
+                     const categoryLower = category.toLowerCase()
+                     if (categoryLower.includes('кардиолог') || categoryLower.includes('сердц')) {
+                       icon = Heart
+                       description = "Заболевания сердца и сосудов"
+                       gradientStyle = "linear-gradient(to right, rgb(239, 68, 68), rgb(236, 72, 153))"
+                       iconBgStyle = "linear-gradient(to bottom right, rgb(239, 68, 68), rgb(236, 72, 153))"
+                       iconColor = "text-white"
+                     } else if (categoryLower.includes('невролог') || categoryLower.includes('нервн')) {
+                       icon = Brain
+                       description = "Заболевания нервной системы"
+                       gradientStyle = "linear-gradient(to right, rgb(168, 85, 247), rgb(129, 140, 248))"
+                       iconBgStyle = "linear-gradient(to bottom right, rgb(168, 85, 247), rgb(129, 140, 248))"
+                       iconColor = "text-white"
+                     } else if (categoryLower.includes('педиатр') || categoryLower.includes('детск')) {
+                       icon = Baby
+                       description = "Здоровье детей и подростков"
+                       gradientStyle = "linear-gradient(to right, rgb(6, 182, 212), rgb(59, 130, 246))"
+                       iconBgStyle = "linear-gradient(to bottom right, rgb(6, 182, 212), rgb(59, 130, 246))"
+                       iconColor = "text-white"
+                     } else if (categoryLower.includes('хирург') || categoryLower.includes('оперативн')) {
+                       icon = Scissors
+                       description = "Оперативное лечение заболеваний"
+                       gradientStyle = "linear-gradient(to right, rgb(16, 185, 129), rgb(20, 184, 166))"
+                       iconBgStyle = "linear-gradient(to bottom right, rgb(16, 185, 129), rgb(20, 184, 166))"
+                       iconColor = "text-white"
+                     } else {
+                       icon = Stethoscope
+                       description = "Общая медицина и первичная диагностика"
+                       gradientStyle = "linear-gradient(to right, rgb(16, 185, 129), rgb(20, 184, 166))"
+                       iconBgStyle = "linear-gradient(to bottom right, rgb(16, 185, 129), rgb(20, 184, 166))"
+                       iconColor = "text-white"
+                     }
+                     
+                     return (
+                       <Card 
+                         key={specialty.value || specialty.label} 
+                         className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-blue-300 group relative overflow-hidden opacity-60"
+                         onClick={() => handleCategoryClick(category)}
+                       >
+                         <div className="absolute top-0 left-0 right-0 h-2" style={{ background: gradientStyle }}></div>
+                         <CardContent className="p-6">
+                           <div className="absolute top-4 right-4 z-10">
+                             <Badge className="px-3 py-1 rounded-full text-xs font-medium bg-white/95 text-gray-700 border border-gray-200 shadow-sm">
+                               0 врачей
+                             </Badge>
+                           </div>
+                           <div className="flex items-start gap-4">
+                             <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform" style={{ background: iconBgStyle }}>
+                               {React.createElement(icon, { className: `w-6 h-6 ${iconColor}` })}
+                             </div>
+                             <div className="flex-1 min-w-0">
+                               <h3 className="text-xl font-semibold mb-2 text-gray-900">{category}</h3>
+                               <p className="text-gray-600 text-sm mb-4 leading-relaxed">{description}</p>
+                               <div className="flex justify-between items-center mt-auto pt-4 border-t border-gray-100">
+                                 <span className="text-sm text-gray-500">Доступно врачей: 0</span>
                                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
                                </div>
                              </div>
@@ -883,9 +1115,23 @@ export default function DoctorsPage() {
                         <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate">
                           {doctor.full_name}
                         </h3>
-                        <Badge className="bg-blue-100 text-blue-700 border-blue-200 mb-3">
-                          {doctor.specialization}
-                        </Badge>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {doctor.specialization && (
+                            <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+                              {doctor.specialization}
+                            </Badge>
+                          )}
+                          {doctor.specializations && doctor.specializations.length > 0 && doctor.specializations.slice(0, 2).map((spec: string, idx: number) => (
+                            <Badge key={idx} className="bg-purple-100 text-purple-700 border-purple-200">
+                              {spec}
+                            </Badge>
+                          ))}
+                          {doctor.specializations && doctor.specializations.length > 2 && (
+                            <Badge className="bg-gray-100 text-gray-700 border-gray-200">
+                              +{doctor.specializations.length - 2}
+                            </Badge>
+                          )}
+                        </div>
                         <div className="space-y-2 text-sm text-gray-600">
                           <div className="flex items-center gap-2">
                             <MapPin className="w-4 h-4 text-gray-400" />
@@ -927,344 +1173,10 @@ export default function DoctorsPage() {
           </div>
         )}
 
-        {/* Doctor Detail Modal */}
-        {selectedDoctor && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-6xl w-full max-h-[95vh] overflow-y-auto">
-              <div className="sticky top-0 bg-white border-b border-gray-200 p-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-gray-900">Информация о враче</h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={closeDoctorModal}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <X className="w-6 h-6" />
-                  </Button>
-                </div>
-              </div>
+        {/* Doctor Detail Modal - Removed, now using separate page at /dashboard/doctor/doctors/[id] */}
+        {/* Modal code removed - see /dashboard/doctor/doctors/[id]/page.tsx */}
 
-              <div className="p-6">
-                {/* Doctor Header */}
-                <div className="flex items-start gap-6 mb-8">
-                  <Avatar className="w-24 h-24 border-4 border-blue-200">
-                    <AvatarImage src={selectedDoctor.profile_picture || undefined} />
-                    <AvatarFallback className="bg-blue-500 text-white text-3xl font-bold">
-                      {selectedDoctor.first_name?.[0]}{selectedDoctor.last_name?.[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-3">
-                      {selectedDoctor.full_name}
-                    </h1>
-                    <div className="flex items-center gap-4 mb-4">
-                      <Badge className="bg-blue-100 text-blue-700 border-blue-200 px-4 py-2 text-lg">
-                        <Stethoscope className="w-5 h-5 mr-2" />
-                        {selectedDoctor.specialization}
-                      </Badge>
-                      <Badge className="bg-green-100 text-green-700 border-green-200 px-4 py-2 text-lg">
-                        <Clock className="w-5 h-5 mr-2" />
-                        {selectedDoctor.experience}
-                      </Badge>
-                      {selectedDoctor.is_recommended && (
-                        <Badge className="bg-red-100 text-red-700 border-red-200 px-4 py-2 text-lg">
-                          <Heart className="w-5 h-5 mr-2" />
-                          Рекомендуемый
-                        </Badge>
-                      )}
-                      <div className="flex items-center gap-2">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star key={star} className="w-6 h-6 text-yellow-400 fill-current" />
-                        ))}
-                        <span className="ml-2 text-xl font-bold text-gray-700">
-                          {selectedDoctor.rating}
-                        </span>
-                        <span className="text-gray-500">({selectedDoctor.total_reviews} отзывов)</span>
-                      </div>
-                    </div>
-                    <p className="text-gray-600 text-lg leading-relaxed">
-                      {selectedDoctor.bio}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Stats Grid */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-0">
-                    <CardContent className="p-6 text-center">
-                      <div className="w-16 h-16 bg-blue-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Users className="w-8 h-8 text-blue-600" />
-                      </div>
-                      <p className="text-3xl font-bold text-blue-700 mb-1">{selectedDoctor.total_patients}</p>
-                      <p className="text-blue-600 font-medium">Пациенты</p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card className="bg-gradient-to-br from-green-50 to-green-100 border-0">
-                    <CardContent className="p-6 text-center">
-                      <div className="w-16 h-16 bg-green-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <TrendingUp className="w-8 h-8 text-green-600" />
-                      </div>
-                      <p className="text-3xl font-bold text-green-700 mb-1">{selectedDoctor.monthly_consultations}</p>
-                      <p className="text-green-600 font-medium">Консультации</p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-0">
-                    <CardContent className="p-6 text-center">
-                      <div className="w-16 h-16 bg-purple-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Star className="w-8 h-8 text-purple-600" />
-                      </div>
-                      <p className="text-3xl font-bold text-purple-700 mb-1">{selectedDoctor.rating}</p>
-                      <p className="text-purple-600 font-medium">Рейтинг</p>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-0">
-                    <CardContent className="p-6 text-center">
-                      <div className="w-16 h-16 bg-orange-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <CheckCircle className="w-8 h-8 text-orange-600" />
-                      </div>
-                      <p className="text-3xl font-bold text-orange-700 mb-1">{selectedDoctor.total_reviews}</p>
-                      <p className="text-orange-600 font-medium">Отзывы</p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Detailed Information */}
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                  {/* Left Column */}
-                  <div className="space-y-6">
-                    <Card>
-                      <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
-                        <CardTitle className="flex items-center gap-3 text-blue-800">
-                          <GraduationCap className="w-6 h-6" />
-                          Образование и опыт
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-6 space-y-4">
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">Образование</label>
-                          <p className="text-gray-900">{selectedDoctor.education}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">Опыт работы</label>
-                          <p className="text-gray-900">{selectedDoctor.experience}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">Сертификаты</label>
-                          <p className="text-gray-900">{selectedDoctor.certifications}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">Языки</label>
-                          <p className="text-gray-900">{selectedDoctor.languages}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader className="bg-gradient-to-r from-green-50 to-green-100">
-                        <CardTitle className="flex items-center gap-3 text-green-800">
-                          <Calendar className="w-6 h-6" />
-                          Рабочий график
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-6 space-y-4">
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">Рабочие часы</label>
-                          <p className="text-gray-900">{selectedDoctor.working_hours}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">Доступность</label>
-                          <p className="text-gray-900">{selectedDoctor.availability}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">Стоимость консультации</label>
-                          <p className="text-2xl font-bold text-green-600">{selectedDoctor.consultation_fee}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Right Column */}
-                  <div className="space-y-6">
-                    <Card>
-                      <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100">
-                        <CardTitle className="flex items-center gap-3 text-purple-800">
-                          <MapPin className="w-6 h-6" />
-                          Контактная информация
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-6 space-y-4">
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">Телефон</label>
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-purple-600" />
-                            <a href={`tel:${selectedDoctor.phone}`} className="text-purple-600 hover:text-purple-700 font-medium">
-                              {selectedDoctor.phone}
-                            </a>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">Email</label>
-                          <div className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-purple-600" />
-                            <a href={`mailto:${selectedDoctor.email}`} className="text-purple-600 hover:text-purple-700 font-medium">
-                              {selectedDoctor.email}
-                            </a>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">Адрес</label>
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-purple-600" />
-                            <span className="text-gray-900">{selectedDoctor.address}</span>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">Местоположение</label>
-                          <div className="flex items-center gap-2">
-                            <Building className="w-4 h-4 text-purple-600" />
-                            <span className="text-gray-900">{selectedDoctor.location}</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                                         <Card>
-                       <CardHeader className="bg-gradient-to-r from-orange-50 to-orange-100">
-                         <CardTitle className="flex items-center gap-3 text-orange-800">
-                           <MessageCircle className="w-6 h-6" />
-                           Действия
-                         </CardTitle>
-                       </CardHeader>
-                       <CardContent className="p-6 space-y-4">
-                         <Button 
-                           className="w-full bg-blue-600 hover:bg-blue-700"
-                           onClick={() => handleAppointment(selectedDoctor)}
-                         >
-                           <Phone className="w-4 h-4 mr-2" />
-                           Записаться на прием
-                         </Button>
-                         <Button 
-                           variant="outline" 
-                           className="w-full border-green-300 text-green-600 hover:bg-green-50"
-                           onClick={() => handleSendMessage(selectedDoctor)}
-                         >
-                           <MessageCircle className="w-4 h-4 mr-2" />
-                           Написать сообщение
-                         </Button>
-                         <Button 
-                           variant="outline" 
-                           className="w-full border-purple-300 text-purple-600 hover:bg-purple-50"
-                           onClick={handleShowReviews}
-                         >
-                           <Eye className="w-4 h-4 mr-2" />
-                           Посмотреть отзывы
-                         </Button>
-                       </CardContent>
-                     </Card>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-                 )}
-
-         {/* Reviews Modal */}
-         {showReviews && selectedDoctor && (
-           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-             <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-               <div className="sticky top-0 bg-white border-b border-gray-200 p-6">
-                 <div className="flex items-center justify-between">
-                   <div>
-                     <h2 className="text-2xl font-bold text-gray-900">Отзывы о {selectedDoctor.full_name}</h2>
-                     <p className="text-gray-600 mt-1">Оценки и комментарии пациентов</p>
-                   </div>
-                   <Button
-                     variant="ghost"
-                     size="sm"
-                     onClick={closeReviews}
-                     className="text-gray-500 hover:text-gray-700"
-                   >
-                     <X className="w-6 h-6" />
-                   </Button>
-                 </div>
-               </div>
-
-               <div className="p-6">
-                 {/* Overall Rating */}
-                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 mb-6">
-                   <div className="flex items-center gap-4">
-                     <div className="text-center">
-                       <div className="text-4xl font-bold text-blue-600">{selectedDoctor.rating}</div>
-                       <div className="flex items-center gap-1 mt-2">
-                         {[1, 2, 3, 4, 5].map((star) => (
-                           <Star key={star} className="w-6 h-6 text-yellow-400 fill-current" />
-                         ))}
-                       </div>
-                       <p className="text-gray-600 mt-1">{selectedDoctor.total_reviews} отзывов</p>
-                     </div>
-                     <div className="flex-1">
-                       <h3 className="text-lg font-semibold text-gray-900 mb-2">Общая оценка</h3>
-                       <p className="text-gray-600">
-                         Пациенты высоко оценивают профессионализм и качество лечения {selectedDoctor.first_name}
-                       </p>
-                     </div>
-                   </div>
-                 </div>
-
-                 {/* Reviews List */}
-                 <div className="space-y-4">
-                   {getMockReviews(selectedDoctor.id).map((review) => (
-                     <Card key={review.id} className="border border-gray-200">
-                       <CardContent className="p-6">
-                         <div className="flex items-start gap-4">
-                           <Avatar className="w-12 h-12">
-                             <AvatarImage src={review.avatar || undefined} />
-                             <AvatarFallback className="bg-blue-500 text-white text-sm font-bold">
-                               {review.user_name.split(' ').map(n => n[0]).join('')}
-                             </AvatarFallback>
-                           </Avatar>
-                           <div className="flex-1">
-                             <div className="flex items-center gap-3 mb-2">
-                               <h4 className="font-semibold text-gray-900">{review.user_name}</h4>
-                               <div className="flex items-center gap-1">
-                                 {[1, 2, 3, 4, 5].map((star) => (
-                                   <Star 
-                                     key={star} 
-                                     className={`w-4 h-4 ${
-                                       star <= review.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                                     }`} 
-                                   />
-                                 ))}
-                               </div>
-                               <Badge className="bg-blue-100 text-blue-700 border-blue-200">
-                                 {review.rating}/5
-                               </Badge>
-                             </div>
-                             <p className="text-gray-700 mb-3 leading-relaxed">{review.comment}</p>
-                             <p className="text-sm text-gray-500">{review.date}</p>
-                           </div>
-                         </div>
-                       </CardContent>
-                     </Card>
-                   ))}
-                 </div>
-
-                 {/* No Reviews Message */}
-                 {getMockReviews(selectedDoctor.id).length === 0 && (
-                   <div className="text-center py-8">
-                     <MessageCircle className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                     <h3 className="text-lg font-medium text-gray-900 mb-2">Отзывов пока нет</h3>
-                     <p className="text-gray-600">Будьте первым, кто оставит отзыв о {selectedDoctor.first_name}</p>
-                   </div>
-                 )}
-               </div>
-             </div>
-           </div>
-         )}
+         {/* Reviews Modal - Removed, now using separate page */}
        </div>
      </div>
    )
