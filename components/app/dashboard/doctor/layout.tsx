@@ -52,7 +52,7 @@ const sidebarItems: SidebarItem[] = [
     label: "История Пациентов",
     icon: History,
     color: "from-green-500 to-emerald-500",
-    href: "/under-construction",
+    href: "/dashboard/doctor/patients",
   },
   {
     id: "chat",
